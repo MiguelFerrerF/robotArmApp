@@ -5,6 +5,7 @@
 RobotControlDialog::RobotControlDialog(QWidget *parent)
     : QDialog(parent), ui(new Ui::RobotControlDialog) {
   ui->setupUi(this);
+  this->setWindowTitle("Robot Control");
   qDebug("Ventana de control de robot Creada");
 
   // Function to connect sliders to labels

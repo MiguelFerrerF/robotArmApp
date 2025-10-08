@@ -33,6 +33,10 @@ set(PROJECT_SOURCES
 
         library-log/LogHandler.h
         library-log/LogHandler.cpp
+
+        library-robot/RobotControlDialog.h 
+        library-robot/RobotControlDialog.cpp
+        library-robot/RobotControlDialog.ui
 )
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)

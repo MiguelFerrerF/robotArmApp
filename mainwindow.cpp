@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
 #include "library-serial/SerialConnectionSetupDialog.h"
+#include <QDebug>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow) {
@@ -42,6 +43,20 @@ void MainWindow::on_actionDisconnectSerial_triggered() {
     LogHandler::warning(ui->textEditLog, "Disconnected from serial port");
   } else
     LogHandler::warning(ui->textEditLog, "No serial port connected");
+}
+
+void MainWindow::on_actionConnectVideo_triggered() {
+  qDebug("Conectar video en curso");
+}
+
+void MainWindow::on_actionControl_triggered() {
+  qDebug("Control robot pulsado");
+  if (!m_RobotControl) {
+    m_RobotControl = new RobotControlDialog(this);
+  }
+  m_RobotControl->show();
+  m_RobotControl->raise();
+  m_RobotControl->activateWindow();
 }
 
 void MainWindow::onSerialError(const QString &error) {

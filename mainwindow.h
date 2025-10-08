@@ -2,11 +2,11 @@
 #define MAINWINDOW_H
 
 #include "library-log/LogHandler.h"
+#include "library-robot/RobotControlDialog.h"
 #include "library-serial/SerialMonitorDialog.h"
 #include "library-serial/SerialPortHandler.h"
 #include <QMainWindow>
 #include <QSettings>
-
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -26,6 +26,8 @@ private slots:
   void on_actionSerial_triggered();
   void on_actionConnectSerial_triggered();
   void on_actionDisconnectSerial_triggered();
+  void on_actionConnectVideo_triggered();
+  void on_actionControl_triggered();
 
   // Serial Monitor
   void onSerialError(const QString &error);
@@ -36,6 +38,7 @@ private slots:
 private:
   Ui::MainWindow *ui;
   SerialMonitorDialog *m_SerialMonitorDialog = nullptr;
+  RobotControlDialog *m_RobotControl = nullptr;
 
   QSettings m_settings;
 };

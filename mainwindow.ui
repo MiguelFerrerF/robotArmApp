@@ -168,8 +168,10 @@
    </property>
    <widget class="QMenu" name="menuController">
     <property name="title">
-     <string>Controller</string>
+     <string>Robot</string>
     </property>
+    <addaction name="actionControl"/>
+    <addaction name="actionCalibrate_2"/>
    </widget>
    <widget class="QMenu" name="menuSerial">
     <property name="title">
@@ -178,10 +180,14 @@
     <addaction name="actionSerial"/>
     <addaction name="actionLog"/>
    </widget>
-   <widget class="QMenu" name="menuCalibration">
+   <widget class="QMenu" name="menuVideo">
     <property name="title">
-     <string>Calibration</string>
+     <string>Video</string>
     </property>
+    <addaction name="actionConnectVideo"/>
+    <addaction name="actionCalibrate"/>
+    <addaction name="separator"/>
+    <addaction name="actionPicture"/>
    </widget>
    <widget class="QMenu" name="menuConnect">
     <property name="title">
@@ -192,7 +198,7 @@
    </widget>
    <addaction name="menuConnect"/>
    <addaction name="menuController"/>
-   <addaction name="menuCalibration"/>
+   <addaction name="menuVideo"/>
    <addaction name="menuSerial"/>
   </widget>
   <action name="actionConnectSerial">
@@ -213,6 +219,36 @@
   <action name="actionLog">
    <property name="text">
     <string>Log</string>
+   </property>
+  </action>
+  <action name="actionConnectVideo">
+   <property name="text">
+    <string>Connect</string>
+   </property>
+  </action>
+  <action name="actionControl">
+   <property name="text">
+    <string>Control</string>
+   </property>
+  </action>
+  <action name="actionCalibrate">
+   <property name="text">
+    <string>Calibrate</string>
+   </property>
+  </action>
+  <action name="actionCalibrate_2">
+   <property name="text">
+    <string>Calibrate</string>
+   </property>
+  </action>
+  <action name="actionPicture">
+   <property name="text">
+    <string>Picture</string>
+   </property>
+  </action>
+  <action name="actionOpen">
+   <property name="text">
+    <string>Open</string>
    </property>
   </action>
  </widget>

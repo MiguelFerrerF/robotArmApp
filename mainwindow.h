@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 
 #include "library-log/LogHandler.h"
+#include "library-robot/RobotConfig.h"
 #include "library-robot/RobotControlDialog.h"
 #include "library-serial/SerialMonitorDialog.h"
 #include "library-serial/SerialPortHandler.h"
@@ -35,11 +36,19 @@ private slots:
   void onSetupConnectionError(const QString &error);
   void onSerialMonitorWarning(const QString &warning);
 
+  // Robot Control
+  void onRobotControlError(const QString &error);
+  void onRobotMotorAngleChanged(int motorIndex, int angle);
+  void onAllMotorsReset();
+
 private:
   Ui::MainWindow *ui;
   SerialMonitorDialog *m_SerialMonitorDialog = nullptr;
   RobotControlDialog *m_RobotControl = nullptr;
 
   QSettings m_settings;
+  RobotConfig::RobotSettings m_robotSettings;
+
+  void setupConnections();
 };
 #endif // MAINWINDOW_H

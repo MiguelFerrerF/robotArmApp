@@ -7,9 +7,19 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow) {
   ui->setupUi(this);
   this->setWindowTitle("Robot Arm Controller");
+
+  setupConnections();
 }
 
 MainWindow::~MainWindow() { delete ui; }
+
+void MainWindow::setupConnections() {
+  SerialPortHandler &serial = SerialPortHandler::instance();
+  connect(&serial, &SerialPortHandler::errorOccurred, this,
+          &MainWindow::onSerialError);
+  connect(&serial, &SerialPortHandler::connectionStatusChanged, this,
+          &MainWindow::onSerialStatusChanged);
+}
 
 void MainWindow::on_actionSerial_triggered() {
   if (!m_SerialMonitorDialog) {
@@ -52,11 +62,27 @@ void MainWindow::on_actionConnectVideo_triggered() {
 void MainWindow::on_actionControl_triggered() {
   qDebug("Control robot pulsado");
   if (!m_RobotControl) {
-    m_RobotControl = new RobotControlDialog(this);
+    m_RobotControl = new RobotControlDialog(this, &m_robotSettings);
   }
   m_RobotControl->show();
   m_RobotControl->raise();
   m_RobotControl->activateWindow();
+
+  // Disconnect previous connections if any to avoid duplicates
+  disconnect(m_RobotControl, &RobotControlDialog::errorOccurred, this,
+             &MainWindow::onRobotControlError);
+  disconnect(m_RobotControl, &RobotControlDialog::motorAngleChanged, this,
+             &MainWindow::onRobotMotorAngleChanged);
+  disconnect(m_RobotControl, &RobotControlDialog::allMotorsReset, this,
+             &MainWindow::onAllMotorsReset);
+
+  // Connect signals from RobotControlDialog
+  connect(m_RobotControl, &RobotControlDialog::errorOccurred, this,
+          &MainWindow::onRobotControlError);
+  connect(m_RobotControl, &RobotControlDialog::motorAngleChanged, this,
+          &MainWindow::onRobotMotorAngleChanged);
+  connect(m_RobotControl, &RobotControlDialog::allMotorsReset, this,
+          &MainWindow::onAllMotorsReset);
 }
 
 void MainWindow::onSerialError(const QString &error) {
@@ -75,4 +101,18 @@ void MainWindow::onSetupConnectionError(const QString &error) {
 
 void MainWindow::onSerialMonitorWarning(const QString &warning) {
   LogHandler::warning(ui->textEditLog, warning);
+}
+
+void MainWindow::onRobotControlError(const QString &error) {
+  LogHandler::error(ui->textEditLog, "Robot Control Error: " + error);
+}
+
+void MainWindow::onRobotMotorAngleChanged(int motorIndex, int angle) {
+  LogHandler::info(
+      ui->textEditLog,
+      QString("Motor %1 angle changed to %2").arg(motorIndex).arg(angle));
+}
+
+void MainWindow::onAllMotorsReset() {
+  LogHandler::info(ui->textEditLog, "All motors have been reset to default");
 }

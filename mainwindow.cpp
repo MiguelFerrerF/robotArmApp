@@ -2,6 +2,7 @@
 #include "./ui_mainwindow.h"
 #include "library-serial/SerialConnectionSetupDialog.h"
 #include <QDebug>
+#include <QVideoFrameFormat>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow) {
@@ -11,7 +12,10 @@ MainWindow::MainWindow(QWidget *parent)
   setupConnections();
 }
 
-MainWindow::~MainWindow() { delete ui; }
+MainWindow::~MainWindow() {
+  VideoCameraHandler::instance().stopCamera();
+  delete ui;
+}
 
 void MainWindow::setupConnections() {
   SerialPortHandler &serial = SerialPortHandler::instance();
@@ -56,7 +60,53 @@ void MainWindow::on_actionDisconnectSerial_triggered() {
 }
 
 void MainWindow::on_actionConnectVideo_triggered() {
-  qDebug("Conectar video en curso");
+  VideoConnectionDialog dialog(this);
+  connect(&dialog, &VideoConnectionDialog::errorOccurred, this,
+          [this](const QString &err) {
+            LogHandler::error(ui->textEditLog, "Video Error: " + err);
+          });
+
+  if (dialog.exec() != QDialog::Accepted)
+    return;
+
+  // Si el diálogo aceptó, la cámara ya está iniciada
+  // Creamos el sink si no existe
+  if (!m_videoSink) {
+    m_videoSink = new QVideoSink(this);
+    connect(m_videoSink, &QVideoSink::videoFrameChanged, this,
+            [this](const QVideoFrame &frame) {
+              if (!frame.isValid())
+                return;
+
+              QVideoFrame f(frame);
+              f.map(QVideoFrame::ReadOnly);
+              QImage img = f.toImage();
+              f.unmap();
+
+              if (!img.isNull()) {
+                ui->labelCamera->setPixmap(QPixmap::fromImage(img).scaled(
+                    ui->labelCamera->size(), Qt::KeepAspectRatio,
+                    Qt::SmoothTransformation));
+              }
+            });
+  }
+
+  // Asociar el sink al handler
+  VideoCameraHandler::instance().setVideoSink(m_videoSink);
+
+  LogHandler::success(ui->textEditLog, "Camera connected successfully");
+}
+
+void MainWindow::on_actionDisconnectVideo_triggered() {
+  if (m_videoSink) {
+    VideoCameraHandler::instance().stopCamera();
+    delete m_videoSink;
+    m_videoSink = nullptr;
+    ui->labelCamera->clear();
+    LogHandler::warning(ui->textEditLog, "Video camera disconnected");
+  } else {
+    LogHandler::warning(ui->textEditLog, "No video camera connected");
+  }
 }
 
 void MainWindow::on_actionControl_triggered() {

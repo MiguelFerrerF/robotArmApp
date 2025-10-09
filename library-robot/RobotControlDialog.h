@@ -24,12 +24,15 @@ signals:
 private slots:
   void on_pushButtonReset_clicked();
   void on_pushButtonSetup_clicked();
+  void on_pushButtonAllSingle_clicked();
 
 private:
   Ui::RobotControlDialog *ui;
   RobotConfig::RobotSettings *m_robotSettings;
   void connectSlidersToLabels();
   void setLabelToSliderValue(int motorIndex, int value);
+
+  bool m_isAll = true;
 };
 
 #endif // ROBOTCONTROLDIALOG_H

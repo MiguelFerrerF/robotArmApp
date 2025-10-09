@@ -1,5 +1,8 @@
 {
     "files.associations": {
-        "qdialog": "cpp"
+        "qdialog": "cpp",
+        "chrono": "cpp",
+        "optional": "cpp",
+        "system_error": "cpp"
     }
 }

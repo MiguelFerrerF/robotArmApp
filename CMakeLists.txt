@@ -9,9 +9,9 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets Core Gui SerialPort)
+find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets Core Gui SerialPort Multimedia)
 set(QT_VERSION_MAJOR 6)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Core Gui SerialPort)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Core Gui SerialPort Multimedia)
 
 set(PROJECT_SOURCES
         main.cpp
@@ -38,6 +38,12 @@ set(PROJECT_SOURCES
         library-robot/RobotControlDialog.h 
         library-robot/RobotControlDialog.cpp
         library-robot/RobotControlDialog.ui
+
+        library-video/VideoCameraHandler.h
+        library-video/VideoCameraHandler.cpp
+        library-video/VideoConnectionDialog.h
+        library-video/VideoConnectionDialog.cpp
+        library-video/VideoConnectionDialog.ui
 )
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
@@ -68,6 +74,16 @@ target_link_libraries(robotArmApp PRIVATE
     Qt${QT_VERSION_MAJOR}::Core
     Qt${QT_VERSION_MAJOR}::Gui
     Qt${QT_VERSION_MAJOR}::SerialPort
+    Qt${QT_VERSION_MAJOR}::Multimedia
+)
+
+# Copiar robot.png a la carpeta images dentro del directorio de build
+add_custom_command(TARGET robotArmApp POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:robotArmApp>/images"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_SOURCE_DIR}/images/robot.png"
+        "$<TARGET_FILE_DIR:robotArmApp>/images/robot.png"
+    COMMENT "Copiando robot.png a la carpeta de imágenes del build"
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.

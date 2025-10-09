@@ -1,6 +1,10 @@
 #include "RobotControlDialog.h"
 #include "ui_RobotControlDialog.h"
+#include <QCoreApplication>
 #include <QDebug>
+#include <QLabel>
+#include <QPixmap>
+#include <QSlider>
 
 RobotControlDialog::RobotControlDialog(QWidget *parent,
                                        RobotConfig::RobotSettings *settings)
@@ -8,6 +12,12 @@ RobotControlDialog::RobotControlDialog(QWidget *parent,
       m_robotSettings(settings) {
   ui->setupUi(this);
   this->setWindowTitle("Robot Control");
+
+  // Add image to label
+  QPixmap pixmap(QCoreApplication::applicationDirPath() + "/images/robot.png");
+  ui->labelRobotImage->setPixmap(pixmap.scaled(500, 500, Qt::KeepAspectRatio));
+  ui->labelRobotImage->setAlignment(Qt::AlignCenter);
+  ui->labelRobotImage->setScaledContents(true);
 
   // Function to connect sliders to labels
   connectSlidersToLabels();
@@ -31,24 +41,40 @@ void RobotControlDialog::connectSlidersToLabels() {
 }
 
 void RobotControlDialog::setLabelToSliderValue(int motorIndex, int value) {
+  if (!m_robotSettings) {
+    emit errorOccurred("Robot settings not initialized.");
+    return;
+  }
   switch (motorIndex) {
   case 1:
     ui->labelMotor1Slider->setText(QString::number(value));
+    if (!m_isAll)
+      emit motorAngleChanged(1, value);
     break;
   case 2:
     ui->labelMotor2Slider->setText(QString::number(value));
+    if (!m_isAll)
+      emit motorAngleChanged(2, value);
     break;
   case 3:
     ui->labelMotor3Slider->setText(QString::number(value));
+    if (!m_isAll)
+      emit motorAngleChanged(3, value);
     break;
   case 4:
     ui->labelMotor4Slider->setText(QString::number(value));
+    if (!m_isAll)
+      emit motorAngleChanged(4, value);
     break;
   case 5:
     ui->labelMotor5Slider->setText(QString::number(value));
+    if (!m_isAll)
+      emit motorAngleChanged(5, value);
     break;
   case 6:
     ui->labelMotor6Slider->setText(QString::number(value));
+    if (!m_isAll)
+      emit motorAngleChanged(6, value);
     break;
   default:
     emit errorOccurred("Invalid motor index");
@@ -88,4 +114,17 @@ void RobotControlDialog::on_pushButtonSetup_clicked() {
   emit motorAngleChanged(4, ui->horizontalSlider4->value());
   emit motorAngleChanged(5, ui->horizontalSlider5->value());
   emit motorAngleChanged(6, ui->horizontalSlider6->value());
+}
+
+void RobotControlDialog::on_pushButtonAllSingle_clicked() {
+  m_isAll = !m_isAll;
+  if (m_isAll) {
+    // Change the push button text to "All Motors Control"
+    ui->pushButtonAllSingle->setText("All");
+    ui->pushButtonSetup->setEnabled(true);
+  } else {
+    // Change the push button text to "Single Motor Control"
+    ui->pushButtonAllSingle->setText("Single");
+    ui->pushButtonSetup->setEnabled(false);
+  }
 }

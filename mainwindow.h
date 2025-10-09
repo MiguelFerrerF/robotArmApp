@@ -6,8 +6,14 @@
 #include "library-robot/RobotControlDialog.h"
 #include "library-serial/SerialMonitorDialog.h"
 #include "library-serial/SerialPortHandler.h"
+#include "library-video/VideoCameraHandler.h"
+#include "library-video/VideoConnectionDialog.h"
+#include <QImage>
 #include <QMainWindow>
+#include <QPixmap>
 #include <QSettings>
+#include <QVideoFrame>
+#include <QVideoSink>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -28,6 +34,7 @@ private slots:
   void on_actionConnectSerial_triggered();
   void on_actionDisconnectSerial_triggered();
   void on_actionConnectVideo_triggered();
+  void on_actionDisconnectVideo_triggered();
   void on_actionControl_triggered();
 
   // Serial Monitor
@@ -45,6 +52,7 @@ private:
   Ui::MainWindow *ui;
   SerialMonitorDialog *m_SerialMonitorDialog = nullptr;
   RobotControlDialog *m_RobotControl = nullptr;
+  QVideoSink *m_videoSink = nullptr;
 
   QSettings m_settings;
   RobotConfig::RobotSettings m_robotSettings;

@@ -158,9 +158,17 @@ void MainWindow::onRobotControlError(const QString &error) {
 }
 
 void MainWindow::onRobotMotorAngleChanged(int motorIndex, int angle) {
-  LogHandler::info(
-      ui->textEditLog,
-      QString("Motor %1 angle changed to %2").arg(motorIndex).arg(angle));
+  // send command to robot via serial
+  if (SerialPortHandler::instance().isConnected()) {
+    QString command = QString("SETUP:SERVO%1:%2\n").arg(motorIndex).arg(angle);
+    SerialPortHandler::instance().sendData(command.toUtf8());
+    LogHandler::info(ui->textEditLog, QString("Sent command to motor %1: %2")
+                                          .arg(motorIndex)
+                                          .arg(command.trimmed()));
+  } else {
+    LogHandler::warning(ui->textEditLog,
+                        "Cannot send command: Serial port not connected");
+  }
 }
 
 void MainWindow::onAllMotorsReset() {

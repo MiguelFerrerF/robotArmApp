@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>810</width>
-    <height>432</height>
+    <height>480</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -47,12 +47,15 @@
        </widget>
       </item>
       <item>
-       <widget class="QLineEdit" name="lineEditMotor6Slider">
+       <widget class="QLineEdit" name="lineEditMotor6">
         <property name="maximumSize">
          <size>
           <width>30</width>
           <height>16777215</height>
          </size>
+        </property>
+        <property name="text">
+         <string>90</string>
         </property>
         <property name="alignment">
          <set>Qt::AlignmentFlag::AlignCenter</set>
@@ -95,12 +98,15 @@
        </widget>
       </item>
       <item>
-       <widget class="QLineEdit" name="lineEditMotor2Slider">
+       <widget class="QLineEdit" name="lineEditMotor2">
         <property name="maximumSize">
          <size>
           <width>30</width>
           <height>16777215</height>
          </size>
+        </property>
+        <property name="text">
+         <string>90</string>
         </property>
         <property name="alignment">
          <set>Qt::AlignmentFlag::AlignCenter</set>
@@ -114,6 +120,9 @@
     <widget class="QPushButton" name="pushButtonAllSingle">
      <property name="text">
       <string>All</string>
+     </property>
+     <property name="autoDefault">
+      <bool>false</bool>
      </property>
     </widget>
    </item>
@@ -150,12 +159,15 @@
        </widget>
       </item>
       <item>
-       <widget class="QLineEdit" name="lineEditMotor5Slider">
+       <widget class="QLineEdit" name="lineEditMotor5">
         <property name="maximumSize">
          <size>
           <width>30</width>
           <height>16777215</height>
          </size>
+        </property>
+        <property name="text">
+         <string>90</string>
         </property>
         <property name="alignment">
          <set>Qt::AlignmentFlag::AlignCenter</set>
@@ -204,7 +216,7 @@
        </widget>
       </item>
       <item row="0" column="2">
-       <widget class="QLineEdit" name="lineEditMotor1Slider">
+       <widget class="QLineEdit" name="lineEditMotor1">
         <property name="enabled">
          <bool>true</bool>
         </property>
@@ -215,7 +227,7 @@
          </size>
         </property>
         <property name="text">
-         <string>120</string>
+         <string>90</string>
         </property>
         <property name="alignment">
          <set>Qt::AlignmentFlag::AlignCenter</set>
@@ -297,12 +309,15 @@
        </widget>
       </item>
       <item>
-       <widget class="QLineEdit" name="lineEditMotor4Slider">
+       <widget class="QLineEdit" name="lineEditMotor4">
         <property name="maximumSize">
          <size>
           <width>30</width>
           <height>16777215</height>
          </size>
+        </property>
+        <property name="text">
+         <string>90</string>
         </property>
         <property name="alignment">
          <set>Qt::AlignmentFlag::AlignCenter</set>
@@ -317,12 +332,21 @@
      <property name="text">
       <string>Reset</string>
      </property>
+     <property name="autoDefault">
+      <bool>false</bool>
+     </property>
+     <property name="default">
+      <bool>false</bool>
+     </property>
     </widget>
    </item>
    <item row="6" column="3">
     <widget class="QPushButton" name="pushButtonSetup">
      <property name="text">
       <string>Setup</string>
+     </property>
+     <property name="autoDefault">
+      <bool>true</bool>
      </property>
     </widget>
    </item>
@@ -362,12 +386,15 @@
        </widget>
       </item>
       <item>
-       <widget class="QLineEdit" name="lineEditMotor3Slider">
+       <widget class="QLineEdit" name="lineEditMotor3">
         <property name="maximumSize">
          <size>
           <width>30</width>
           <height>16777215</height>
          </size>
+        </property>
+        <property name="text">
+         <string>90</string>
         </property>
         <property name="alignment">
          <set>Qt::AlignmentFlag::AlignCenter</set>

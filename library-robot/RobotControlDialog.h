@@ -29,8 +29,9 @@ private slots:
 private:
   Ui::RobotControlDialog *ui;
   RobotConfig::RobotSettings *m_robotSettings;
-  void connectSlidersToLabels();
-  void setLabelToSliderValue(int motorIndex, int value);
+  void connectSlidersToLineEdits();
+  void connectLineEditsToSliders();
+  void setLineEditToSliderValue(int motorIndex, int value);
 
   bool m_isAll = true;
 };

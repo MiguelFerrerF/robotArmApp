@@ -160,7 +160,7 @@ void MainWindow::onRobotControlError(const QString &error) {
 void MainWindow::onRobotMotorAngleChanged(int motorIndex, int angle) {
   // send command to robot via serial
   if (SerialPortHandler::instance().isConnected()) {
-    QString command = QString("SETUP:SERVO%1:%2\n").arg(motorIndex).arg(angle);
+    QString command = QString("SETUP:SERVO%1:%2").arg(motorIndex).arg(angle);
     SerialPortHandler::instance().sendData(command.toUtf8());
     LogHandler::info(ui->textEditLog, QString("Sent command to motor %1: %2")
                                           .arg(motorIndex)

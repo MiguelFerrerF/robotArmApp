@@ -2,9 +2,9 @@
 #include "ui_RobotControlDialog.h"
 #include <QCoreApplication>
 #include <QDebug>
+#include <QIntValidator>
 #include <QPixmap>
 #include <QSlider>
-#include <QMessageBox>
 
 RobotControlDialog::RobotControlDialog(QWidget *parent,
                                        RobotConfig::RobotSettings *settings)
@@ -13,117 +13,105 @@ RobotControlDialog::RobotControlDialog(QWidget *parent,
   ui->setupUi(this);
   this->setWindowTitle("Robot Control");
 
-  // Inicializar los QLineEdit y sliders en 90
-  ui->horizontalSlider1->setValue(90);
-  ui->horizontalSlider2->setValue(90);
-  ui->horizontalSlider3->setValue(90);
-  ui->horizontalSlider4->setValue(90);
-  ui->horizontalSlider5->setValue(90);
-  ui->horizontalSlider6->setValue(90);
-
-  ui->lineEditMotor1Slider->setText("90");
-  ui->lineEditMotor2Slider->setText("90");
-  ui->lineEditMotor3Slider->setText("90");
-  ui->lineEditMotor4Slider->setText("90");
-  ui->lineEditMotor5Slider->setText("90");
-  ui->lineEditMotor6Slider->setText("90");
-
   // Imagen principal del robot (se mantiene el QLabel de la imagen)
   QPixmap pixmap(QCoreApplication::applicationDirPath() + "/images/robot.png");
-  ui->labelRobotImage->setPixmap(pixmap.scaled(500, 500, Qt::KeepAspectRatio));
   ui->labelRobotImage->setAlignment(Qt::AlignCenter);
   ui->labelRobotImage->setScaledContents(true);
+  ui->labelRobotImage->setPixmap(pixmap.scaled(500, 500, Qt::KeepAspectRatio));
 
-  // Comunicación cruzada entre QLineEdit y QSlider con validación
-  connect(ui->lineEditMotor1Slider, &QLineEdit::textChanged, this, [this](const QString &text) {
-      bool ok;
-      int value = text.toInt(&ok);
-      if (ok && value >= 0 && value <= 180) {
-          ui->horizontalSlider1->setValue(value);
-      } else if (ok) {
-          QMessageBox::warning(ui->lineEditMotor1Slider, "Valor fuera de rango",
-              "Por favor, introduzca un valor comprendido entre 0 y 180 grados.");
-          ui->lineEditMotor1Slider->setText(QString::number(ui->horizontalSlider1->value()));
-      }
-  });
-  connect(ui->lineEditMotor2Slider, &QLineEdit::textChanged, this, [this](const QString &text) {
-      bool ok;
-      int value = text.toInt(&ok);
-      if (ok && value >= 0 && value <= 180) {
-          ui->horizontalSlider2->setValue(value);
-      } else if (ok) {
-          QMessageBox::warning(ui->lineEditMotor2Slider, "Valor fuera de rango",
-              "Por favor, introduzca un valor comprendido entre 0 y 180 grados.");
-          ui->lineEditMotor2Slider->setText(QString::number(ui->horizontalSlider2->value()));
-      }
-  });
-  connect(ui->lineEditMotor3Slider, &QLineEdit::textChanged, this, [this](const QString &text) {
-      bool ok;
-      int value = text.toInt(&ok);
-      if (ok && value >= 0 && value <= 180) {
-          ui->horizontalSlider3->setValue(value);
-      } else if (ok) {
-          QMessageBox::warning(ui->lineEditMotor3Slider, "Valor fuera de rango",
-              "Por favor, introduzca un valor comprendido entre 0 y 180 grados.");
-          ui->lineEditMotor3Slider->setText(QString::number(ui->horizontalSlider3->value()));
-      }
-  });
-  connect(ui->lineEditMotor4Slider, &QLineEdit::textChanged, this, [this](const QString &text) {
-      bool ok;
-      int value = text.toInt(&ok);
-      if (ok && value >= 0 && value <= 180) {
-          ui->horizontalSlider4->setValue(value);
-      } else if (ok) {
-          QMessageBox::warning(ui->lineEditMotor4Slider, "Valor fuera de rango",
-              "Por favor, introduzca un valor comprendido entre 0 y 180 grados.");
-          ui->lineEditMotor4Slider->setText(QString::number(ui->horizontalSlider4->value()));
-      }
-  });
-  connect(ui->lineEditMotor5Slider, &QLineEdit::textChanged, this, [this](const QString &text) {
-      bool ok;
-      int value = text.toInt(&ok);
-      if (ok && value >= 0 && value <= 180) {
-          ui->horizontalSlider5->setValue(value);
-      } else if (ok) {
-          QMessageBox::warning(ui->lineEditMotor5Slider, "Valor fuera de rango",
-              "Por favor, introduzca un valor comprendido entre 0 y 180 grados.");
-          ui->lineEditMotor5Slider->setText(QString::number(ui->horizontalSlider5->value()));
-      }
-  });
-  connect(ui->lineEditMotor6Slider, &QLineEdit::textChanged, this, [this](const QString &text) {
-      bool ok;
-      int value = text.toInt(&ok);
-      if (ok && value >= 0 && value <= 180) {
-          ui->horizontalSlider6->setValue(value);
-      } else if (ok) {
-          QMessageBox::warning(ui->lineEditMotor6Slider, "Valor fuera de rango",
-              "Por favor, introduzca un valor comprendido entre 0 y 180 grados.");
-          ui->lineEditMotor6Slider->setText(QString::number(ui->horizontalSlider6->value()));
-      }
-  });
-
-  // Cuando el usuario mueve el slider, actualiza el QLineEdit
-  connect(ui->horizontalSlider1, &QSlider::valueChanged, this, [this](int value) {
-      ui->lineEditMotor1Slider->setText(QString::number(value));
-  });
-  connect(ui->horizontalSlider2, &QSlider::valueChanged, this, [this](int value) {
-      ui->lineEditMotor2Slider->setText(QString::number(value));
-  });
-  connect(ui->horizontalSlider3, &QSlider::valueChanged, this, [this](int value) {
-      ui->lineEditMotor3Slider->setText(QString::number(value));
-  });
-  connect(ui->horizontalSlider4, &QSlider::valueChanged, this, [this](int value) {
-      ui->lineEditMotor4Slider->setText(QString::number(value));
-  });
-  connect(ui->horizontalSlider5, &QSlider::valueChanged, this, [this](int value) {
-      ui->lineEditMotor5Slider->setText(QString::number(value));
-  });
-  connect(ui->horizontalSlider6, &QSlider::valueChanged, this, [this](int value) {
-      ui->lineEditMotor6Slider->setText(QString::number(value));
-  });
+  connectSlidersToLineEdits();
+  connectLineEditsToSliders();
 }
 
 RobotControlDialog::~RobotControlDialog() { delete ui; }
+
+void RobotControlDialog::connectSlidersToLineEdits() {
+  QSlider *sliders[] = {ui->horizontalSlider1, ui->horizontalSlider2,
+                        ui->horizontalSlider3, ui->horizontalSlider4,
+                        ui->horizontalSlider5, ui->horizontalSlider6};
+  for (int i = 0; i < 6; ++i) {
+    connect(sliders[i], &QSlider::valueChanged, this, [this, i](int value) {
+      static bool updating = false;
+      if (updating)
+        return;
+      updating = true;
+      setLineEditToSliderValue(i + 1, value);
+      updating = false;
+    });
+  }
+}
+
+void RobotControlDialog::connectLineEditsToSliders() {
+
+  // Solo permitir nÃºmeros entre 0 y 180 en los QLineEdit
+  QLineEdit *lineEdits[] = {ui->lineEditMotor1, ui->lineEditMotor2,
+                            ui->lineEditMotor3, ui->lineEditMotor4,
+                            ui->lineEditMotor5, ui->lineEditMotor6};
+
+  QIntValidator *validator = new QIntValidator(0, 180, this);
+  for (int i = 0; i < 6; ++i) {
+    lineEdits[i]->setValidator(validator);
+  }
+  QSlider *sliders[] = {ui->horizontalSlider1, ui->horizontalSlider2,
+                        ui->horizontalSlider3, ui->horizontalSlider4,
+                        ui->horizontalSlider5, ui->horizontalSlider6};
+  for (int i = 0; i < 6; ++i) {
+    connect(lineEdits[i], &QLineEdit::editingFinished, this,
+            [lineEdit = lineEdits[i], slider = sliders[i]]() {
+              int value = lineEdit->text().toInt();
+              if (value < 0 || value > 180) {
+                value = qBound(0, value, 180);
+              }
+              slider->setValue(value);
+              lineEdit->setText(QString::number(value));
+            });
+  }
+}
+
+void RobotControlDialog::setLineEditToSliderValue(int motorIndex, int value) {
+  if (!m_robotSettings) {
+    emit errorOccurred("Robot settings not initialized.");
+    return;
+  }
+  switch (motorIndex) {
+  case 1:
+    ui->lineEditMotor1->setText(QString::number(value));
+    if (!m_isAll)
+      emit motorAngleChanged(1, value);
+    break;
+  case 2:
+    ui->lineEditMotor2->setText(QString::number(value));
+    if (!m_isAll)
+      emit motorAngleChanged(2, value);
+    break;
+  case 3:
+    ui->lineEditMotor3->setText(QString::number(value));
+    if (!m_isAll)
+      emit motorAngleChanged(3, value);
+    break;
+  case 4:
+    ui->lineEditMotor4->setText(QString::number(value));
+    if (!m_isAll)
+      emit motorAngleChanged(4, value);
+    break;
+  case 5:
+    ui->lineEditMotor5->setText(QString::number(value));
+    if (!m_isAll)
+      emit motorAngleChanged(5, value);
+    break;
+  case 6:
+    ui->lineEditMotor6->setText(QString::number(value));
+    if (!m_isAll)
+      emit motorAngleChanged(6, value);
+    break;
+  default:
+    emit errorOccurred("Invalid motor index");
+    break;
+  }
+  if (m_robotSettings) {
+    m_robotSettings->motors[motorIndex - 1].desiredAngle = value;
+  }
+}
 
 void RobotControlDialog::on_pushButtonReset_clicked() {
   if (!m_robotSettings) {
@@ -131,7 +119,6 @@ void RobotControlDialog::on_pushButtonReset_clicked() {
     return;
   }
 
-  // Reset sliders a los ángulos por defecto
   ui->horizontalSlider1->setValue(m_robotSettings->motors[0].defaultAngle);
   ui->horizontalSlider2->setValue(m_robotSettings->motors[1].defaultAngle);
   ui->horizontalSlider3->setValue(m_robotSettings->motors[2].defaultAngle);

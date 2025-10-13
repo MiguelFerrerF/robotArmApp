@@ -42,6 +42,7 @@ private slots:
   void onSerialStatusChanged(bool connected);
   void onSetupConnectionError(const QString &error);
   void onSerialMonitorWarning(const QString &warning);
+  void onDataReceived(const QByteArray& data);
 
   // Robot Control
   void onRobotControlError(const QString &error);

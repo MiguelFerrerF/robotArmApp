@@ -19,7 +19,7 @@ public:
   int     getBaudRate() const;
 
 signals:
-  void dataReceived(const QByteArray& data);
+  void dataReceived(const QByteArray& data); 
   void dataSent(const QByteArray& data);
   void connectionStatusChanged(bool connected);
   void errorOccurred(const QString& error);

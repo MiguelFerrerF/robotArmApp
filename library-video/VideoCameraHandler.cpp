@@ -55,7 +55,7 @@ bool VideoCameraHandler::startCamera(const QString &cameraName, int frameRate) {
   m_captureSession.setCamera(m_camera);
   m_captureSession.setImageCapture(m_imageCapture);
   if (m_videoSink)
-    m_captureSession.setVideoSink(m_videoSink);
+     m_captureSession.setVideoSink(m_videoSink);
 
   m_camera->start();
 

@@ -23,6 +23,7 @@ void MainWindow::setupConnections() {
           &MainWindow::onSerialError);
   connect(&serial, &SerialPortHandler::connectionStatusChanged, this,
           &MainWindow::onSerialStatusChanged);
+  connect(&serial, &SerialPortHandler::dataReceived, this, &MainWindow::onDataReceived);
 }
 
 void MainWindow::on_actionSerial_triggered() {
@@ -151,6 +152,12 @@ void MainWindow::onSetupConnectionError(const QString &error) {
 
 void MainWindow::onSerialMonitorWarning(const QString &warning) {
   LogHandler::warning(ui->textEditLog, warning);
+}
+
+void MainWindow::onDataReceived(const QByteArray& data) {
+    LogHandler::info(
+        ui->textEditLog,
+        QString("Serial port %1").arg(data));
 }
 
 void MainWindow::onRobotControlError(const QString &error) {

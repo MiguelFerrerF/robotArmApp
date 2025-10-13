@@ -14,8 +14,7 @@ VideoCameraHandler::~VideoCameraHandler() { stopCamera(); }
 
 QStringList VideoCameraHandler::availableCameras() const {
   QStringList cameraNames;
-  const auto cameras = QMediaDevices::videoInputs();
-  for (const QCameraDevice &camera : cameras) {
+  for (const QCameraDevice &camera : QMediaDevices::videoInputs()) {
     cameraNames << camera.description();
   }
   return cameraNames;

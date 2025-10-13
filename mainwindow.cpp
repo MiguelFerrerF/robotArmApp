@@ -135,6 +135,26 @@ void MainWindow::on_actionControl_triggered() {
           &MainWindow::onAllMotorsReset);
 }
 
+void MainWindow::on_actionCalibrateRobot_triggered() {
+  LogHandler::info(ui->textEditLog, "Robot calibration started");
+  int calibratedAngles[] = {90, 90, 98, 90, 142, 82};
+  for (int i = 0; i < 6; ++i) {
+    if (SerialPortHandler::instance().isConnected()) {
+      QString command =
+          QString("SETUP:SERVO%1:%2").arg(i + 1).arg(calibratedAngles[i]);
+      SerialPortHandler::instance().sendData(command.toUtf8());
+      LogHandler::info(ui->textEditLog,
+                       QString("Sent calibration to motor %1: %2")
+                           .arg(i + 1)
+                           .arg(command.trimmed()));
+    } else {
+      LogHandler::warning(ui->textEditLog,
+                          "Cannot send calibration: Serial port not connected");
+      break;
+    }
+  }
+}
+
 void MainWindow::onSerialError(const QString &error) {
   LogHandler::error(ui->textEditLog, "Serial Error: " + error);
 }

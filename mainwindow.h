@@ -36,6 +36,7 @@ private slots:
   void on_actionConnectVideo_triggered();
   void on_actionDisconnectVideo_triggered();
   void on_actionControl_triggered();
+  void on_actionCalibrateRobot_triggered();
 
   // Serial Monitor
   void onSerialError(const QString &error);

@@ -35,6 +35,8 @@ set(PROJECT_SOURCES
         library-log/LogHandler.cpp
 
         library-robot/RobotConfig.h
+        library-robot/RobotHandler.h
+        library-robot/RobotHandler.cpp
         library-robot/RobotControlDialog.h 
         library-robot/RobotControlDialog.cpp
         library-robot/RobotControlDialog.ui

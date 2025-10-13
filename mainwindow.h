@@ -4,6 +4,7 @@
 #include "library-log/LogHandler.h"
 #include "library-robot/RobotConfig.h"
 #include "library-robot/RobotControlDialog.h"
+#include "library-robot/RobotHandler.h"
 #include "library-serial/SerialMonitorDialog.h"
 #include "library-serial/SerialPortHandler.h"
 #include "library-video/VideoCameraHandler.h"
@@ -36,6 +37,7 @@ private slots:
   void on_actionConnectVideo_triggered();
   void on_actionDisconnectVideo_triggered();
   void on_actionControl_triggered();
+  void on_actionCalibrateRobot_triggered();
 
   // Serial Monitor
   void onSerialError(const QString &error);
@@ -49,11 +51,13 @@ private slots:
   void onRobotMotorAngleChanged(int motorIndex, int angle);
   void onAllMotorsReset();
 
+  // Video Capture
+  void onVideoCapture(const QImage &image);
+
 private:
   Ui::MainWindow *ui;
   SerialMonitorDialog *m_SerialMonitorDialog = nullptr;
   RobotControlDialog *m_RobotControl = nullptr;
-  QVideoSink *m_videoSink = nullptr;
 
   QSettings m_settings;
   RobotConfig::RobotSettings m_robotSettings;

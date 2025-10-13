@@ -12,7 +12,6 @@ VideoConnectionDialog::VideoConnectionDialog(QWidget *parent)
   // Cargar configuración previa
   QSettings settings("upna", "robotArmApp");
   QString lastCamera = settings.value("video/camera", "").toString();
-  int lastFrameRate = settings.value("video/frameRate", 30).toInt();
 
   // Llenar combos
   refreshCameras();
@@ -21,12 +20,6 @@ VideoConnectionDialog::VideoConnectionDialog(QWidget *parent)
   int cameraIndex = ui->comboBoxCamera->findText(lastCamera);
   if (cameraIndex != -1)
     ui->comboBoxCamera->setCurrentIndex(cameraIndex);
-
-  // Seleccionar último frame rate usado
-  int frameRateIndex =
-      ui->comboBoxFrameRate->findText(QString::number(lastFrameRate));
-  if (frameRateIndex != -1)
-    ui->comboBoxFrameRate->setCurrentIndex(frameRateIndex);
 
   // Conectar señales del VideoCameraHandler
   connect(&VideoCameraHandler::instance(), &VideoCameraHandler::errorOccurred,
@@ -51,18 +44,15 @@ void VideoConnectionDialog::refreshCameras() {
 
 void VideoConnectionDialog::on_pushButtonConnect_clicked() {
   QString cameraName = ui->comboBoxCamera->currentText();
-  int frameRate = ui->comboBoxFrameRate->currentText().toInt();
-
   if (cameraName.isEmpty()) {
     emit errorOccurred("No camera selected, please select a camera.");
     return;
   }
 
-  if (VideoCameraHandler::instance().startCamera(cameraName, frameRate)) {
+  if (VideoCameraHandler::instance().startCamera(cameraName)) {
     // Guardar selección
     QSettings settings("upna", "robotArmApp");
     settings.setValue("video/camera", cameraName);
-    settings.setValue("video/frameRate", frameRate);
     accept();
   } else {
     emit errorOccurred("Unable to start camera " + cameraName);

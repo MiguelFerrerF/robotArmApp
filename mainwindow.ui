@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>800</width>
+    <width>1024</width>
     <height>600</height>
    </rect>
   </property>
@@ -450,8 +450,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>800</width>
-     <height>21</height>
+     <width>1024</width>
+     <height>25</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuController">
@@ -459,7 +459,7 @@
      <string>Robot</string>
     </property>
     <addaction name="actionControl"/>
-    <addaction name="actionCalibrate_2"/>
+    <addaction name="actionCalibrateRobot"/>
    </widget>
    <widget class="QMenu" name="menuSerial">
     <property name="title">
@@ -474,7 +474,7 @@
     </property>
     <addaction name="actionConnectVideo"/>
     <addaction name="actionDisconnectVideo"/>
-    <addaction name="actionCalibrate"/>
+    <addaction name="actionCalibrateCamera"/>
     <addaction name="separator"/>
     <addaction name="actionPicture"/>
    </widget>
@@ -520,12 +520,12 @@
     <string>Control</string>
    </property>
   </action>
-  <action name="actionCalibrate">
+  <action name="actionCalibrateCamera">
    <property name="text">
     <string>Calibrate</string>
    </property>
   </action>
-  <action name="actionCalibrate_2">
+  <action name="actionCalibrateRobot">
    <property name="text">
     <string>Calibrate</string>
    </property>

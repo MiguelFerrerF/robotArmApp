@@ -12,6 +12,12 @@ struct MotorConfig {
   int currentAngle = 0;
 };
 
+struct RobotClawPosition { // Angles for claw 
+  int X = 0;
+  int Y = 0;
+  int Z = 0;
+};
+
 struct RobotSettings {
   MotorConfig motors[6];
 };

@@ -4,6 +4,7 @@
 #include "library-log/LogHandler.h"
 #include "library-robot/RobotConfig.h"
 #include "library-robot/RobotControlDialog.h"
+#include "library-robot/RobotHandler.h"
 #include "library-serial/SerialMonitorDialog.h"
 #include "library-serial/SerialPortHandler.h"
 #include "library-video/VideoCameraHandler.h"
@@ -14,6 +15,7 @@
 #include <QSettings>
 #include <QVideoFrame>
 #include <QVideoSink>
+
 
 QT_BEGIN_NAMESPACE
 namespace Ui {

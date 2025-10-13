@@ -16,7 +16,6 @@
 #include <QVideoFrame>
 #include <QVideoSink>
 
-
 QT_BEGIN_NAMESPACE
 namespace Ui {
 class MainWindow;
@@ -51,11 +50,13 @@ private slots:
   void onRobotMotorAngleChanged(int motorIndex, int angle);
   void onAllMotorsReset();
 
+  // Video Capture
+  void onVideoCapture(const QImage &image);
+
 private:
   Ui::MainWindow *ui;
   SerialMonitorDialog *m_SerialMonitorDialog = nullptr;
   RobotControlDialog *m_RobotControl = nullptr;
-  QVideoSink *m_videoSink = nullptr;
 
   QSettings m_settings;
   RobotConfig::RobotSettings m_robotSettings;

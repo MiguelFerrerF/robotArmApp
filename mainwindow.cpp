@@ -69,44 +69,20 @@ void MainWindow::on_actionConnectVideo_triggered() {
   if (dialog.exec() != QDialog::Accepted)
     return;
 
-  // Si el diálogo aceptó, la cámara ya está iniciada
-  // Creamos el sink si no existe
-  if (!m_videoSink) {
-    m_videoSink = new QVideoSink(this);
-    connect(m_videoSink, &QVideoSink::videoFrameChanged, this,
-            [this](const QVideoFrame &frame) {
-              if (!frame.isValid())
-                return;
-
-              QVideoFrame f(frame);
-              f.map(QVideoFrame::ReadOnly);
-              QImage img = f.toImage();
-              f.unmap();
-
-              if (!img.isNull()) {
-                ui->labelCamera->setPixmap(QPixmap::fromImage(img).scaled(
-                    ui->labelCamera->size(), Qt::KeepAspectRatio,
-                    Qt::SmoothTransformation));
-              }
-            });
-  }
-
-  // Asociar el sink al handler
-  VideoCameraHandler::instance().setVideoSink(m_videoSink);
+  VideoCameraHandler &camera = VideoCameraHandler::instance();
+  disconnect(&camera, &VideoCameraHandler::frameCaptured, this,
+             &MainWindow::onVideoCapture);
+  // Connect signal from VideoCameraHandler
+  connect(&camera, &VideoCameraHandler::frameCaptured, this,
+          &MainWindow::onVideoCapture);
 
   LogHandler::success(ui->textEditLog, "Camera connected successfully");
 }
 
 void MainWindow::on_actionDisconnectVideo_triggered() {
-  if (m_videoSink) {
-    VideoCameraHandler::instance().stopCamera();
-    delete m_videoSink;
-    m_videoSink = nullptr;
-    ui->labelCamera->clear();
-    LogHandler::warning(ui->textEditLog, "Video camera disconnected");
-  } else {
-    LogHandler::warning(ui->textEditLog, "No video camera connected");
-  }
+  VideoCameraHandler::instance().stopCamera();
+  ui->labelCamera->clear();
+  LogHandler::warning(ui->textEditLog, "Video camera disconnected");
 }
 
 void MainWindow::on_actionControl_triggered() {
@@ -193,4 +169,14 @@ void MainWindow::onRobotMotorAngleChanged(int motorIndex, int angle) {
 
 void MainWindow::onAllMotorsReset() {
   LogHandler::info(ui->textEditLog, "All motors have been reset to default");
+}
+
+void MainWindow::onVideoCapture(const QImage &image) {
+  if (image.isNull())
+    return;
+
+  // Scale the image to fit the label while maintaining aspect ratio
+  QPixmap pixmap = QPixmap::fromImage(image).scaledToWidth(
+      ui->labelCamera->width(), Qt::SmoothTransformation);
+  ui->labelCamera->setPixmap(pixmap);
 }

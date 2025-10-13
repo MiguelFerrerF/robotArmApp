@@ -8,7 +8,7 @@ VideoCameraHandler &VideoCameraHandler::instance() {
 }
 
 VideoCameraHandler::VideoCameraHandler(QObject *parent)
-    : QObject(parent), m_camera(nullptr), m_imageCapture(nullptr) {}
+    : QObject(parent), m_camera(nullptr), m_videoSink(nullptr) {}
 
 VideoCameraHandler::~VideoCameraHandler() { stopCamera(); }
 
@@ -20,44 +20,38 @@ QStringList VideoCameraHandler::availableCameras() const {
   return cameraNames;
 }
 
-bool VideoCameraHandler::startCamera(const QString &cameraName, int frameRate) {
-  if (m_camera && m_camera->isActive()) {
+bool VideoCameraHandler::startCamera(const QString &cameraName) {
+  if (m_camera && m_videoSink && m_camera->isActive()) {
     emit errorOccurred("Camera is already running.");
     return false;
   }
 
-  const auto cameras = QMediaDevices::videoInputs();
   QCameraDevice selectedCamera;
   bool found = false;
-
-  for (const QCameraDevice &camera : cameras) {
+  for (const QCameraDevice &camera : QMediaDevices::videoInputs()) {
     if (camera.description() == cameraName) {
       selectedCamera = camera;
       found = true;
       break;
     }
   }
-
   if (!found) {
     emit errorOccurred("Selected camera not found.");
     return false;
   }
 
   m_camera = new QCamera(selectedCamera);
-  m_imageCapture = new QImageCapture(this);
+  m_videoSink = new QVideoSink(this);
+
+  m_captureSession.setCamera(m_camera);
+  m_captureSession.setVideoSink(m_videoSink);
 
   connect(m_camera, &QCamera::errorOccurred, this,
           &VideoCameraHandler::handleCameraError);
-  connect(m_imageCapture, &QImageCapture::imageCaptured, this,
-          &VideoCameraHandler::onImageCaptured);
-
-  m_captureSession.setCamera(m_camera);
-  m_captureSession.setImageCapture(m_imageCapture);
-  if (m_videoSink)
-    m_captureSession.setVideoSink(m_videoSink);
+  connect(m_videoSink, &QVideoSink::videoFrameChanged, this,
+          &VideoCameraHandler::processFrame);
 
   m_camera->start();
-
   if (!m_camera->isActive()) {
     emit errorOccurred("Failed to start the camera.");
     stopCamera();
@@ -65,8 +59,6 @@ bool VideoCameraHandler::startCamera(const QString &cameraName, int frameRate) {
   }
 
   m_currentCameraName = cameraName;
-  m_currentFrameRate = frameRate;
-
   emit cameraStarted();
   return true;
 }
@@ -76,13 +68,12 @@ bool VideoCameraHandler::stopCamera() {
     return false;
 
   m_camera->stop();
-
-  delete m_imageCapture;
   delete m_camera;
-  m_imageCapture = nullptr;
+  delete m_videoSink;
+
   m_camera = nullptr;
+  m_videoSink = nullptr;
   m_currentCameraName.clear();
-  m_currentFrameRate = 30;
 
   emit cameraStopped();
   return true;
@@ -92,41 +83,28 @@ bool VideoCameraHandler::isCameraRunning() const {
   return m_camera && m_camera->isActive();
 }
 
-bool VideoCameraHandler::captureFrame() {
-  if (!m_imageCapture || !m_camera || !m_camera->isActive()) {
-    emit errorOccurred("Camera not active or image capture not available.");
-    return false;
-  }
+void VideoCameraHandler::processFrame(const QVideoFrame &frame) {
+  if (!frame.isValid())
+    return;
 
-  if (m_imageCapture->isReadyForCapture()) {
-    m_imageCapture->capture();
-    return true;
-  } else {
-    emit errorOccurred("Camera not ready for capture.");
-    return false;
-  }
-}
+  QVideoFrame copyFrame(frame);
+  copyFrame.map(QVideoFrame::ReadOnly);
+  QImage image = copyFrame.toImage();
+  copyFrame.unmap();
 
-void VideoCameraHandler::onImageCaptured(int id, const QImage &preview) {
-  Q_UNUSED(id);
-  emit frameCaptured(preview);
+  if (image.isNull())
+    return;
+
+  emit frameCaptured(image);
 }
 
 QString VideoCameraHandler::currentCameraName() const {
   return m_currentCameraName;
 }
 
-int VideoCameraHandler::currentFrameRate() const { return m_currentFrameRate; }
-
-void VideoCameraHandler::setVideoSink(QVideoSink *sink) {
-  m_videoSink = sink;
-  if (m_camera && m_captureSession.camera()) {
-    m_captureSession.setVideoSink(sink);
-  }
-}
-
-void VideoCameraHandler::handleCameraError(QCamera::Error error) {
+void VideoCameraHandler::handleCameraError(QCamera::Error error,
+                                           const QString &errorString) {
   Q_UNUSED(error);
   if (m_camera)
-    emit errorOccurred(m_camera->errorString());
+    emit errorOccurred(errorString);
 }

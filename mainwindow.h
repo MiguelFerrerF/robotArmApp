@@ -9,6 +9,7 @@
 #include "library-serial/SerialPortHandler.h"
 #include "library-video/VideoCameraHandler.h"
 #include "library-video/VideoConnectionDialog.h"
+#include "library-video/VideoSettingsDialog.h"
 #include <QImage>
 #include <QMainWindow>
 #include <QPixmap>
@@ -37,6 +38,7 @@ private slots:
   void on_actionDisconnectSerial_triggered();
   void on_actionConnectVideo_triggered();
   void on_actionDisconnectVideo_triggered();
+  void on_actionSettings_triggered();
   void on_actionControl_triggered();
   void on_actionCalibrateRobot_triggered();
 
@@ -67,6 +69,7 @@ private:
   Ui::MainWindow *ui;
   SerialMonitorDialog *m_SerialMonitorDialog = nullptr;
   RobotControlDialog *m_RobotControl = nullptr;
+  VideoSettingsDialog *m_VideoSettingsDialog = nullptr;
 
   QSettings m_settings;
   RobotConfig::RobotSettings m_robotSettings;

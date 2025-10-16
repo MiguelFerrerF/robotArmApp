@@ -159,6 +159,13 @@ void MainWindow::on_actionDisconnectVideo_triggered() {
   LogHandler::warning(ui->textEditLog, "Video camera disconnected");
 }
 
+void MainWindow::on_actionSettings_triggered() {
+  m_VideoSettingsDialog = new VideoSettingsDialog(this);
+  m_VideoSettingsDialog->show();
+  m_VideoSettingsDialog->raise();
+  m_VideoSettingsDialog->activateWindow();
+}
+
 void MainWindow::on_actionControl_triggered() {
   qDebug("Control robot pulsado");
   if (!m_RobotControl) {

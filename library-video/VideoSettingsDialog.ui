@@ -1,0 +1,270 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>VideoSettingsDialog</class>
+ <widget class="QDialog" name="VideoSettingsDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>300</width>
+    <height>203</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Dialog</string>
+  </property>
+  <layout class="QGridLayout" name="gridLayout">
+   <item row="4" column="2">
+    <widget class="QLabel" name="labelWhiteBalance">
+     <property name="text">
+      <string>White Balance</string>
+     </property>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QSpinBox" name="spinBoxZoomFactor"/>
+   </item>
+   <item row="5" column="2">
+    <widget class="QComboBox" name="comboBoxWhiteBalance">
+     <item>
+      <property name="text">
+       <string>Auto</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Manual</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Sunlight</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Cloudy</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Shade</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Tungsten</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Flourescent</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Flash</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Sunset</string>
+      </property>
+     </item>
+    </widget>
+   </item>
+   <item row="0" column="2">
+    <widget class="QLabel" name="labelFocus">
+     <property name="text">
+      <string>Focus</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignmentFlag::AlignBottom|Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft</set>
+     </property>
+    </widget>
+   </item>
+   <item row="5" column="0">
+    <widget class="QSpinBox" name="spinBoxColorTemperature"/>
+   </item>
+   <item row="4" column="0">
+    <widget class="QLabel" name="labelColorTemperature">
+     <property name="text">
+      <string>Color Temperature</string>
+     </property>
+    </widget>
+   </item>
+   <item row="3" column="2">
+    <widget class="QComboBox" name="comboBoxExposureMode">
+     <item>
+      <property name="text">
+       <string>Auto</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Manual</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Portrait</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Night</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Sports</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Snow</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Beach</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Action</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Landscape</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Night Portrait</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Theatre</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Sunset</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Steady Photo</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Fireworks</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Party</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Candlelight</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Barcode</string>
+      </property>
+     </item>
+    </widget>
+   </item>
+   <item row="0" column="0">
+    <widget class="QLabel" name="labelFocusMode">
+     <property name="text">
+      <string>Focus Mode</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignmentFlag::AlignBottom|Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft</set>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QLabel" name="labelZoomFactor">
+     <property name="text">
+      <string>Zoom Factor</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QComboBox" name="comboBoxFocusMode">
+     <item>
+      <property name="text">
+       <string>Auto</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Auto Near</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Auto Far</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Hyperfocal</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Infinity</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Manual</string>
+      </property>
+     </item>
+    </widget>
+   </item>
+   <item row="2" column="2">
+    <widget class="QLabel" name="labelExposureMode">
+     <property name="text">
+      <string>Exposure Mode</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="2">
+    <widget class="QSlider" name="horizontalSliderFocus">
+     <property name="enabled">
+      <bool>false</bool>
+     </property>
+     <property name="orientation">
+      <enum>Qt::Orientation::Horizontal</enum>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="1" rowspan="6">
+    <spacer name="verticalSpacer">
+     <property name="orientation">
+      <enum>Qt::Orientation::Vertical</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>40</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

@@ -32,6 +32,7 @@ public:
 private slots:
 
   void on_actionSerial_triggered();
+  void on_actionLog_triggered();
   void on_actionConnectSerial_triggered();
   void on_actionDisconnectSerial_triggered();
   void on_actionConnectVideo_triggered();
@@ -44,7 +45,7 @@ private slots:
   void onSerialStatusChanged(bool connected);
   void onSetupConnectionError(const QString &error);
   void onSerialMonitorWarning(const QString &warning);
-  void onDataReceived(const QByteArray& data);
+  void onDataReceived(const QByteArray &data);
 
   // Robot Control
   void onRobotControlError(const QString &error);

@@ -48,18 +48,8 @@ bool VideoCameraHandler::startCamera(const QString &cameraName) {
 
   connect(m_camera, &QCamera::errorOccurred, this,
           &VideoCameraHandler::handleCameraError);
-<<<<<<< HEAD
-  connect(m_imageCapture, &QImageCapture::imageCaptured, this,
-          &VideoCameraHandler::onImageCaptured);
-
-  m_captureSession.setCamera(m_camera);
-  m_captureSession.setImageCapture(m_imageCapture);
-  if (m_videoSink)
-     m_captureSession.setVideoSink(m_videoSink);
-=======
   connect(m_videoSink, &QVideoSink::videoFrameChanged, this,
           &VideoCameraHandler::processFrame);
->>>>>>> acd5341490aa9dabd720bac693ec47e42c7b5b83
 
   m_camera->start();
   if (!m_camera->isActive()) {

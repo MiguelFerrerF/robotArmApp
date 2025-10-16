@@ -1,7 +1,11 @@
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
 #include "library-serial/SerialConnectionSetupDialog.h"
+#include <QDateTime>
 #include <QDebug>
+#include <QDir>
+#include <QFile>
+#include <QProcess>
 #include <QVideoFrameFormat>
 
 MainWindow::MainWindow(QWidget *parent)
@@ -23,7 +27,8 @@ void MainWindow::setupConnections() {
           &MainWindow::onSerialError);
   connect(&serial, &SerialPortHandler::connectionStatusChanged, this,
           &MainWindow::onSerialStatusChanged);
-  connect(&serial, &SerialPortHandler::dataReceived, this, &MainWindow::onDataReceived);
+  connect(&serial, &SerialPortHandler::dataReceived, this,
+          &MainWindow::onDataReceived);
 }
 
 void MainWindow::on_actionSerial_triggered() {
@@ -35,6 +40,35 @@ void MainWindow::on_actionSerial_triggered() {
   m_SerialMonitorDialog->show();
   m_SerialMonitorDialog->raise();
   m_SerialMonitorDialog->activateWindow();
+}
+
+void MainWindow::on_actionLog_triggered() {
+  // Ensure the logs directory exists
+  QString logsDirPath = QDir::currentPath() + "/logs";
+  QDir logsDir(logsDirPath);
+  if (!logsDir.exists()) {
+    if (!logsDir.mkpath(".")) {
+      LogHandler::error(ui->textEditLog, "Failed to create logs directory");
+      return;
+    }
+  }
+
+  // Save log to a file (date-time stamped) in the logs directory
+  QString logFileName =
+      logsDirPath +
+      QString("/log_%1.txt")
+          .arg(QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss"));
+  QFile logFile(logFileName);
+  if (logFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
+    QTextStream out(&logFile);
+    out << ui->textEditLog->toPlainText();
+    logFile.close();
+    LogHandler::success(ui->textEditLog, "Log saved to " + logFileName);
+    QProcess::startDetached(
+        "explorer.exe", {"/select,", QDir::toNativeSeparators(logFileName)});
+  } else {
+    LogHandler::error(ui->textEditLog, "Failed to save log to file");
+  }
 }
 
 void MainWindow::on_actionConnectSerial_triggered() {
@@ -150,10 +184,8 @@ void MainWindow::onSerialMonitorWarning(const QString &warning) {
   LogHandler::warning(ui->textEditLog, warning);
 }
 
-void MainWindow::onDataReceived(const QByteArray& data) {
-    LogHandler::info(
-        ui->textEditLog,
-        QString("Serial port %1").arg(data));
+void MainWindow::onDataReceived(const QByteArray &data) {
+  LogHandler::info(ui->textEditLog, QString("Serial port %1").arg(data));
 }
 
 void MainWindow::onRobotControlError(const QString &error) {

@@ -20,16 +20,6 @@ VideoConnectionDialog::VideoConnectionDialog(QWidget *parent)
   int cameraIndex = ui->comboBoxCamera->findText(lastCamera);
   if (cameraIndex != -1)
     ui->comboBoxCamera->setCurrentIndex(cameraIndex);
-
-  // Conectar señales del VideoCameraHandler
-  connect(&VideoCameraHandler::instance(), &VideoCameraHandler::errorOccurred,
-          this, &VideoConnectionDialog::errorOccurred);
-
-  connect(&VideoCameraHandler::instance(), &VideoCameraHandler::cameraStarted,
-          this, []() { qDebug() << "Camera started"; });
-
-  connect(&VideoCameraHandler::instance(), &VideoCameraHandler::cameraStopped,
-          this, []() { qDebug() << "Camera stopped"; });
 }
 
 VideoConnectionDialog::~VideoConnectionDialog() { delete ui; }

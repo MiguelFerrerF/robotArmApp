@@ -6,6 +6,7 @@
 #include <QDir>
 #include <QFile>
 #include <QProcess>
+#include <QSettings>
 #include <QVideoFrameFormat>
 
 MainWindow::MainWindow(QWidget *parent)
@@ -101,17 +102,55 @@ void MainWindow::on_actionConnectVideo_triggered() {
             LogHandler::error(ui->textEditLog, "Video Error: " + err);
           });
 
+  disconnectVideoSignals();
+  connectVideoSignals();
+
   if (dialog.exec() != QDialog::Accepted)
     return;
+}
 
+void MainWindow::disconnectVideoSignals() {
   VideoCameraHandler &camera = VideoCameraHandler::instance();
   disconnect(&camera, &VideoCameraHandler::frameCaptured, this,
              &MainWindow::onVideoCapture);
-  // Connect signal from VideoCameraHandler
+  disconnect(&camera, &VideoCameraHandler::cameraStarted, this,
+             &MainWindow::onCameraStarted);
+  disconnect(&camera, &VideoCameraHandler::cameraStopped, this,
+             &MainWindow::onCameraStopped);
+  disconnect(&camera, &VideoCameraHandler::errorOccurred, this,
+             &MainWindow::onCameraError);
+  disconnect(&camera, &VideoCameraHandler::focusModeChanged, this,
+             &MainWindow::onFocusModeChanged);
+  disconnect(&camera, &VideoCameraHandler::zoomFactorChanged, this,
+             &MainWindow::onZoomFactorChanged);
+  disconnect(&camera, &VideoCameraHandler::exposureModeChanged, this,
+             &MainWindow::onExposureModeChanged);
+  disconnect(&camera, &VideoCameraHandler::whiteBalanceModeChanged, this,
+             &MainWindow::onWhiteBalanceModeChanged);
+  disconnect(&camera, &VideoCameraHandler::colorTemperatureChanged, this,
+             &MainWindow::onColorTemperatureChanged);
+}
+
+void MainWindow::connectVideoSignals() {
+  VideoCameraHandler &camera = VideoCameraHandler::instance();
   connect(&camera, &VideoCameraHandler::frameCaptured, this,
           &MainWindow::onVideoCapture);
-
-  LogHandler::success(ui->textEditLog, "Camera connected successfully");
+  connect(&camera, &VideoCameraHandler::cameraStarted, this,
+          &MainWindow::onCameraStarted);
+  connect(&camera, &VideoCameraHandler::cameraStopped, this,
+          &MainWindow::onCameraStopped);
+  connect(&camera, &VideoCameraHandler::errorOccurred, this,
+          &MainWindow::onCameraError);
+  connect(&camera, &VideoCameraHandler::focusModeChanged, this,
+          &MainWindow::onFocusModeChanged);
+  connect(&camera, &VideoCameraHandler::zoomFactorChanged, this,
+          &MainWindow::onZoomFactorChanged);
+  connect(&camera, &VideoCameraHandler::exposureModeChanged, this,
+          &MainWindow::onExposureModeChanged);
+  connect(&camera, &VideoCameraHandler::whiteBalanceModeChanged, this,
+          &MainWindow::onWhiteBalanceModeChanged);
+  connect(&camera, &VideoCameraHandler::colorTemperatureChanged, this,
+          &MainWindow::onColorTemperatureChanged);
 }
 
 void MainWindow::on_actionDisconnectVideo_triggered() {
@@ -218,4 +257,56 @@ void MainWindow::onVideoCapture(const QImage &image) {
   QPixmap pixmap = QPixmap::fromImage(image).scaledToWidth(
       ui->labelCamera->width(), Qt::SmoothTransformation);
   ui->labelCamera->setPixmap(pixmap);
+}
+
+void MainWindow::onCameraStarted() {
+  LogHandler::success(ui->textEditLog, "Camera started successfully");
+
+  QString cameraName = VideoCameraHandler::instance().currentCameraName();
+  if (!cameraName.isEmpty()) {
+    LogHandler::info(ui->textEditLog, "Using camera: " + cameraName);
+    ui->lineEditCameraName->setText(cameraName);
+  }
+}
+
+void MainWindow::onCameraStopped() {
+  LogHandler::warning(ui->textEditLog, "Camera stopped");
+  ui->lineEditCameraName->clear();
+  ui->labelCamera->clear();
+}
+
+void MainWindow::onCameraError(const QString &error) {
+  LogHandler::error(ui->textEditLog, "Camera Error: " + error);
+}
+
+void MainWindow::onFocusModeChanged(const QString &mode) {
+  LogHandler::info(ui->textEditLog,
+                   QString("Camera focus mode changed to: %1").arg(mode));
+  ui->lineEditFocusMode->setText(mode);
+}
+
+void MainWindow::onZoomFactorChanged(float zoom) {
+  LogHandler::info(ui->textEditLog,
+                   QString("Camera zoom factor changed to: %1").arg(zoom));
+  ui->lineEditZoomFactor->setText(QString::number(zoom, 'f', 2));
+}
+
+void MainWindow::onExposureModeChanged(const QString &mode) {
+  LogHandler::info(ui->textEditLog,
+                   QString("Camera exposure mode changed to: %1").arg(mode));
+  ui->lineEditExposureMode->setText(mode);
+}
+
+void MainWindow::onWhiteBalanceModeChanged(const QString &mode) {
+  LogHandler::info(
+      ui->textEditLog,
+      QString("Camera white balance mode changed to: %1").arg(mode));
+  ui->lineEditWhiteBalance->setText(mode);
+}
+
+void MainWindow::onColorTemperatureChanged(int temperature) {
+  LogHandler::info(
+      ui->textEditLog,
+      QString("Camera color temperature changed to: %1").arg(temperature));
+  ui->lineEditColorTemperature->setText(QString::number(temperature));
 }

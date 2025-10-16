@@ -54,6 +54,14 @@ private slots:
 
   // Video Capture
   void onVideoCapture(const QImage &image);
+  void onCameraStarted();
+  void onCameraStopped();
+  void onCameraError(const QString &error);
+  void onFocusModeChanged(const QString &mode);
+  void onZoomFactorChanged(float zoom);
+  void onExposureModeChanged(const QString &mode);
+  void onWhiteBalanceModeChanged(const QString &mode);
+  void onColorTemperatureChanged(int temperature);
 
 private:
   Ui::MainWindow *ui;
@@ -64,5 +72,7 @@ private:
   RobotConfig::RobotSettings m_robotSettings;
 
   void setupConnections();
+  void connectVideoSignals();
+  void disconnectVideoSignals();
 };
 #endif // MAINWINDOW_H

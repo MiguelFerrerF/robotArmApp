@@ -54,6 +54,9 @@ set(PROJECT_SOURCES
         library-video/VideoConnectionDialog.h
         library-video/VideoConnectionDialog.cpp
         library-video/VideoConnectionDialog.ui
+        library-video/VideoSettingsDialog.cpp
+        library-video/VideoSettingsDialog.h
+        library-video/VideoSettingsDialog.ui
 )
 
 # --- Creación del ejecutable ---

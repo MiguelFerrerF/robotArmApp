@@ -323,7 +323,7 @@
           <item row="1" column="2">
            <widget class="QLabel" name="labelAngleMotor4">
             <property name="text">
-             <string>Motor 3</string>
+             <string>Motor 4</string>
             </property>
            </widget>
           </item>
@@ -349,7 +349,7 @@
           <item row="2" column="0">
            <widget class="QLabel" name="labelAngleMotor5">
             <property name="text">
-             <string>Motor 4</string>
+             <string>Motor 5</string>
             </property>
            </widget>
           </item>
@@ -375,7 +375,7 @@
           <item row="2" column="2">
            <widget class="QLabel" name="labelAngleMotor6">
             <property name="text">
-             <string>Motor 5</string>
+             <string>Motor 6</string>
             </property>
            </widget>
           </item>

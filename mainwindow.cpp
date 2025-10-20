@@ -8,6 +8,7 @@
 #include <QProcess>
 #include <QSettings>
 #include <QVideoFrameFormat>
+#include <QLineEdit>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow), m_RobotHandler(new RobotHandler(this)) {
@@ -30,6 +31,10 @@ void MainWindow::setupConnections() {
           &MainWindow::onSerialStatusChanged);
   connect(&serial, &SerialPortHandler::dataReceived, this,
           &MainWindow::onDataReceived);
+  connect(m_RobotHandler, &RobotHandler::motorAngleChanged, this,
+      &MainWindow::onRobotMotorAngleUpdatedFromSerial);
+  connect(m_RobotHandler, &RobotHandler::errorOccurred, this,
+      &MainWindow::onSerialError);
 }
 
 void MainWindow::on_actionSerial_triggered() {
@@ -250,6 +255,48 @@ void MainWindow::onRobotMotorAngleChanged(int motorIndex, int angle) {
     LogHandler::warning(ui->textEditLog,
                         "Cannot send command: Serial port not connected");
   }
+}
+
+void MainWindow::onRobotMotorAngleUpdatedFromSerial(int motorIndex, int angle) {
+    qDebug() << "[MainWindow] onRobotMotorAngleUpdatedFromSerial called for"
+        << motorIndex << "angle" << angle;
+
+    if (motorIndex < 1 || motorIndex > 6)
+        return;
+
+    QString objName = QString("lineEditAngleMotor%1").arg(motorIndex);
+
+    QLineEdit* le = nullptr;
+    if (ui->groupBoxMotorAngle) {
+        qDebug() << "[MainWindow] groupBoxMotorAngle exists, childCount:"
+            << ui->groupBoxMotorAngle->children().count();
+        le = ui->groupBoxMotorAngle->findChild<QLineEdit*>(objName);
+        if (!le) {
+            // listar children para depuración
+            qDebug() << "[MainWindow] groupBoxMotorAngle children objectNames:";
+            for (QObject* child : ui->groupBoxMotorAngle->children()) {
+                qDebug() << " -" << child->objectName() << "(" << child->metaObject()->className() << ")";
+            }
+        }
+    }
+    else {
+        qDebug() << "[MainWindow] ui->groupBoxMotorAngle is NULL, fallback to this->findChild";
+        le = this->findChild<QLineEdit*>(objName);
+    }
+
+    if (le) {
+        le->setText(QString::number(angle) + QChar(0x00B0));
+        LogHandler::info(ui->textEditLog,
+            QString("Updated UI for motor %1 with angle %2")
+            .arg(motorIndex)
+            .arg(angle));
+        qDebug() << "[MainWindow] Updated" << objName << "to" << angle;
+    }
+    else {
+        LogHandler::warning(ui->textEditLog,
+            QString("UI widget not found: %1").arg(objName));
+        qDebug() << "[MainWindow] UI widget not found:" << objName;
+    }
 }
 
 void MainWindow::onAllMotorsReset() {

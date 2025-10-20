@@ -41,6 +41,7 @@ public:
 private slots:
 	void onDataReceived(const QByteArray& data);
 	void onDataSent(const QByteArray& data);
+	void processData(const QByteArray& data);
 
 signals:
   void errorOccurred(const QString &error);

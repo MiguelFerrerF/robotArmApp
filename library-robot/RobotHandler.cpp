@@ -29,12 +29,60 @@ RobotHandler::RobotHandler(QObject* parent)
         &RobotHandler::onDataReceived);
     connect(&serial, &SerialPortHandler::dataSent, this,
         &RobotHandler::onDataSent);
+    connect(&serial, &SerialPortHandler::dataReceived, this,
+        &RobotHandler::processData);
 
     m_serialConnected = serial.isConnected();
 }
 
+void RobotHandler::processData(const QByteArray& data) {
+    QString s = QString::fromUtf8(data).trimmed();
+    qDebug("hola");
+    qDebug() << "[RobotHandler] processData() raw:" << s;
 
-RobotHandler::~RobotHandler() {}
+    // Solo procesar mensajes que empiecen por ANGLE:SERVO
+    if (!s.startsWith("ANGLE:SERVO", Qt::CaseSensitive)) {
+        qDebug("hola");
+        qDebug() << "[RobotHandler] Ignoring non-SETUP message";
+        return;
+    }
+
+    // Formato esperado: ANGLE:SERVOX:Y
+    // Separar por ':'
+    QStringList parts = s.split(':');
+    if (parts.size() != 3) {
+        emit errorOccurred(QString("Invalid SETUP format: %1").arg(s));
+        qDebug() << "[RobotHandler] Invalid SETUP format:" << parts;
+        return;
+    }
+
+    QString servoPart = parts[1]; // debería ser "SERVOX"
+    if (!servoPart.startsWith("SERVO") || servoPart.size() <= 5) {
+        emit errorOccurred(QString("Invalid servo part: %1").arg(servoPart));
+        qDebug() << "[RobotHandler] Invalid servo part:" << servoPart;
+        return;
+    }
+
+    bool ok = false;
+    int motorIndex = servoPart.mid(5).toInt(&ok); // extrae X
+    if (!ok || motorIndex < 1 || motorIndex > 6) {
+        emit errorOccurred(QString("Invalid motor index: %1").arg(servoPart.mid(5)));
+        qDebug() << "[RobotHandler] Invalid motor index parsed:" << servoPart.mid(5);
+        return;
+    }
+
+    int angle = parts[2].toInt(&ok); // Y
+    if (!ok || angle < -180 || angle > 180) {
+        emit errorOccurred(QString("Invalid angle value: %1").arg(parts[2]));
+        qDebug() << "[RobotHandler] Invalid angle parsed:" << parts[2];
+        return;
+    }
+
+    qDebug() << "[RobotHandler] Parsed motorIndex =" << motorIndex << " angle =" << angle;
+
+    // Emitir señal para notificar el cambio de ángulo del motor
+    emit motorAngleChanged(motorIndex, angle);
+}
 
 void RobotHandler::actualizarMatrices(const cv::Mat& q)
 {
@@ -149,3 +197,5 @@ void RobotHandler::onDataSent(const QByteArray& data) {
         qDebug(data);
     }
 }
+
+RobotHandler::~RobotHandler() {}

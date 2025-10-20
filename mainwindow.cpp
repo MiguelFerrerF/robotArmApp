@@ -10,7 +10,7 @@
 #include <QVideoFrameFormat>
 
 MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent), ui(new Ui::MainWindow) {
+    : QMainWindow(parent), ui(new Ui::MainWindow), m_RobotHandler(new RobotHandler(this)) {
   ui->setupUi(this);
   this->setWindowTitle("Robot Arm Controller");
 
@@ -216,8 +216,8 @@ void MainWindow::onSerialError(const QString &error) {
   LogHandler::error(ui->textEditLog, "Serial Error: " + error);
 }
 
-void MainWindow::onSerialStatusChanged(bool connected) {
-  LogHandler::info(
+void MainWindow::onSerialStatusChanged(bool connected) 
+{LogHandler::info(
       ui->textEditLog,
       QString("Serial port %1").arg(connected ? "connected" : "disconnected"));
 }

@@ -70,6 +70,7 @@ private:
   SerialMonitorDialog *m_SerialMonitorDialog = nullptr;
   RobotControlDialog *m_RobotControl = nullptr;
   VideoSettingsDialog *m_VideoSettingsDialog = nullptr;
+  RobotHandler* m_RobotHandler = nullptr;
 
   QSettings m_settings;
   RobotConfig::RobotSettings m_robotSettings;

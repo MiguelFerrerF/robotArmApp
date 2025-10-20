@@ -5,11 +5,15 @@
 
 class RobotHandler : public QObject {
   Q_OBJECT
-public:
-  static RobotHandler &instance();
-  
+public:  
+
+	explicit RobotHandler(QObject* parent = nullptr);
+	~RobotHandler();
   // Función para actualizar las matrices con los ángulos de los motores
-  void actualizarMatrices();
+	void actualizarMatrices(const cv::Mat& q);
+
+  //Matriz de ángulos de los servomotores
+  cv::Mat q;
 
   // Matrices de transformación
   cv::Mat RTb1;
@@ -26,6 +30,18 @@ public:
   double a3 = 125;
   double a5 = 130;
 
+  // Ángulos del robot
+  double q1 = 0;
+  double q2 = 0;
+  double q3 = 0;
+  double q4 = 0;
+  double q5 = 0;
+  double q6 = 0;
+
+private slots:
+	void onDataReceived(const QByteArray& data);
+	void onDataSent(const QByteArray& data);
+
 signals:
   void errorOccurred(const QString &error);
   void matrixsUpdated(cv::Mat RTbt); 
@@ -34,8 +50,8 @@ signals:
   void allMotorsReset();
 
 private:
-  explicit RobotHandler(QObject *parent = nullptr);
-  ~RobotHandler();
+
+  bool m_serialConnected = false;
 };
 
 #endif // ROBOTHANDLER_H

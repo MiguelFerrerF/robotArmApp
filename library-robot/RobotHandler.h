@@ -12,6 +12,8 @@ public:
   // Función para actualizar las matrices con los ángulos de los motores
 	void actualizarMatrices(const cv::Mat& q);
 
+	cv::Point3d transformarPunto(const cv::Point3d& puntoLocal);
+
   // Matrices de transformación
   cv::Mat RTb1;
   cv::Mat RT12;

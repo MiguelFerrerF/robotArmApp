@@ -85,7 +85,7 @@ void RobotHandler::actualizarMatrices(const cv::Mat& q)
     double q1_rad = q.at<int>(0, 0) * M_PI / 180.0;
     double q2_rad = q.at<int>(0, 1) * M_PI / 180.0;
     double q3_rad = q.at<int>(0, 2) * M_PI / 180.0;
-    double q4_rad = q.at<int>(0, 3) * M_PI / 180.0;
+    double q5_rad = q.at<int>(0, 3) * M_PI / 180.0;
 
     // RTb1
     RTb1 = cv::Mat::eye(4, 4, CV_64F);
@@ -113,10 +113,10 @@ void RobotHandler::actualizarMatrices(const cv::Mat& q)
 
     // RT35
     RT35 = cv::Mat::eye(4, 4, CV_64F);
-    RT35.at<double>(0, 0) = cos(q4_rad);
-    RT35.at<double>(0, 2) = -sin(q4_rad);
-    RT35.at<double>(2, 0) = sin(q4_rad);
-    RT35.at<double>(2, 2) = cos(q4_rad);
+    RT35.at<double>(0, 0) = cos(q5_rad);
+    RT35.at<double>(0, 2) = -sin(q5_rad);
+    RT35.at<double>(2, 0) = sin(q5_rad);
+    RT35.at<double>(2, 2) = cos(q5_rad);
     RT35.at<double>(0, 3) = a5;
 
     // Transformación total
@@ -133,6 +133,31 @@ void RobotHandler::actualizarMatrices(const cv::Mat& q)
         }
         qDebug() << row;
     }
+
+    cv::Point3d efectorLocal(0, 0, 0);
+    cv::Point3d efectorGlobal = transformarPunto(efectorLocal);
+
+    qDebug() << "Posición de la pinza (respecto a la base del robot):"
+        << "(" << efectorGlobal.x << ","
+        << efectorGlobal.y << ","
+        << efectorGlobal.z << ")";
+}
+
+// Transforma un punto del efector en coordenadas de la base
+cv::Point3d RobotHandler::transformarPunto(const cv::Point3d& puntoLocal)
+{
+    // Crear punto homogéneo [x, y, z, 1]
+    cv::Mat puntoHom = (cv::Mat_<double>(4, 1) << puntoLocal.x, puntoLocal.y, puntoLocal.z, 1);
+
+    // Aplicar transformación total RTbt
+    cv::Mat puntoGlobal = RTbt * puntoHom;
+
+    // Devolver el punto transformado (coordenadas en la base del robot)
+    return cv::Point3d(
+        puntoGlobal.at<double>(0, 0),
+        puntoGlobal.at<double>(1, 0),
+        puntoGlobal.at<double>(2, 0)
+    );
 }
 
 void RobotHandler::onDataSent(const QByteArray& data)

@@ -87,37 +87,37 @@ void RobotHandler::actualizarMatrices(const cv::Mat& q)
     double q3_rad = q.at<int>(0, 2) * M_PI / 180.0;
     double q5_rad = q.at<int>(0, 3) * M_PI / 180.0;
 
-    // RTb1
+    // RTb1 – Base al primer eslabón
     RTb1 = cv::Mat::eye(4, 4, CV_64F);
+    RTb1.at<double>(0, 0) = cos(q1_rad);
+    RTb1.at<double>(0, 1) = -sin(q1_rad);
+    RTb1.at<double>(1, 0) = sin(q1_rad);
     RTb1.at<double>(1, 1) = cos(q1_rad);
-    RTb1.at<double>(1, 2) = -sin(q1_rad);
-    RTb1.at<double>(2, 1) = sin(q1_rad);
-    RTb1.at<double>(2, 2) = cos(q1_rad);
-    RTb1.at<double>(0, 3) = a1;
+    RTb1.at<double>(2, 3) = a1; // traslación en z
 
-    // RT12
+    // RT12 – Primer eslabón al segundo
     RT12 = cv::Mat::eye(4, 4, CV_64F);
     RT12.at<double>(0, 0) = cos(q2_rad);
-    RT12.at<double>(0, 2) = sin(q2_rad);
-    RT12.at<double>(2, 0) = -sin(q2_rad);
+    RT12.at<double>(0, 2) = -sin(q2_rad);
+    RT12.at<double>(2, 3) = a2;
+    RT12.at<double>(2, 0) = sin(q2_rad);
     RT12.at<double>(2, 2) = cos(q2_rad);
-    RT12.at<double>(0, 3) = a2;
 
-    // RT23
+    // RT23 – Segundo al tercero
     RT23 = cv::Mat::eye(4, 4, CV_64F);
     RT23.at<double>(0, 0) = cos(q3_rad);
-    RT23.at<double>(0, 2) = sin(q3_rad);
-    RT23.at<double>(2, 0) = -sin(q3_rad);
+    RT23.at<double>(0, 2) = -sin(q3_rad);
+    RT23.at<double>(2, 3) = a3;
+    RT23.at<double>(2, 0) = sin(q3_rad);
     RT23.at<double>(2, 2) = cos(q3_rad);
-    RT23.at<double>(0, 3) = a3;
 
-    // RT35
+    // RT35 – Tercer eslabón al efector final
     RT35 = cv::Mat::eye(4, 4, CV_64F);
     RT35.at<double>(0, 0) = cos(q5_rad);
     RT35.at<double>(0, 2) = -sin(q5_rad);
+    RT35.at<double>(2, 3) = a5;
     RT35.at<double>(2, 0) = sin(q5_rad);
     RT35.at<double>(2, 2) = cos(q5_rad);
-    RT35.at<double>(0, 3) = a5;
 
     // Transformación total
     RTbt = RTb1 * RT12 * RT23 * RT35;
@@ -137,7 +137,7 @@ void RobotHandler::actualizarMatrices(const cv::Mat& q)
     cv::Point3d efectorLocal(0, 0, 0);
     cv::Point3d efectorGlobal = transformarPunto(efectorLocal);
 
-    qDebug() << "Posición de la pinza (respecto a la base del robot):"
+    qDebug() << "Posicion de la pinza (respecto a la base del robot):"
         << "(" << efectorGlobal.x << ","
         << efectorGlobal.y << ","
         << efectorGlobal.z << ")";

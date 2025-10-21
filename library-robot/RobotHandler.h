@@ -12,9 +12,6 @@ public:
   // Función para actualizar las matrices con los ángulos de los motores
 	void actualizarMatrices(const cv::Mat& q);
 
-  //Matriz de ángulos de los servomotores
-  cv::Mat q;
-
   // Matrices de transformación
   cv::Mat RTb1;
   cv::Mat RT12;
@@ -30,18 +27,9 @@ public:
   double a3 = 125;
   double a5 = 130;
 
-  // Ángulos del robot
-  double q1 = 0;
-  double q2 = 0;
-  double q3 = 0;
-  double q4 = 0;
-  double q5 = 0;
-  double q6 = 0;
-
 private slots:
 	void onDataReceived(const QByteArray& data);
 	void onDataSent(const QByteArray& data);
-	void processData(const QByteArray& data);
 
 signals:
   void errorOccurred(const QString &error);
@@ -51,7 +39,8 @@ signals:
   void allMotorsReset();
 
 private:
-
+  //Matriz de ángulos de los servomotores
+  cv::Mat q;
   bool m_serialConnected = false;
 };
 

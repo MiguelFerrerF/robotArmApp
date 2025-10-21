@@ -54,7 +54,7 @@ void RobotHandler::onDataReceived(const QByteArray& data)
         // Actualizar el valor correspondiente en la matriz q
         q.at<int>(0, servoNum - 1) = valor;
 
-        qDebug() << QString("[RobotHandler] Servo %1 -> %2").arg(servoNum).arg(valor);
+        qDebug() << QString("[RobotHandler] Servo %1 -> %2°").arg(servoNum).arg(valor);
         qDebug() << "Estado actual de los servos: ["
             << q.at<int>(0, 0) << ", "
             << q.at<int>(0, 1) << ", "
@@ -70,7 +70,7 @@ void RobotHandler::onDataReceived(const QByteArray& data)
         emit motorAngleChanged(servoNum, valor);
     }
     else {
-        qDebug() << "[RobotHandler] Mensaje invalido:" << msg;
+        qDebug() << "[RobotHandler] Mensaje inválido:" << msg;
     }
 }
 

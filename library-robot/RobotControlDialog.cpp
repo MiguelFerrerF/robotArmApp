@@ -119,12 +119,12 @@ void RobotControlDialog::on_pushButtonReset_clicked() {
     return;
   }
 
-  ui->horizontalSlider1->setValue(m_robotSettings->motors[0].defaultAngle);
-  ui->horizontalSlider2->setValue(m_robotSettings->motors[1].defaultAngle+12);
-  ui->horizontalSlider3->setValue(m_robotSettings->motors[2].defaultAngle-1);
-  ui->horizontalSlider4->setValue(m_robotSettings->motors[3].defaultAngle+45);
-  ui->horizontalSlider5->setValue(m_robotSettings->motors[4].defaultAngle-10);
-  ui->horizontalSlider6->setValue(m_robotSettings->motors[5].defaultAngle);
+  ui->horizontalSlider1->setValue(m_robotSettings->motors[0].defaultAngle-64);
+  ui->horizontalSlider2->setValue(m_robotSettings->motors[1].defaultAngle+11);
+  ui->horizontalSlider3->setValue(m_robotSettings->motors[2].defaultAngle);
+  ui->horizontalSlider4->setValue(m_robotSettings->motors[3].defaultAngle+55);
+  ui->horizontalSlider5->setValue(m_robotSettings->motors[4].defaultAngle-24);
+  ui->horizontalSlider6->setValue(m_robotSettings->motors[5].defaultAngle-90);
 
   emit allMotorsReset();
 }

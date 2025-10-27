@@ -24,8 +24,8 @@ public:
   cv::Mat RTbt;
 
   // Constantes de la geometría del robot
-  double a1 = 70;
-  double a2 = 120;
+  double a1 = 130;
+  double a2 = 125;
   double a3 = 125;
   double a5 = 130;
 

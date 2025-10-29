@@ -156,7 +156,7 @@ void RobotHandler::inverseCinematic(const cv::Point3d& efectorGlobal) {
     int B = B_rad * 180 / M_PI;
     int A = 180 - B;
 
-    qDebug("Angulos calculados: A = q2 = %d, B = q3 = %d", A, B);
+    qDebug("Ángulos calculados: A = q2 = %d, B = q3 = %d", A, B);
 }
 
 // Transforma un punto del efector en coordenadas de la base

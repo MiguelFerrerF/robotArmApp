@@ -35,6 +35,8 @@ void MainWindow::setupConnections() {
       &MainWindow::onRobotMotorAngleUpdatedFromSerial);
   connect(m_RobotHandler, &RobotHandler::errorOccurred, this,
       &MainWindow::onSerialError);
+  connect(m_RobotHandler, &RobotHandler::efectorPositionChanged,
+          this, &MainWindow::onEfectorPositionChanged);
 }
 
 void MainWindow::on_actionSerial_triggered() {
@@ -297,6 +299,13 @@ void MainWindow::onRobotMotorAngleUpdatedFromSerial(int motorIndex, int angle) {
             QString("UI widget not found: %1").arg(objName));
         qDebug() << "[MainWindow] UI widget not found:" << objName;
     }
+}
+
+void MainWindow::onEfectorPositionChanged(double x, double y, double z)
+{
+    ui->lineEditX->setText(QString::number(x, 'f', 2) + " mm");
+    ui->lineEditY->setText(QString::number(y, 'f', 2) + " mm");
+    ui->lineEditZ->setText(QString::number(z, 'f', 2) + " mm");
 }
 
 void MainWindow::onAllMotorsReset() {

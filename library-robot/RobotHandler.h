@@ -42,6 +42,7 @@ signals:
   void messageOccurred(const QString& message);
   void motorAngleChanged(int motorIndex, int angle);
   void allMotorsReset();
+  void efectorPositionChanged(double x, double y, double z);
 
 private:
   //Matriz de ángulos de los servomotores

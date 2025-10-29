@@ -152,7 +152,7 @@ void RobotHandler::inverseCinematic(const cv::Point3d& efectorGlobal) {
 
     qDebug("Valores R y Z calculados: R = %d, Z = %d", R, Z);
 
-    int B_rad = acos((R * R + (Z - a1 + a5) * (Z - a1 + a5) - a2 * a2 - a3 * a3) / (2 * a2 * a3) / 1000);
+    double B_rad = acos((R * R + (Z - a1 + a5) * (Z - a1 + a5) - a2 * a2 - a3 * a3) / (2 * a2 * a3) / 1000);
     int B = B_rad * 180 / M_PI;
     int A = 180 - B;
 

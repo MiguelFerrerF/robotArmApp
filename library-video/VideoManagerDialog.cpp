@@ -3,25 +3,29 @@
 #include <QCameraDevice>
 #include <QMediaDevices>
 #include <QMessageBox>
+#include <QtMath>
 
 VideoManagerDialog::VideoManagerDialog(QWidget *parent)
-    : QDialog(parent), ui(new Ui::VideoManagerDialog),
-      m_videoCaptureHandler(new VideoCaptureHandler(this)) {
+    : QDialog(parent), ui(new Ui::VideoManagerDialog) {
   ui->setupUi(this);
   this->setWindowTitle("Camera Manager");
 
-  // Conexión para recibir nuevos pixmaps capturados
-  connect(m_videoCaptureHandler, &VideoCaptureHandler::newPixmapCaptured, this,
+  VideoCaptureHandler &handler = VideoCaptureHandler::instance();
+
+  // Conexión para recibir nuevos pixmaps capturados (Temporal mientras el
+  // diálogo está abierto)
+  connect(&handler, &VideoCaptureHandler::newPixmapCaptured, this,
           [=](const QPixmap &pixmap) {
             m_currentPixmap = pixmap;
             updateVideoLabel();
           });
 
-  connect(m_videoCaptureHandler, &VideoCaptureHandler::propertiesSupported,
-          this, &VideoManagerDialog::on_propertiesSupported);
-  connect(m_videoCaptureHandler, &VideoCaptureHandler::rangesSupported, this,
+  // Conexiones de soporte (Necesarias para configurar la UI)
+  connect(&handler, &VideoCaptureHandler::propertiesSupported, this,
+          &VideoManagerDialog::on_propertiesSupported);
+  connect(&handler, &VideoCaptureHandler::rangesSupported, this,
           &VideoManagerDialog::on_rangesSupported);
-  connect(m_videoCaptureHandler, &VideoCaptureHandler::cameraOpenFailed, this,
+  connect(&handler, &VideoCaptureHandler::cameraOpenFailed, this,
           &VideoManagerDialog::on_cameraOpenFailed);
 
   // Rellenar ComboBox de cámaras
@@ -36,18 +40,36 @@ VideoManagerDialog::VideoManagerDialog(QWidget *parent)
     ui->videoLabel->setText("No se han detectado cámaras.");
   }
 
-  setAllControlsEnabled(false);
+  // Si ya hay una cámara corriendo, cargamos su estado en la UI.
+  updateStartButtonState();
 
-  m_videoCaptureHandler->start(QThread::HighestPriority);
+  setAllControlsEnabled(false);
 }
 
 VideoManagerDialog::~VideoManagerDialog() {
-  m_videoCaptureHandler->requestInterruption();
-  m_videoCaptureHandler->wait();
+  // Desconectar la señal de newPixmapCaptured para que el QLabel del diálogo no
+  // se actualice al cerrarse, dejando que MainWindow tome el control.
+  disconnect(&VideoCaptureHandler::instance(),
+             SIGNAL(newPixmapCaptured(QPixmap)), this, nullptr);
   delete ui;
 }
 
+// --- NUEVO: Actualiza el botón de Start/Stop al abrir el diálogo ---
+void VideoManagerDialog::updateStartButtonState() {
+  bool isRunning = VideoCaptureHandler::instance().isCameraRunning();
+  ui->startButton->setChecked(isRunning);
+  ui->startButton->setText(isRunning ? "Stop" : "Start");
+  ui->comboBoxCameras->setEnabled(!isRunning);
+  ui->comboBoxResolution->setEnabled(!isRunning);
+
+  if (isRunning) {
+    ui->videoLabel->setText(""); // Limpiar el texto si hay vídeo
+  }
+}
+// --- FIN NUEVO ---
+
 void VideoManagerDialog::on_startButton_clicked() {
+  VideoCaptureHandler &handler = VideoCaptureHandler::instance();
   if (ui->startButton->isChecked()) {
     // Estado: ON (Iniciar)
     int cameraId = ui->comboBoxCameras->currentIndex();
@@ -55,16 +77,16 @@ void VideoManagerDialog::on_startButton_clicked() {
     QString resText = ui->comboBoxResolution->currentText();
     QSize resolution = parseResolution(resText);
 
-    m_videoCaptureHandler->requestCameraChange(cameraId, resolution);
+    handler.requestCameraChange(cameraId, resolution);
 
     ui->startButton->setText("Stop");
     ui->comboBoxCameras->setEnabled(false);
     ui->comboBoxResolution->setEnabled(false);
   } else {
     // Estado: OFF (Detener)
-    m_videoCaptureHandler->requestCameraChange(-1, QSize());
+    handler.requestCameraChange(-1, QSize());
 
-    ui->startButton->setText("Start OpenCV");
+    ui->startButton->setText("Start");
     ui->comboBoxCameras->setEnabled(true);
     ui->comboBoxResolution->setEnabled(true);
 
@@ -157,43 +179,43 @@ void VideoManagerDialog::on_propertiesSupported(
 
 // Slots de Foco
 void VideoManagerDialog::on_checkBoxFocoAuto_toggled(bool checked) {
-  m_videoCaptureHandler->setAutoFocus(checked);
+  VideoCaptureHandler::instance().setAutoFocus(checked);
   ui->horizontalSliderFoco->setEnabled(m_support.focus && !checked);
 }
 
 void VideoManagerDialog::on_checkBoxExposicionAuto_toggled(bool checked) {
-  m_videoCaptureHandler->setAutoExposure(checked);
+  VideoCaptureHandler::instance().setAutoExposure(checked);
   ui->horizontalSliderExposicion->setEnabled(m_support.exposure && !checked);
 }
 
 void VideoManagerDialog::on_horizontalSliderFoco_sliderMoved(int value) {
   int openCVValue = mapSliderToOpenCV(value, m_ranges.focus);
-  m_videoCaptureHandler->setFocus(openCVValue);
+  VideoCaptureHandler::instance().setFocus(openCVValue);
 }
 
 void VideoManagerDialog::on_horizontalSliderBrillo_sliderMoved(int value) {
   int openCVValue = mapSliderToOpenCV(value, m_ranges.brightness);
-  m_videoCaptureHandler->setBrightness(openCVValue);
+  VideoCaptureHandler::instance().setBrightness(openCVValue);
 }
 
 void VideoManagerDialog::on_horizontalSliderContraste_sliderMoved(int value) {
   int openCVValue = mapSliderToOpenCV(value, m_ranges.contrast);
-  m_videoCaptureHandler->setContrast(openCVValue);
+  VideoCaptureHandler::instance().setContrast(openCVValue);
 }
 
 void VideoManagerDialog::on_horizontalSliderSaturacion_sliderMoved(int value) {
   int openCVValue = mapSliderToOpenCV(value, m_ranges.saturation);
-  m_videoCaptureHandler->setSaturation(openCVValue);
+  VideoCaptureHandler::instance().setSaturation(openCVValue);
 }
 
 void VideoManagerDialog::on_horizontalSliderNitidez_sliderMoved(int value) {
   int openCVValue = mapSliderToOpenCV(value, m_ranges.sharpness);
-  m_videoCaptureHandler->setSharpness(openCVValue);
+  VideoCaptureHandler::instance().setSharpness(openCVValue);
 }
 
 void VideoManagerDialog::on_horizontalSliderExposicion_sliderMoved(int value) {
   int openCVValue = mapSliderToOpenCV(value, m_ranges.exposure);
-  m_videoCaptureHandler->setExposure(openCVValue);
+  VideoCaptureHandler::instance().setExposure(openCVValue);
 }
 
 void VideoManagerDialog::setAllControlsEnabled(bool enabled) {
@@ -210,11 +232,6 @@ void VideoManagerDialog::setAllControlsEnabled(bool enabled) {
     ui->checkBoxExposicionAuto->setChecked(true);
     ui->checkBoxFocoAuto->setChecked(true);
   }
-}
-
-void VideoManagerDialog::resizeEvent(QResizeEvent *event) {
-  VideoManagerDialog::resizeEvent(event);
-  updateVideoLabel();
 }
 
 void VideoManagerDialog::updateVideoLabel() {

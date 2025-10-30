@@ -2,14 +2,31 @@
 #include <QDebug>
 #include <QtMath>
 
+// --- MODIFICADO: IMPLEMENTACIÓN SINGLETON ---
+VideoCaptureHandler &VideoCaptureHandler::instance() {
+  static VideoCaptureHandler instance;
+  return instance;
+}
+
 VideoCaptureHandler::VideoCaptureHandler(QObject *parent) : QThread(parent) {
   qDebug()
       << "VideoCaptureHandler::VideoCaptureHandler() - Constructor called.";
   qRegisterMetaType<CameraPropertiesSupport>();
   qRegisterMetaType<CameraPropertyRanges>();
+  start(QThread::HighestPriority); // Iniciar el hilo de captura al crear la
+                                   // instancia
 }
 
-VideoCaptureHandler::~VideoCaptureHandler() {}
+VideoCaptureHandler::~VideoCaptureHandler() {
+  requestInterruption();
+  wait();
+}
+
+// --- NUEVO: Función de estado ---
+bool VideoCaptureHandler::isCameraRunning() const {
+  return m_VideoCapture.isOpened();
+}
+// --- FIN NUEVO ---
 
 void VideoCaptureHandler::requestCameraChange(int cameraId,
                                               const QSize &resolution) {

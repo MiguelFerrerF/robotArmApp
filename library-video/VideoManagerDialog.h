@@ -11,17 +11,12 @@ namespace Ui {
 class VideoManagerDialog;
 }
 
-class VideoCaptureHandler;
-
 class VideoManagerDialog : public QDialog {
   Q_OBJECT
 
 public:
   VideoManagerDialog(QWidget *parent = nullptr);
   ~VideoManagerDialog();
-
-protected:
-  void resizeEvent(QResizeEvent *event) override;
 
 private slots:
   void on_startButton_clicked();
@@ -42,7 +37,6 @@ private slots:
 
 private:
   Ui::VideoManagerDialog *ui;
-  VideoCaptureHandler *m_videoCaptureHandler;
 
   QPixmap m_currentPixmap;
 
@@ -50,6 +44,7 @@ private:
   CameraPropertyRanges m_ranges;
 
   void updateVideoLabel();
+  void updateStartButtonState(); // NUEVO: Para actualizar el estado del botón
 
   void setAllControlsEnabled(bool enabled);
 

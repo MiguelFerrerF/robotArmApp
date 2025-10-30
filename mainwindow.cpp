@@ -5,70 +5,73 @@
 #include <QDebug>
 #include <QDir>
 #include <QFile>
+#include <QLineEdit>
 #include <QProcess>
 #include <QSettings>
 #include <QVideoFrameFormat>
-#include <QLineEdit>
 
 MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent), ui(new Ui::MainWindow), m_RobotHandler(new RobotHandler(this)) {
+    : QMainWindow(parent), ui(new Ui::MainWindow),
+      m_RobotHandler(new RobotHandler(this)) {
   ui->setupUi(this);
   this->setWindowTitle("Robot Arm Controller");
 
   setupConnections();
+  connectVideoSignals();
 
   // Inicializamos el CalibrationHandler con el tablero 9x6 y cuadrados de 10mm
   calibrationHandler = new CalibrationHandler(cv::Size(9, 6), 10.0f);
 
-  // Conectar el botón al slot
-  connect(ui->calibrateButton, &QPushButton::clicked, this, &MainWindow::onCalibrateButtonClicked);
+  // Conectar el boton al slot
+  connect(ui->calibrateButton, &QPushButton::clicked, this,
+          &MainWindow::onCalibrateButtonClicked);
 }
 
 MainWindow::~MainWindow() {
-  VideoCameraHandler::instance().stopCamera();
-  delete calibrationHandler; 
+  delete calibrationHandler;
   delete ui;
 }
 
-void MainWindow::onCalibrateButtonClicked()
-{
-    QString folderPath = QDir::currentPath() + "/images/calibration"; // Carpeta con imágenes de calibración
-    QDir dir(folderPath);
+void MainWindow::onCalibrateButtonClicked() {
+  QString folderPath =
+      QDir::currentPath() +
+      "/images/calibration"; // Carpeta con imï¿½genes de calibraciï¿½n
+  QDir dir(folderPath);
 
-    if (!dir.exists()) {
-        qDebug() << "La carpeta de imágenes no existe:" << folderPath;
-        return;
-    }
+  if (!dir.exists()) {
+    qDebug() << "La carpeta de imï¿½genes no existe:" << folderPath;
+    return;
+  }
 
-    QStringList filters;
-    filters << "*.jpg" << "*.png" << "*.tif";
-    QFileInfoList fileList = dir.entryInfoList(filters, QDir::Files);
+  QStringList filters;
+  filters << "*.jpg"
+          << "*.png"
+          << "*.tif";
+  QFileInfoList fileList = dir.entryInfoList(filters, QDir::Files);
 
-    if (fileList.isEmpty()) {
-        qDebug() << "No se encontraron imágenes en" << folderPath;
-        return;
-    }
+  if (fileList.isEmpty()) {
+    qDebug() << "No se encontraron imï¿½genes en" << folderPath;
+    return;
+  }
 
-    // Añadir todas las imágenes al CalibrationHandler
-    for (const QFileInfo& fileInfo : fileList) {
-        cv::Mat image = cv::imread(fileInfo.absoluteFilePath().toStdString());
-        if (!image.empty()) {
-            calibrationHandler->addImage(image);
-        }
-        else {
-            qDebug() << "No se pudo leer la imagen:" << fileInfo.fileName();
-        }
+  // Aï¿½adir todas las imï¿½genes al CalibrationHandler
+  for (const QFileInfo &fileInfo : fileList) {
+    cv::Mat image = cv::imread(fileInfo.absoluteFilePath().toStdString());
+    if (!image.empty()) {
+      calibrationHandler->addImage(image);
+    } else {
+      qDebug() << "No se pudo leer la imagen:" << fileInfo.fileName();
     }
+  }
 
-    // Ejecutar calibración
-    if (calibrationHandler->runCalibration()) {
-        // Guardar resultados
-        calibrationHandler->saveCalibration("cameraMatrix.yml", "distCoeffs.yml");
-        qDebug() << "Calibración completada y guardada correctamente.";
-    }
-    else {
-        qDebug() << "Calibración fallida.";
-    }
+  // Ejecutar calibraciï¿½n
+  if (calibrationHandler->runCalibration()) {
+    // Guardar resultados
+    calibrationHandler->saveCalibration("cameraMatrix.yml", "distCoeffs.yml");
+    qDebug() << "Calibraciï¿½n completada y guardada correctamente.";
+  } else {
+    qDebug() << "Calibraciï¿½n fallida.";
+  }
 }
 
 void MainWindow::setupConnections() {
@@ -80,11 +83,11 @@ void MainWindow::setupConnections() {
   connect(&serial, &SerialPortHandler::dataReceived, this,
           &MainWindow::onDataReceived);
   connect(m_RobotHandler, &RobotHandler::motorAngleChanged, this,
-      &MainWindow::onRobotMotorAngleUpdatedFromSerial);
+          &MainWindow::onRobotMotorAngleUpdatedFromSerial);
   connect(m_RobotHandler, &RobotHandler::errorOccurred, this,
-      &MainWindow::onSerialError);
-  connect(m_RobotHandler, &RobotHandler::efectorPositionChanged,
-          this, &MainWindow::onEfectorPositionChanged);
+          &MainWindow::onSerialError);
+  connect(m_RobotHandler, &RobotHandler::efectorPositionChanged, this,
+          &MainWindow::onEfectorPositionChanged);
 }
 
 void MainWindow::on_actionSerial_triggered() {
@@ -151,77 +154,45 @@ void MainWindow::on_actionDisconnectSerial_triggered() {
 }
 
 void MainWindow::on_actionConnectVideo_triggered() {
-  VideoConnectionDialog dialog(this);
-  connect(&dialog, &VideoConnectionDialog::errorOccurred, this,
-          [this](const QString &err) {
-            LogHandler::error(ui->textEditLog, "Video Error: " + err);
-          });
+  if (!m_VideoManagerDialog) {
+    m_VideoManagerDialog = new VideoManagerDialog(this);
+  }
 
-  disconnectVideoSignals();
-  connectVideoSignals();
-
-  if (dialog.exec() != QDialog::Accepted)
-    return;
-}
-
-void MainWindow::disconnectVideoSignals() {
-  VideoCameraHandler &camera = VideoCameraHandler::instance();
-  disconnect(&camera, &VideoCameraHandler::frameCaptured, this,
-             &MainWindow::onVideoCapture);
-  disconnect(&camera, &VideoCameraHandler::cameraStarted, this,
-             &MainWindow::onCameraStarted);
-  disconnect(&camera, &VideoCameraHandler::cameraStopped, this,
-             &MainWindow::onCameraStopped);
-  disconnect(&camera, &VideoCameraHandler::errorOccurred, this,
-             &MainWindow::onCameraError);
-  disconnect(&camera, &VideoCameraHandler::focusModeChanged, this,
-             &MainWindow::onFocusModeChanged);
-  disconnect(&camera, &VideoCameraHandler::zoomFactorChanged, this,
-             &MainWindow::onZoomFactorChanged);
-  disconnect(&camera, &VideoCameraHandler::exposureModeChanged, this,
-             &MainWindow::onExposureModeChanged);
-  disconnect(&camera, &VideoCameraHandler::whiteBalanceModeChanged, this,
-             &MainWindow::onWhiteBalanceModeChanged);
-  disconnect(&camera, &VideoCameraHandler::colorTemperatureChanged, this,
-             &MainWindow::onColorTemperatureChanged);
-}
-
-void MainWindow::connectVideoSignals() {
-  VideoCameraHandler &camera = VideoCameraHandler::instance();
-  connect(&camera, &VideoCameraHandler::frameCaptured, this,
-          &MainWindow::onVideoCapture);
-  connect(&camera, &VideoCameraHandler::cameraStarted, this,
-          &MainWindow::onCameraStarted);
-  connect(&camera, &VideoCameraHandler::cameraStopped, this,
-          &MainWindow::onCameraStopped);
-  connect(&camera, &VideoCameraHandler::errorOccurred, this,
-          &MainWindow::onCameraError);
-  connect(&camera, &VideoCameraHandler::focusModeChanged, this,
-          &MainWindow::onFocusModeChanged);
-  connect(&camera, &VideoCameraHandler::zoomFactorChanged, this,
-          &MainWindow::onZoomFactorChanged);
-  connect(&camera, &VideoCameraHandler::exposureModeChanged, this,
-          &MainWindow::onExposureModeChanged);
-  connect(&camera, &VideoCameraHandler::whiteBalanceModeChanged, this,
-          &MainWindow::onWhiteBalanceModeChanged);
-  connect(&camera, &VideoCameraHandler::colorTemperatureChanged, this,
-          &MainWindow::onColorTemperatureChanged);
+  // Si la cÃ¡mara ya estÃ¡ corriendo, el diÃ¡logo mostrarÃ¡ el stream actual.
+  m_VideoManagerDialog->show();
+  m_VideoManagerDialog->raise();
+  m_VideoManagerDialog->activateWindow();
 }
 
 void MainWindow::on_actionDisconnectVideo_triggered() {
-  VideoCameraHandler::instance().stopCamera();
+  VideoCaptureHandler::instance().requestCameraChange(
+      -1, QSize()); // PeticiÃ³n de STOP
   ui->labelCamera->clear();
-  LogHandler::warning(ui->textEditLog, "Video camera disconnected");
 }
 
-void MainWindow::on_actionSettings_triggered() {
-  m_VideoSettingsDialog = new VideoSettingsDialog(this);
-  m_VideoSettingsDialog->show();
-  m_VideoSettingsDialog->raise();
-  m_VideoSettingsDialog->activateWindow();
+void MainWindow::connectVideoSignals() {
+  VideoCaptureHandler &handler = VideoCaptureHandler::instance();
+
+  // ConexiÃ³n principal para mostrar el vÃ­deo en la GUI
+  connect(&handler, &VideoCaptureHandler::newPixmapCaptured, this,
+          [this](const QPixmap &pixmap) {
+            this->onVideoCapture(pixmap.toImage());
+          });
+
+  // Conexiones de info de la cÃ¡mara (para actualizar la GUI principal)
+  // connect(&handler, &VideoCaptureHandler::propertiesSupported, this,
+  //         &MainWindow::onPropertiesSupported); // Asumiendo que existe un
+  //         slot
+  //                                              // para esto
+
+  // Conectamos las seÃ±ales de error para el log principal
+  connect(&handler, &VideoCaptureHandler::cameraOpenFailed, this,
+          [this](int, const QString &err) {
+            LogHandler::error(ui->textEditLog, "Camera Error: " + err);
+          });
 }
 
-void MainWindow::on_actionControl_triggered() {
+void MainWindow::on_actionControlRobot_triggered() {
   qDebug("Control robot pulsado");
   if (!m_RobotControl) {
     m_RobotControl = new RobotControlDialog(this, &m_robotSettings);
@@ -271,8 +242,8 @@ void MainWindow::onSerialError(const QString &error) {
   LogHandler::error(ui->textEditLog, "Serial Error: " + error);
 }
 
-void MainWindow::onSerialStatusChanged(bool connected) 
-{LogHandler::info(
+void MainWindow::onSerialStatusChanged(bool connected) {
+  LogHandler::info(
       ui->textEditLog,
       QString("Serial port %1").arg(connected ? "connected" : "disconnected"));
 }
@@ -308,52 +279,51 @@ void MainWindow::onRobotMotorAngleChanged(int motorIndex, int angle) {
 }
 
 void MainWindow::onRobotMotorAngleUpdatedFromSerial(int motorIndex, int angle) {
-    qDebug() << "[MainWindow] onRobotMotorAngleUpdatedFromSerial called for"
-        << motorIndex << "angle" << angle;
+  qDebug() << "[MainWindow] onRobotMotorAngleUpdatedFromSerial called for"
+           << motorIndex << "angle" << angle;
 
-    if (motorIndex < 1 || motorIndex > 6)
-        return;
+  if (motorIndex < 1 || motorIndex > 6)
+    return;
 
-    QString objName = QString("lineEditAngleMotor%1").arg(motorIndex);
+  QString objName = QString("lineEditAngleMotor%1").arg(motorIndex);
 
-    QLineEdit* le = nullptr;
-    if (ui->groupBoxMotorAngle) {
-        qDebug() << "[MainWindow] groupBoxMotorAngle exists, childCount:"
-            << ui->groupBoxMotorAngle->children().count();
-        le = ui->groupBoxMotorAngle->findChild<QLineEdit*>(objName);
-        if (!le) {
-            // listar children para depuración
-            qDebug() << "[MainWindow] groupBoxMotorAngle children objectNames:";
-            for (QObject* child : ui->groupBoxMotorAngle->children()) {
-                qDebug() << " -" << child->objectName() << "(" << child->metaObject()->className() << ")";
-            }
-        }
+  QLineEdit *le = nullptr;
+  if (ui->groupBoxMotorAngle) {
+    qDebug() << "[MainWindow] groupBoxMotorAngle exists, childCount:"
+             << ui->groupBoxMotorAngle->children().count();
+    le = ui->groupBoxMotorAngle->findChild<QLineEdit *>(objName);
+    if (!le) {
+      // listar children para depuraciï¿½n
+      qDebug() << "[MainWindow] groupBoxMotorAngle children objectNames:";
+      for (QObject *child : ui->groupBoxMotorAngle->children()) {
+        qDebug() << " -" << child->objectName() << "("
+                 << child->metaObject()->className() << ")";
+      }
     }
-    else {
-        qDebug() << "[MainWindow] ui->groupBoxMotorAngle is NULL, fallback to this->findChild";
-        le = this->findChild<QLineEdit*>(objName);
-    }
+  } else {
+    qDebug() << "[MainWindow] ui->groupBoxMotorAngle is NULL, fallback to "
+                "this->findChild";
+    le = this->findChild<QLineEdit *>(objName);
+  }
 
-    if (le) {
-        le->setText(QString::number(angle) + QChar(0x00B0));
-        LogHandler::info(ui->textEditLog,
-            QString("Updated UI for motor %1 with angle %2")
-            .arg(motorIndex)
-            .arg(angle));
-        qDebug() << "[MainWindow] Updated" << objName << "to" << angle;
-    }
-    else {
-        LogHandler::warning(ui->textEditLog,
-            QString("UI widget not found: %1").arg(objName));
-        qDebug() << "[MainWindow] UI widget not found:" << objName;
-    }
+  if (le) {
+    le->setText(QString::number(angle) + QChar(0x00B0));
+    LogHandler::info(ui->textEditLog,
+                     QString("Updated UI for motor %1 with angle %2")
+                         .arg(motorIndex)
+                         .arg(angle));
+    qDebug() << "[MainWindow] Updated" << objName << "to" << angle;
+  } else {
+    LogHandler::warning(ui->textEditLog,
+                        QString("UI widget not found: %1").arg(objName));
+    qDebug() << "[MainWindow] UI widget not found:" << objName;
+  }
 }
 
-void MainWindow::onEfectorPositionChanged(double x, double y, double z)
-{
-    ui->lineEditX->setText(QString::number(x, 'f', 2) + " mm");
-    ui->lineEditY->setText(QString::number(y, 'f', 2) + " mm");
-    ui->lineEditZ->setText(QString::number(z, 'f', 2) + " mm");
+void MainWindow::onEfectorPositionChanged(double x, double y, double z) {
+  ui->lineEditX->setText(QString::number(x, 'f', 2) + " mm");
+  ui->lineEditY->setText(QString::number(y, 'f', 2) + " mm");
+  ui->lineEditZ->setText(QString::number(z, 'f', 2) + " mm");
 }
 
 void MainWindow::onAllMotorsReset() {
@@ -373,12 +343,6 @@ void MainWindow::onVideoCapture(const QImage &image) {
 
 void MainWindow::onCameraStarted() {
   LogHandler::success(ui->textEditLog, "Camera started successfully");
-
-  QString cameraName = VideoCameraHandler::instance().currentCameraName();
-  if (!cameraName.isEmpty()) {
-    LogHandler::info(ui->textEditLog, "Using camera: " + cameraName);
-    ui->lineEditCameraName->setText(cameraName);
-  }
 }
 
 void MainWindow::onCameraStopped() {
@@ -391,80 +355,46 @@ void MainWindow::onCameraError(const QString &error) {
   LogHandler::error(ui->textEditLog, "Camera Error: " + error);
 }
 
-void MainWindow::onFocusModeChanged(const QString &mode) {
-  LogHandler::info(ui->textEditLog,
-                   QString("Camera focus mode changed to: %1").arg(mode));
-  ui->lineEditFocusMode->setText(mode);
-}
-
-void MainWindow::onZoomFactorChanged(float zoom) {
-  LogHandler::info(ui->textEditLog,
-                   QString("Camera zoom factor changed to: %1").arg(zoom));
-  ui->lineEditZoomFactor->setText(QString::number(zoom, 'f', 2));
-}
-
-void MainWindow::onExposureModeChanged(const QString &mode) {
-  LogHandler::info(ui->textEditLog,
-                   QString("Camera exposure mode changed to: %1").arg(mode));
-  ui->lineEditExposureMode->setText(mode);
-}
-
-void MainWindow::onWhiteBalanceModeChanged(const QString &mode) {
-  LogHandler::info(
-      ui->textEditLog,
-      QString("Camera white balance mode changed to: %1").arg(mode));
-  ui->lineEditWhiteBalance->setText(mode);
-}
-
-void MainWindow::onColorTemperatureChanged(int temperature) {
-  LogHandler::info(
-      ui->textEditLog,
-      QString("Camera color temperature changed to: %1").arg(temperature));
-  ui->lineEditColorTemperature->setText(QString::number(temperature));
-}
-
 void MainWindow::on_pushButtonCaptureImage_clicked() {
-    if (m_lastCapturedFrame.isNull()) {
-        qDebug() << "No hay imagen disponible para capturar";
-        return;
-    }
+  if (m_lastCapturedFrame.isNull()) {
+    qDebug() << "No hay imagen disponible para capturar";
+    return;
+  }
 
-    // Carpeta donde guardar las imágenes
-    QString dirPath = QDir::currentPath() + "/images/calibration";
-    QDir dir(dirPath);
-    if (!dir.exists()) {
-        if (!dir.mkpath(".")) {
-            qDebug() << "No se pudo crear la carpeta 'images/calibration'";
-            return;
-        }
-        else {
-            qDebug() << "Carpeta 'images/calibration' creada con éxito";
-        }
+  // Carpeta donde guardar las imï¿½genes
+  QString dirPath = QDir::currentPath() + "/images/calibration";
+  QDir dir(dirPath);
+  if (!dir.exists()) {
+    if (!dir.mkpath(".")) {
+      qDebug() << "No se pudo crear la carpeta 'images/calibration'";
+      return;
+    } else {
+      qDebug() << "Carpeta 'images/calibration' creada con ï¿½xito";
     }
+  }
 
-    // Buscar el siguiente número disponible
-    QStringList files = dir.entryList(QStringList() << "image*.tif", QDir::Files);
-    int maxNumber = 0;
+  // Buscar el siguiente nï¿½mero disponible
+  QStringList files = dir.entryList(QStringList() << "image*.tif", QDir::Files);
+  int maxNumber = 0;
 
-    for (const QString& file : files) {
-        QString numStr = file;
-        numStr.remove("image"); // quitar prefijo
-        numStr.chop(4);         // quitar ".tif"
-        bool ok;
-        int num = numStr.toInt(&ok);
-        if (ok && num > maxNumber) {
-            maxNumber = num;
-        }
+  for (const QString &file : files) {
+    QString numStr = file;
+    numStr.remove("image"); // quitar prefijo
+    numStr.chop(4);         // quitar ".tif"
+    bool ok;
+    int num = numStr.toInt(&ok);
+    if (ok && num > maxNumber) {
+      maxNumber = num;
     }
+  }
 
-    int nextNumber = maxNumber + 1;
-    QString fileName = dirPath + "/image" + QString::number(nextNumber) + ".tif";
+  int nextNumber = maxNumber + 1;
+  QString fileName = dirPath + "/image" + QString::number(nextNumber) + ".tif";
 
-    // Guardar la imagen
-    if (m_lastCapturedFrame.save(fileName)) {
-        qDebug() << "Imagen capturada y guardada:" << fileName;
-    }
-    else {
-        qDebug() << "No se pudo guardar la imagen";
-    }
+  // Guardar la imagen
+  if (m_lastCapturedFrame.save(fileName)) {
+    qDebug() << "Imagen capturada y guardada:" << fileName;
+  } else {
+    qDebug() << "No se pudo guardar la imagen";
+  }
 }

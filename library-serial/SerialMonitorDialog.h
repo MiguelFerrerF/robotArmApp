@@ -1,6 +1,7 @@
 #ifndef SERIALMONITORDIALOG_H
 #define SERIALMONITORDIALOG_H
 
+#include "SerialPortHandler.h"
 #include "ui_SerialMonitorDialog.h"
 #include <QDialog>
 #include <QTextEdit>

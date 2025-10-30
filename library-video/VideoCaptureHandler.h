@@ -50,7 +50,10 @@ Q_DECLARE_METATYPE(CameraPropertyRanges)
 class VideoCaptureHandler : public QThread {
   Q_OBJECT
 public:
-  VideoCaptureHandler(QObject *parent = nullptr);
+  // --- MODIFICADO: FUNCIÓN ESTÁTICA PARA SINGLETON ---
+  static VideoCaptureHandler &instance();
+  // --- FIN MODIFICADO ---
+
   ~VideoCaptureHandler();
 
   void requestCameraChange(int cameraId, const QSize &resolution);
@@ -64,16 +67,24 @@ public:
   void setFocus(int value);
   void setExposure(int value);
 
+  // --- NUEVO: FUNCIONES PARA VER ESTADO ---
+  bool isCameraRunning() const;
+  // --- FIN NUEVO ---
+
 signals:
   void newPixmapCaptured(const QPixmap &pixmap);
   void propertiesSupported(CameraPropertiesSupport support);
-  void rangesSupported(const CameraPropertyRanges &ranges);
+  void rangesSupported(CameraPropertyRanges ranges);
   void cameraOpenFailed(int cameraId, const QString &errorMsg);
 
 protected:
   void run() override;
 
 private:
+  // --- MODIFICADO: Constructor privado para Singleton ---
+  explicit VideoCaptureHandler(QObject *parent = nullptr);
+  // --- FIN MODIFICADO ---
+
   QPixmap m_pixmap;
   cv::Mat m_frame;
   cv::VideoCapture m_VideoCapture;

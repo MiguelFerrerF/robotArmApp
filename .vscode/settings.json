@@ -1,9 +1,16 @@
 {
     "files.associations": {
+        "*.cpp": "cpp",
         "qdialog": "cpp",
         "chrono": "cpp",
         "optional": "cpp",
         "system_error": "cpp",
-        "qintvalidator": "cpp"
+        "qintvalidator": "cpp",
+        "atomic": "cpp",
+        "ios": "cpp",
+        "vector": "cpp",
+        "xiosbase": "cpp",
+        "xstring": "cpp",
+        "qobject": "cpp"
     }
 }

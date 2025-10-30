@@ -3,12 +3,9 @@
 
 #include "library-calibration/CalibrationHandler.h"
 #include "library-log/LogHandler.h"
-#include "library-robot/RobotConfig.h"
 #include "library-robot/RobotControlDialog.h"
 #include "library-robot/RobotHandler.h"
 #include "library-serial/SerialMonitorDialog.h"
-#include "library-serial/SerialPortHandler.h"
-#include "library-video/VideoCaptureHandler.h"
 #include "library-video/VideoManagerDialog.h"
 #include <QImage>
 #include <QMainWindow>
@@ -38,8 +35,7 @@ private slots:
   void on_actionDisconnectSerial_triggered();
   void on_actionConnectVideo_triggered();
   void on_actionDisconnectVideo_triggered();
-  void on_actionSettings_triggered();
-  void on_actionControl_triggered();
+  void on_actionControlRobot_triggered();
   void on_actionCalibrateRobot_triggered();
   void onEfectorPositionChanged(double x, double y, double z);
 
@@ -61,11 +57,6 @@ private slots:
   void onCameraStarted();
   void onCameraStopped();
   void onCameraError(const QString &error);
-  void onFocusModeChanged(const QString &mode);
-  void onZoomFactorChanged(float zoom);
-  void onExposureModeChanged(const QString &mode);
-  void onWhiteBalanceModeChanged(const QString &mode);
-  void onColorTemperatureChanged(int temperature);
   void on_pushButtonCaptureImage_clicked();
 
   // Calibration
@@ -75,6 +66,7 @@ private:
   Ui::MainWindow *ui;
   SerialMonitorDialog *m_SerialMonitorDialog = nullptr;
   RobotControlDialog *m_RobotControl = nullptr;
+  VideoManagerDialog *m_VideoManagerDialog = nullptr;
   RobotHandler *m_RobotHandler = nullptr;
   CalibrationHandler *calibrationHandler;
   QImage m_lastCapturedFrame;
@@ -84,6 +76,5 @@ private:
 
   void setupConnections();
   void connectVideoSignals();
-  void disconnectVideoSignals();
 };
 #endif // MAINWINDOW_H

@@ -1,7 +1,6 @@
 // serialmonitor.cpp
 #include "SerialMonitorDialog.h"
 #include "../library-log/LogHandler.h"
-#include "SerialPortHandler.h"
 #include "ui_SerialMonitorDialog.h"
 
 SerialMonitorDialog::SerialMonitorDialog(QWidget *parent)

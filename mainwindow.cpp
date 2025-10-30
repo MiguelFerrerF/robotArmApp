@@ -16,11 +16,59 @@ MainWindow::MainWindow(QWidget *parent)
   this->setWindowTitle("Robot Arm Controller");
 
   setupConnections();
+
+  // Inicializamos el CalibrationHandler con el tablero 9x6 y cuadrados de 10mm
+  calibrationHandler = new CalibrationHandler(cv::Size(9, 6), 10.0f);
+
+  // Conectar el botón al slot
+  connect(ui->calibrateButton, &QPushButton::clicked, this, &MainWindow::onCalibrateButtonClicked);
 }
 
 MainWindow::~MainWindow() {
   VideoCameraHandler::instance().stopCamera();
+  delete calibrationHandler; 
   delete ui;
+}
+
+void MainWindow::onCalibrateButtonClicked()
+{
+    QString folderPath = QDir::currentPath() + "/images/calibration"; // Carpeta con imágenes de calibración
+    QDir dir(folderPath);
+
+    if (!dir.exists()) {
+        qDebug() << "La carpeta de imágenes no existe:" << folderPath;
+        return;
+    }
+
+    QStringList filters;
+    filters << "*.jpg" << "*.png" << "*.tif";
+    QFileInfoList fileList = dir.entryInfoList(filters, QDir::Files);
+
+    if (fileList.isEmpty()) {
+        qDebug() << "No se encontraron imágenes en" << folderPath;
+        return;
+    }
+
+    // Añadir todas las imágenes al CalibrationHandler
+    for (const QFileInfo& fileInfo : fileList) {
+        cv::Mat image = cv::imread(fileInfo.absoluteFilePath().toStdString());
+        if (!image.empty()) {
+            calibrationHandler->addImage(image);
+        }
+        else {
+            qDebug() << "No se pudo leer la imagen:" << fileInfo.fileName();
+        }
+    }
+
+    // Ejecutar calibración
+    if (calibrationHandler->runCalibration()) {
+        // Guardar resultados
+        calibrationHandler->saveCalibration("cameraMatrix.yml", "distCoeffs.yml");
+        qDebug() << "Calibración completada y guardada correctamente.";
+    }
+    else {
+        qDebug() << "Calibración fallida.";
+    }
 }
 
 void MainWindow::setupConnections() {
@@ -313,6 +361,7 @@ void MainWindow::onAllMotorsReset() {
 }
 
 void MainWindow::onVideoCapture(const QImage &image) {
+  m_lastCapturedFrame = image;
   if (image.isNull())
     return;
 
@@ -372,4 +421,50 @@ void MainWindow::onColorTemperatureChanged(int temperature) {
       ui->textEditLog,
       QString("Camera color temperature changed to: %1").arg(temperature));
   ui->lineEditColorTemperature->setText(QString::number(temperature));
+}
+
+void MainWindow::on_pushButtonCaptureImage_clicked() {
+    if (m_lastCapturedFrame.isNull()) {
+        qDebug() << "No hay imagen disponible para capturar";
+        return;
+    }
+
+    // Carpeta donde guardar las imágenes
+    QString dirPath = QDir::currentPath() + "/images/calibration";
+    QDir dir(dirPath);
+    if (!dir.exists()) {
+        if (!dir.mkpath(".")) {
+            qDebug() << "No se pudo crear la carpeta 'images/calibration'";
+            return;
+        }
+        else {
+            qDebug() << "Carpeta 'images/calibration' creada con éxito";
+        }
+    }
+
+    // Buscar el siguiente número disponible
+    QStringList files = dir.entryList(QStringList() << "image*.tif", QDir::Files);
+    int maxNumber = 0;
+
+    for (const QString& file : files) {
+        QString numStr = file;
+        numStr.remove("image"); // quitar prefijo
+        numStr.chop(4);         // quitar ".tif"
+        bool ok;
+        int num = numStr.toInt(&ok);
+        if (ok && num > maxNumber) {
+            maxNumber = num;
+        }
+    }
+
+    int nextNumber = maxNumber + 1;
+    QString fileName = dirPath + "/image" + QString::number(nextNumber) + ".tif";
+
+    // Guardar la imagen
+    if (m_lastCapturedFrame.save(fileName)) {
+        qDebug() << "Imagen capturada y guardada:" << fileName;
+    }
+    else {
+        qDebug() << "No se pudo guardar la imagen";
+    }
 }

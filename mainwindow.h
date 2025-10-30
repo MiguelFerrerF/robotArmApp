@@ -10,6 +10,7 @@
 #include "library-video/VideoCameraHandler.h"
 #include "library-video/VideoConnectionDialog.h"
 #include "library-video/VideoSettingsDialog.h"
+#include "library-calibration/CalibrationHandler.h"
 #include <QImage>
 #include <QMainWindow>
 #include <QPixmap>
@@ -66,6 +67,10 @@ private slots:
   void onExposureModeChanged(const QString &mode);
   void onWhiteBalanceModeChanged(const QString &mode);
   void onColorTemperatureChanged(int temperature);
+  void on_pushButtonCaptureImage_clicked();
+
+  // Calibration
+  void onCalibrateButtonClicked();
 
 private:
   Ui::MainWindow *ui;
@@ -73,6 +78,8 @@ private:
   RobotControlDialog *m_RobotControl = nullptr;
   VideoSettingsDialog *m_VideoSettingsDialog = nullptr;
   RobotHandler* m_RobotHandler = nullptr;
+  CalibrationHandler* calibrationHandler;
+  QImage m_lastCapturedFrame;
 
   QSettings m_settings;
   RobotConfig::RobotSettings m_robotSettings;

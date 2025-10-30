@@ -137,9 +137,11 @@ void RobotHandler::actualizarMatrices(const cv::Mat& q)
     cv::Point3d efectorLocal(0, 0, 0);
     cv::Point3d efectorGlobal = transformarPunto(efectorLocal);
 
+    emit efectorPositionChanged(efectorGlobal.x, efectorGlobal.y, efectorGlobal.z);
+
     qDebug() << "Posicion de la pinza (respecto a la base del robot):"
-        << "(" << efectorGlobal.x << ","
-        << efectorGlobal.y << ","
+        << "(" << efectorGlobal.x << ", "
+        << efectorGlobal.y << ", "
         << efectorGlobal.z << ")";
 
     inverseCinematic(efectorGlobal);

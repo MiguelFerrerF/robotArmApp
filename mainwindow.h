@@ -41,6 +41,7 @@ private slots:
   void on_actionSettings_triggered();
   void on_actionControl_triggered();
   void on_actionCalibrateRobot_triggered();
+  void onEfectorPositionChanged(double x, double y, double z);
 
   // Serial Monitor
   void onSerialError(const QString &error);

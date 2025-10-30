@@ -683,7 +683,6 @@
     <property name="title">
      <string>Video</string>
     </property>
-    <addaction name="separator"/>
    </widget>
    <widget class="QMenu" name="menuConnect">
     <property name="title">

@@ -1,16 +1,15 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include "library-calibration/CalibrationHandler.h"
 #include "library-log/LogHandler.h"
 #include "library-robot/RobotConfig.h"
 #include "library-robot/RobotControlDialog.h"
 #include "library-robot/RobotHandler.h"
 #include "library-serial/SerialMonitorDialog.h"
 #include "library-serial/SerialPortHandler.h"
-#include "library-video/VideoCameraHandler.h"
-#include "library-video/VideoConnectionDialog.h"
-#include "library-video/VideoSettingsDialog.h"
-#include "library-calibration/CalibrationHandler.h"
+#include "library-video/VideoCaptureHandler.h"
+#include "library-video/VideoManagerDialog.h"
 #include <QImage>
 #include <QMainWindow>
 #include <QPixmap>
@@ -76,9 +75,8 @@ private:
   Ui::MainWindow *ui;
   SerialMonitorDialog *m_SerialMonitorDialog = nullptr;
   RobotControlDialog *m_RobotControl = nullptr;
-  VideoSettingsDialog *m_VideoSettingsDialog = nullptr;
-  RobotHandler* m_RobotHandler = nullptr;
-  CalibrationHandler* calibrationHandler;
+  RobotHandler *m_RobotHandler = nullptr;
+  CalibrationHandler *calibrationHandler;
   QImage m_lastCapturedFrame;
 
   QSettings m_settings;

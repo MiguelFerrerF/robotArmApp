@@ -22,44 +22,41 @@ message(STATUS "Libraries: ${OpenCV_LIBS}")
 
 # --- Fuentes del proyecto ---
 set(PROJECT_SOURCES
-        main.cpp
+    main.cpp
 
-        mainwindow.ui
-        mainwindow.cpp
-        mainwindow.h
+    mainwindow.ui
+    mainwindow.cpp
+    mainwindow.h
 
-        library-serial/SerialPortHandler.h
-        library-serial/SerialPortHandler.cpp
-        library-serial/SerialConnectionSetupDialog.ui
-        library-serial/SerialConnectionSetupDialog.h
-        library-serial/SerialConnectionSetupDialog.cpp
-        library-serial/SerialMonitorDialog.ui
-        library-serial/SerialMonitorDialog.h
-        library-serial/SerialMonitorDialog.cpp
+    library-serial/SerialPortHandler.h
+    library-serial/SerialPortHandler.cpp
+    library-serial/SerialConnectionSetupDialog.ui
+    library-serial/SerialConnectionSetupDialog.h
+    library-serial/SerialConnectionSetupDialog.cpp
+    library-serial/SerialMonitorDialog.ui
+    library-serial/SerialMonitorDialog.h
+    library-serial/SerialMonitorDialog.cpp
 
-        resources.qrc
+    resources.qrc
 
-        library-log/LogHandler.h
-        library-log/LogHandler.cpp
+    library-log/LogHandler.h
+    library-log/LogHandler.cpp
 
-        library-robot/RobotConfig.h
-        library-robot/RobotHandler.h
-        library-robot/RobotHandler.cpp
-        library-robot/RobotControlDialog.h 
-        library-robot/RobotControlDialog.cpp
-        library-robot/RobotControlDialog.ui
+    library-robot/RobotConfig.h
+    library-robot/RobotHandler.h
+    library-robot/RobotHandler.cpp
+    library-robot/RobotControlDialog.h
+    library-robot/RobotControlDialog.cpp
+    library-robot/RobotControlDialog.ui
 
-        library-video/VideoCameraHandler.h
-        library-video/VideoCameraHandler.cpp
-        library-video/VideoConnectionDialog.h
-        library-video/VideoConnectionDialog.cpp
-        library-video/VideoConnectionDialog.ui
-        library-video/VideoSettingsDialog.cpp
-        library-video/VideoSettingsDialog.h
-        library-video/VideoSettingsDialog.ui
+    library-video/VideoCaptureHandler.h
+    library-video/VideoCaptureHandler.cpp
+    library-video/VideoManagerDialog.cpp
+    library-video/VideoManagerDialog.h
+    library-video/VideoManagerDialog.ui
 
-        library-calibration/CalibrationHandler.h
-        library-calibration/CalibrationHandler.cpp
+    library-calibration/CalibrationHandler.h
+    library-calibration/CalibrationHandler.cpp
 )
 
 # --- Creación del ejecutable ---
@@ -91,15 +88,16 @@ target_include_directories(robotArmApp PRIVATE ${OpenCV_INCLUDE_DIRS})
 add_custom_command(TARGET robotArmApp POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:robotArmApp>/images"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${CMAKE_SOURCE_DIR}/images/robot.png"
-        "$<TARGET_FILE_DIR:robotArmApp>/images/robot.png"
+    "${CMAKE_SOURCE_DIR}/images/robot.png"
+    "$<TARGET_FILE_DIR:robotArmApp>/images/robot.png"
     COMMENT "Copiando robot.png a la carpeta de imágenes del build"
 )
 
 # --- Propiedades específicas para macOS / Windows ---
 if(${QT_VERSION} VERSION_LESS 6.1.0)
-  set(BUNDLE_ID_OPTION MACOSX_BUNDLE_GUI_IDENTIFIER com.example.robotArmApp)
+    set(BUNDLE_ID_OPTION MACOSX_BUNDLE_GUI_IDENTIFIER com.example.robotArmApp)
 endif()
+
 set_target_properties(robotArmApp PROPERTIES
     ${BUNDLE_ID_OPTION}
     MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}

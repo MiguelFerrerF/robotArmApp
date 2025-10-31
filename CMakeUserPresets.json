@@ -24,14 +24,10 @@
     {
       "hidden": true,
       "name": "Qt-Default",
-      "generator": "Ninja",
-      "cacheVariables": {
-        "CMAKE_PREFIX_PATH": "$env{QTDIR}",
-        "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}"
-      },
+      "inherits": null,
       "vendor": {
-        "qt-project.org/Qt": {
-          "checksum": "wVa86FgEkvdCTVp1/nxvrkaemJc="
+        "qt-project.org/Default": {
+          "checksum": "VoalogTkyWuFomeO1TLFx0olLJ4="
         }
       }
     }

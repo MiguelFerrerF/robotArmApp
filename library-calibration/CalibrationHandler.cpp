@@ -1,7 +1,11 @@
 #include "CalibrationHandler.h"
 #include <iostream>
 #include <fstream>
+#include <filesystem> 
 #include <QDebug>
+
+namespace fs = std::filesystem;
+
 
 CalibrationHandler::CalibrationHandler(cv::Size boardSize, float squareSize)
     : boardSize(boardSize), squareSize(squareSize) {
@@ -69,25 +73,36 @@ bool CalibrationHandler::runCalibration() {
 void CalibrationHandler::saveCalibration(const std::string& cameraMatrixFile,
     const std::string& distCoeffsFile) const
 {
+    // Crear carpeta "CalibrationResults" si no existe
+    std::string folderName = "CalibrationResults";
+    if (!fs::exists(folderName)) {
+        fs::create_directory(folderName);
+        std::cout << "Carpeta creada: " << folderName << std::endl;
+    }
+
+    // Rutas completas de los archivos
+    std::string cameraMatrixPath = folderName + "/" + cameraMatrixFile;
+    std::string distCoeffsPath = folderName + "/" + distCoeffsFile;
+
     // Guardar matriz de cámara
-    cv::FileStorage fsCam(cameraMatrixFile, cv::FileStorage::WRITE);
+    cv::FileStorage fsCam(cameraMatrixPath, cv::FileStorage::WRITE);
     if (!fsCam.isOpened()) {
-        std::cerr << "Error al abrir archivo para cameraMatrix: " << cameraMatrixFile << std::endl;
+        std::cerr << "Error al abrir archivo para cameraMatrix: " << cameraMatrixPath << std::endl;
         return;
     }
     fsCam << "cameraMatrix" << cameraMatrix;
     fsCam.release();
-    std::cout << "Matriz de cámara guardada en " << cameraMatrixFile << std::endl;
+    std::cout << "Matriz de cámara guardada en " << cameraMatrixPath << std::endl;
 
     // Guardar coeficientes de distorsión
-    cv::FileStorage fsDist(distCoeffsFile, cv::FileStorage::WRITE);
+    cv::FileStorage fsDist(distCoeffsPath, cv::FileStorage::WRITE);
     if (!fsDist.isOpened()) {
-        std::cerr << "Error al abrir archivo para distCoeffs: " << distCoeffsFile << std::endl;
+        std::cerr << "Error al abrir archivo para distCoeffs: " << distCoeffsPath << std::endl;
         return;
     }
     fsDist << "distCoeffs" << distCoeffs;
     fsDist.release();
-    std::cout << "Coeficientes de distorsión guardados en " << distCoeffsFile << std::endl;
+    std::cout << "Coeficientes de distorsión guardados en " << distCoeffsPath << std::endl;
 }
 
 

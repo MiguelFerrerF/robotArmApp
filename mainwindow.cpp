@@ -39,7 +39,7 @@ void MainWindow::onCalibrateButtonClicked() {
   QDir dir(folderPath);
 
   if (!dir.exists()) {
-    qDebug() << "La carpeta de im�genes no existe:" << folderPath;
+    qDebug() << "La carpeta de imagenes no existe:" << folderPath;
     return;
   }
 

@@ -76,5 +76,6 @@ private:
 
   void setupConnections();
   void connectVideoSignals();
+  void disconnectVideoSignals();
 };
 #endif // MAINWINDOW_H

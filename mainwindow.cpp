@@ -28,6 +28,11 @@ MainWindow::MainWindow(QWidget *parent)
 }
 
 MainWindow::~MainWindow() {
+  disconnectVideoSignals();
+  delete m_RobotHandler;
+  delete m_SerialMonitorDialog;
+  delete m_RobotControl;
+  delete m_VideoManagerDialog;
   delete calibrationHandler;
   delete ui;
 }
@@ -190,6 +195,11 @@ void MainWindow::connectVideoSignals() {
           [this](int, const QString &err) {
             LogHandler::error(ui->textEditLog, "Camera Error: " + err);
           });
+}
+
+void MainWindow::disconnectVideoSignals() {
+  VideoCaptureHandler &handler = VideoCaptureHandler::instance();
+  handler.~VideoCaptureHandler();
 }
 
 void MainWindow::on_actionControlRobot_triggered() {

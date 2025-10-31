@@ -7,15 +7,17 @@
 #include <QResizeEvent>
 #include <QSize>
 
-namespace Ui {
+namespace Ui
+{
 class VideoManagerDialog;
 }
 
-class VideoManagerDialog : public QDialog {
+class VideoManagerDialog : public QDialog
+{
   Q_OBJECT
 
 public:
-  VideoManagerDialog(QWidget *parent = nullptr);
+  VideoManagerDialog(QWidget* parent = nullptr);
   ~VideoManagerDialog();
 
 private slots:
@@ -23,8 +25,8 @@ private slots:
   void on_resetButton_clicked();
 
   void on_propertiesSupported(CameraPropertiesSupport support);
-  void on_rangesSupported(const CameraPropertyRanges &ranges);
-  void on_cameraOpenFailed(int cameraId, const QString &errorMsg);
+  void on_rangesSupported(const CameraPropertyRanges& ranges);
+  void on_cameraOpenFailed(int cameraId, const QString& errorMsg);
 
   void on_checkBoxFocoAuto_toggled(bool checked);
   void on_checkBoxExposicionAuto_toggled(bool checked);
@@ -36,21 +38,21 @@ private slots:
   void on_horizontalSliderNitidez_sliderMoved(int value);
 
 private:
-  Ui::VideoManagerDialog *ui;
+  Ui::VideoManagerDialog* ui;
 
   QPixmap m_currentPixmap;
 
   CameraPropertiesSupport m_support;
-  CameraPropertyRanges m_ranges;
+  CameraPropertyRanges    m_ranges;
 
   void updateVideoLabel();
   void updateStartButtonState(); // NUEVO: Para actualizar el estado del botón
 
   void setAllControlsEnabled(bool enabled);
 
-  QSize parseResolution(const QString &text);
+  QSize parseResolution(const QString& text);
 
-  int mapSliderToOpenCV(int sliderValue, const PropertyRange &range);
-  int mapOpenCVToSlider(double openCVValue, const PropertyRange &range);
+  int mapSliderToOpenCV(int sliderValue, const PropertyRange& range);
+  int mapOpenCVToSlider(double openCVValue, const PropertyRange& range);
 };
 #endif // VIDEOMANAGERDIALOG_H

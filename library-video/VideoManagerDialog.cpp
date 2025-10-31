@@ -5,32 +5,28 @@
 #include <QMessageBox>
 #include <QtMath>
 
-VideoManagerDialog::VideoManagerDialog(QWidget *parent)
-    : QDialog(parent), ui(new Ui::VideoManagerDialog) {
+VideoManagerDialog::VideoManagerDialog(QWidget* parent) : QDialog(parent), ui(new Ui::VideoManagerDialog)
+{
   ui->setupUi(this);
   this->setWindowTitle("Camera Manager");
 
-  VideoCaptureHandler &handler = VideoCaptureHandler::instance();
+  VideoCaptureHandler& handler = VideoCaptureHandler::instance();
 
   // Conexión para recibir nuevos pixmaps capturados (Temporal mientras el
   // diálogo está abierto)
-  connect(&handler, &VideoCaptureHandler::newPixmapCaptured, this,
-          [=](const QPixmap &pixmap) {
-            m_currentPixmap = pixmap;
-            updateVideoLabel();
-          });
+  connect(&handler, &VideoCaptureHandler::newPixmapCaptured, this, [=](const QPixmap& pixmap) {
+    m_currentPixmap = pixmap;
+    updateVideoLabel();
+  });
 
   // Conexiones de soporte (Necesarias para configurar la UI)
-  connect(&handler, &VideoCaptureHandler::propertiesSupported, this,
-          &VideoManagerDialog::on_propertiesSupported);
-  connect(&handler, &VideoCaptureHandler::rangesSupported, this,
-          &VideoManagerDialog::on_rangesSupported);
-  connect(&handler, &VideoCaptureHandler::cameraOpenFailed, this,
-          &VideoManagerDialog::on_cameraOpenFailed);
+  connect(&handler, &VideoCaptureHandler::propertiesSupported, this, &VideoManagerDialog::on_propertiesSupported);
+  connect(&handler, &VideoCaptureHandler::rangesSupported, this, &VideoManagerDialog::on_rangesSupported);
+  connect(&handler, &VideoCaptureHandler::cameraOpenFailed, this, &VideoManagerDialog::on_cameraOpenFailed);
 
   // Rellenar ComboBox de cámaras
   QStringList cameraNames;
-  for (const QCameraDevice &camera : QMediaDevices::videoInputs()) {
+  for (const QCameraDevice& camera : QMediaDevices::videoInputs()) {
     cameraNames << camera.description();
   }
   ui->comboBoxCameras->addItems(cameraNames);
@@ -46,16 +42,17 @@ VideoManagerDialog::VideoManagerDialog(QWidget *parent)
   setAllControlsEnabled(false);
 }
 
-VideoManagerDialog::~VideoManagerDialog() {
+VideoManagerDialog::~VideoManagerDialog()
+{
   // Desconectar la señal de newPixmapCaptured para que el QLabel del diálogo no
   // se actualice al cerrarse, dejando que MainWindow tome el control.
-  disconnect(&VideoCaptureHandler::instance(),
-             SIGNAL(newPixmapCaptured(QPixmap)), this, nullptr);
+  disconnect(&VideoCaptureHandler::instance(), SIGNAL(newPixmapCaptured(QPixmap)), this, nullptr);
   delete ui;
 }
 
 // --- NUEVO: Actualiza el botón de Start/Stop al abrir el diálogo ---
-void VideoManagerDialog::updateStartButtonState() {
+void VideoManagerDialog::updateStartButtonState()
+{
   bool isRunning = VideoCaptureHandler::instance().isCameraRunning();
   ui->startButton->setChecked(isRunning);
   ui->startButton->setText(isRunning ? "Stop" : "Start");
@@ -66,23 +63,24 @@ void VideoManagerDialog::updateStartButtonState() {
     ui->videoLabel->setText(""); // Limpiar el texto si hay vídeo
   }
 }
-// --- FIN NUEVO ---
 
-void VideoManagerDialog::on_startButton_clicked() {
-  VideoCaptureHandler &handler = VideoCaptureHandler::instance();
+void VideoManagerDialog::on_startButton_clicked()
+{
+  VideoCaptureHandler& handler = VideoCaptureHandler::instance();
   if (ui->startButton->isChecked()) {
-    // Estado: ON (Iniciar)
-    int cameraId = ui->comboBoxCameras->currentIndex();
 
-    QString resText = ui->comboBoxResolution->currentText();
-    QSize resolution = parseResolution(resText);
+    int     cameraId   = ui->comboBoxCameras->currentIndex();
+    QString resText    = ui->comboBoxResolution->currentText();
+    QSize   resolution = parseResolution(resText);
 
     handler.requestCameraChange(cameraId, resolution);
+    handler.setCameraName(ui->comboBoxCameras->currentText().toStdString());
 
     ui->startButton->setText("Stop");
     ui->comboBoxCameras->setEnabled(false);
     ui->comboBoxResolution->setEnabled(false);
-  } else {
+  }
+  else {
     // Estado: OFF (Detener)
     handler.requestCameraChange(-1, QSize());
 
@@ -96,7 +94,8 @@ void VideoManagerDialog::on_startButton_clicked() {
   }
 }
 
-void VideoManagerDialog::on_resetButton_clicked() {
+void VideoManagerDialog::on_resetButton_clicked()
+{
   ui->checkBoxFocoAuto->setChecked(true);
   ui->checkBoxExposicionAuto->setChecked(true);
   ui->horizontalSliderBrillo->setValue(50);
@@ -112,13 +111,10 @@ void VideoManagerDialog::on_resetButton_clicked() {
   on_horizontalSliderNitidez_sliderMoved(50);
 }
 
-void VideoManagerDialog::on_cameraOpenFailed(int cameraId,
-                                             const QString &errorMsg) {
+void VideoManagerDialog::on_cameraOpenFailed(int cameraId, const QString& errorMsg)
+{
   Q_UNUSED(cameraId);
-  QMessageBox::critical(
-      this, "Error de Cámara",
-      tr("No se pudo iniciar la cámara seleccionada. Detalle: %1")
-          .arg(errorMsg));
+  QMessageBox::critical(this, "Error de Cámara", tr("No se pudo iniciar la cámara seleccionada. Detalle: %1").arg(errorMsg));
 
   // Resetear el botón de inicio/parada y habilitar la selección de cámara
   ui->startButton->setChecked(false);
@@ -127,36 +123,30 @@ void VideoManagerDialog::on_cameraOpenFailed(int cameraId,
   ui->comboBoxResolution->setEnabled(true);
 }
 
-void VideoManagerDialog::on_rangesSupported(
-    const CameraPropertyRanges &ranges) {
+void VideoManagerDialog::on_rangesSupported(const CameraPropertyRanges& ranges)
+{
   m_ranges = ranges;
 
   // Configurar los Sliders (escala de 0 a 100 para la GUI)
   // ... (Lógica de configuración de rangos y valores sin cambios) ...
 
   // Brillo
-  ui->horizontalSliderBrillo->setValue(qBound(
-      0, mapOpenCVToSlider(ranges.brightness.current, ranges.brightness), 100));
+  ui->horizontalSliderBrillo->setValue(qBound(0, mapOpenCVToSlider(ranges.brightness.current, ranges.brightness), 100));
 
   // Contraste
-  ui->horizontalSliderContraste->setValue(qBound(
-      0, mapOpenCVToSlider(ranges.contrast.current, ranges.contrast), 100));
+  ui->horizontalSliderContraste->setValue(qBound(0, mapOpenCVToSlider(ranges.contrast.current, ranges.contrast), 100));
 
   // Saturación
-  ui->horizontalSliderSaturacion->setValue(qBound(
-      0, mapOpenCVToSlider(ranges.saturation.current, ranges.saturation), 100));
+  ui->horizontalSliderSaturacion->setValue(qBound(0, mapOpenCVToSlider(ranges.saturation.current, ranges.saturation), 100));
 
   // Nitidez
-  ui->horizontalSliderNitidez->setValue(qBound(
-      0, mapOpenCVToSlider(ranges.sharpness.current, ranges.sharpness), 100));
+  ui->horizontalSliderNitidez->setValue(qBound(0, mapOpenCVToSlider(ranges.sharpness.current, ranges.sharpness), 100));
 
   // Exposición
-  ui->horizontalSliderExposicion->setValue(qBound(
-      0, mapOpenCVToSlider(ranges.exposure.current, ranges.exposure), 100));
+  ui->horizontalSliderExposicion->setValue(qBound(0, mapOpenCVToSlider(ranges.exposure.current, ranges.exposure), 100));
 
   // Foco
-  ui->horizontalSliderFoco->setValue(
-      qBound(0, mapOpenCVToSlider(ranges.focus.current, ranges.focus), 100));
+  ui->horizontalSliderFoco->setValue(qBound(0, mapOpenCVToSlider(ranges.focus.current, ranges.focus), 100));
 
   // Habilitar o deshabilitar controles según el soporte
   ui->checkBoxFocoAuto->setEnabled(m_support.autoFocus);
@@ -166,59 +156,66 @@ void VideoManagerDialog::on_rangesSupported(
   ui->horizontalSliderNitidez->setEnabled(m_support.sharpness);
   ui->checkBoxExposicionAuto->setEnabled(m_support.autoExposure);
 
-  ui->horizontalSliderFoco->setEnabled(m_support.focus &&
-                                       !ui->checkBoxFocoAuto->isChecked());
-  ui->horizontalSliderExposicion->setEnabled(
-      m_support.exposure && !ui->checkBoxExposicionAuto->isChecked());
+  ui->horizontalSliderFoco->setEnabled(m_support.focus && !ui->checkBoxFocoAuto->isChecked());
+  ui->horizontalSliderExposicion->setEnabled(m_support.exposure && !ui->checkBoxExposicionAuto->isChecked());
 }
 // nuevo slot)
-void VideoManagerDialog::on_propertiesSupported(
-    CameraPropertiesSupport support) {
+void VideoManagerDialog::on_propertiesSupported(CameraPropertiesSupport support)
+{
   m_support = support;
 }
 
 // Slots de Foco
-void VideoManagerDialog::on_checkBoxFocoAuto_toggled(bool checked) {
+void VideoManagerDialog::on_checkBoxFocoAuto_toggled(bool checked)
+{
   VideoCaptureHandler::instance().setAutoFocus(checked);
   ui->horizontalSliderFoco->setEnabled(m_support.focus && !checked);
 }
 
-void VideoManagerDialog::on_checkBoxExposicionAuto_toggled(bool checked) {
+void VideoManagerDialog::on_checkBoxExposicionAuto_toggled(bool checked)
+{
   VideoCaptureHandler::instance().setAutoExposure(checked);
   ui->horizontalSliderExposicion->setEnabled(m_support.exposure && !checked);
 }
 
-void VideoManagerDialog::on_horizontalSliderFoco_sliderMoved(int value) {
+void VideoManagerDialog::on_horizontalSliderFoco_sliderMoved(int value)
+{
   int openCVValue = mapSliderToOpenCV(value, m_ranges.focus);
   VideoCaptureHandler::instance().setFocus(openCVValue);
 }
 
-void VideoManagerDialog::on_horizontalSliderBrillo_sliderMoved(int value) {
+void VideoManagerDialog::on_horizontalSliderBrillo_sliderMoved(int value)
+{
   int openCVValue = mapSliderToOpenCV(value, m_ranges.brightness);
   VideoCaptureHandler::instance().setBrightness(openCVValue);
 }
 
-void VideoManagerDialog::on_horizontalSliderContraste_sliderMoved(int value) {
+void VideoManagerDialog::on_horizontalSliderContraste_sliderMoved(int value)
+{
   int openCVValue = mapSliderToOpenCV(value, m_ranges.contrast);
   VideoCaptureHandler::instance().setContrast(openCVValue);
 }
 
-void VideoManagerDialog::on_horizontalSliderSaturacion_sliderMoved(int value) {
+void VideoManagerDialog::on_horizontalSliderSaturacion_sliderMoved(int value)
+{
   int openCVValue = mapSliderToOpenCV(value, m_ranges.saturation);
   VideoCaptureHandler::instance().setSaturation(openCVValue);
 }
 
-void VideoManagerDialog::on_horizontalSliderNitidez_sliderMoved(int value) {
+void VideoManagerDialog::on_horizontalSliderNitidez_sliderMoved(int value)
+{
   int openCVValue = mapSliderToOpenCV(value, m_ranges.sharpness);
   VideoCaptureHandler::instance().setSharpness(openCVValue);
 }
 
-void VideoManagerDialog::on_horizontalSliderExposicion_sliderMoved(int value) {
+void VideoManagerDialog::on_horizontalSliderExposicion_sliderMoved(int value)
+{
   int openCVValue = mapSliderToOpenCV(value, m_ranges.exposure);
   VideoCaptureHandler::instance().setExposure(openCVValue);
 }
 
-void VideoManagerDialog::setAllControlsEnabled(bool enabled) {
+void VideoManagerDialog::setAllControlsEnabled(bool enabled)
+{
   ui->checkBoxFocoAuto->setEnabled(enabled);
   ui->horizontalSliderFoco->setEnabled(enabled);
   ui->horizontalSliderBrillo->setEnabled(enabled);
@@ -234,23 +231,24 @@ void VideoManagerDialog::setAllControlsEnabled(bool enabled) {
   }
 }
 
-void VideoManagerDialog::updateVideoLabel() {
+void VideoManagerDialog::updateVideoLabel()
+{
   if (m_currentPixmap.isNull()) {
     return;
   }
-  ui->videoLabel->setPixmap(m_currentPixmap.scaled(
-      ui->videoLabel->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
+  ui->videoLabel->setPixmap(m_currentPixmap.scaled(ui->videoLabel->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
 }
 
-QSize VideoManagerDialog::parseResolution(const QString &text) {
+QSize VideoManagerDialog::parseResolution(const QString& text)
+{
   if (text == "Default") {
     return QSize(0, 0);
   }
   QStringList parts = text.split('x');
   if (parts.size() == 2) {
     bool ok1, ok2;
-    int w = parts[0].toInt(&ok1);
-    int h = parts[1].toInt(&ok2);
+    int  w = parts[0].toInt(&ok1);
+    int  h = parts[1].toInt(&ok2);
     if (ok1 && ok2) {
       return QSize(w, h);
     }
@@ -258,8 +256,8 @@ QSize VideoManagerDialog::parseResolution(const QString &text) {
   return QSize(0, 0);
 }
 
-int VideoManagerDialog::mapSliderToOpenCV(int sliderValue,
-                                          const PropertyRange &range) {
+int VideoManagerDialog::mapSliderToOpenCV(int sliderValue, const PropertyRange& range)
+{
   // Escala de [0, 100] (slider) a [range.min, range.max] (OpenCV)
   double outputRange = range.max - range.min;
   double scaleFactor = outputRange / 100.0;
@@ -268,12 +266,11 @@ int VideoManagerDialog::mapSliderToOpenCV(int sliderValue,
   double mappedValue = (sliderValue * scaleFactor) + range.min;
 
   // Asegurar que el valor se mantiene dentro del rango de OpenCV
-  return qBound(static_cast<int>(range.min), static_cast<int>(mappedValue),
-                static_cast<int>(range.max));
+  return qBound(static_cast<int>(range.min), static_cast<int>(mappedValue), static_cast<int>(range.max));
 }
 
-int VideoManagerDialog::mapOpenCVToSlider(double openCVValue,
-                                          const PropertyRange &range) {
+int VideoManagerDialog::mapOpenCVToSlider(double openCVValue, const PropertyRange& range)
+{
   // Escala de [range.min, range.max] (OpenCV) a [0, 100] (slider)
   double inputValue = openCVValue - range.min;
   double inputRange = range.max - range.min;

@@ -15,16 +15,18 @@
 #include <QVideoSink>
 
 QT_BEGIN_NAMESPACE
-namespace Ui {
+namespace Ui
+{
 class MainWindow;
 }
 QT_END_NAMESPACE
 
-class MainWindow : public QMainWindow {
+class MainWindow : public QMainWindow
+{
   Q_OBJECT
 
 public:
-  MainWindow(QWidget *parent = nullptr);
+  MainWindow(QWidget* parent = nullptr);
   ~MainWindow();
 
 private slots:
@@ -40,38 +42,39 @@ private slots:
   void onEfectorPositionChanged(double x, double y, double z);
 
   // Serial Monitor
-  void onSerialError(const QString &error);
+  void onSerialError(const QString& error);
   void onSerialStatusChanged(bool connected);
-  void onSetupConnectionError(const QString &error);
-  void onSerialMonitorWarning(const QString &warning);
-  void onDataReceived(const QByteArray &data);
+  void onSetupConnectionError(const QString& error);
+  void onSerialMonitorWarning(const QString& warning);
+  void onDataReceived(const QByteArray& data);
 
   // Robot Control
-  void onRobotControlError(const QString &error);
+  void onRobotControlError(const QString& error);
   void onRobotMotorAngleChanged(int motorIndex, int angle);
   void onAllMotorsReset();
   void onRobotMotorAngleUpdatedFromSerial(int motorIndex, int angle);
 
   // Video Capture
-  void onVideoCapture(const QImage &image);
+  void onVideoCapture(const QImage& image);
   void onCameraStarted();
   void onCameraStopped();
-  void onCameraError(const QString &error);
+  void onCameraError(const QString& error);
+  void onCameraInfoChanged(const CameraInfo& info);
   void on_pushButtonCaptureImage_clicked();
 
   // Calibration
   void onCalibrateButtonClicked();
 
 private:
-  Ui::MainWindow *ui;
-  SerialMonitorDialog *m_SerialMonitorDialog = nullptr;
-  RobotControlDialog *m_RobotControl = nullptr;
-  VideoManagerDialog *m_VideoManagerDialog = nullptr;
-  RobotHandler *m_RobotHandler = nullptr;
-  CalibrationHandler *calibrationHandler;
-  QImage m_lastCapturedFrame;
+  Ui::MainWindow*      ui;
+  SerialMonitorDialog* m_SerialMonitorDialog = nullptr;
+  RobotControlDialog*  m_RobotControl        = nullptr;
+  VideoManagerDialog*  m_VideoManagerDialog  = nullptr;
+  RobotHandler*        m_RobotHandler        = nullptr;
+  CalibrationHandler*  calibrationHandler;
+  QImage               m_lastCapturedFrame;
 
-  QSettings m_settings;
+  QSettings                  m_settings;
   RobotConfig::RobotSettings m_robotSettings;
 
   void setupConnections();

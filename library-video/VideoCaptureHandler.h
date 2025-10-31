@@ -17,26 +17,29 @@
 
 #define NULL_CAMERA -1
 
-struct CameraPropertiesSupport {
-  bool autoFocus = false;
-  bool focus = true;
+struct CameraPropertiesSupport
+{
+  bool autoFocus    = false;
+  bool focus        = true;
   bool autoExposure = false;
-  bool exposure = false;
-  bool brightness = false;
-  bool contrast = false;
-  bool saturation = false;
-  bool sharpness = false;
+  bool exposure     = false;
+  bool brightness   = false;
+  bool contrast     = false;
+  bool saturation   = false;
+  bool sharpness    = false;
 };
 Q_DECLARE_METATYPE(CameraPropertiesSupport)
 
-// --- NUEVO: Estructuras para rangos dinámicos de propiedades ---
-struct PropertyRange {
-  double min = 0;
-  double max = 255;
-  double current = 0; // Valor actual o por defecto
+struct PropertyRange
+{
+  double min     = 0;
+  double max     = 255;
+  double current = 0;
 };
+Q_DECLARE_METATYPE(PropertyRange)
 
-struct CameraPropertyRanges {
+struct CameraPropertyRanges
+{
   PropertyRange brightness;
   PropertyRange contrast;
   PropertyRange saturation;
@@ -45,19 +48,34 @@ struct CameraPropertyRanges {
   PropertyRange exposure;
 };
 Q_DECLARE_METATYPE(CameraPropertyRanges)
-// --- FIN NUEVO ---
 
-class VideoCaptureHandler : public QThread {
+struct CameraInfo
+{
+  std::string name           = "";
+  bool        isFocusAuto    = true;
+  bool        isExposureAuto = true;
+  int         width          = -1;
+  int         height         = -1;
+  int         brightness     = -1;
+  int         contrast       = -1;
+  int         saturation     = -1;
+  int         sharpness      = -1;
+  int         focus          = -1;
+  int         exposure       = -1;
+};
+Q_DECLARE_METATYPE(CameraInfo)
+
+class VideoCaptureHandler : public QThread
+{
   Q_OBJECT
 public:
-  // --- MODIFICADO: FUNCIÓN ESTÁTICA PARA SINGLETON ---
-  static VideoCaptureHandler &instance();
-  // --- FIN MODIFICADO ---
+  static VideoCaptureHandler& instance();
 
   ~VideoCaptureHandler();
 
-  void requestCameraChange(int cameraId, const QSize &resolution);
+  void requestCameraChange(int cameraId, const QSize& resolution);
 
+  void setCameraName(const std::string& name);
   void setAutoFocus(bool manual);
   void setAutoExposure(bool manual);
   void setBrightness(int value);
@@ -67,29 +85,28 @@ public:
   void setFocus(int value);
   void setExposure(int value);
 
-  // --- NUEVO: FUNCIONES PARA VER ESTADO ---
   bool isCameraRunning() const;
-  // --- FIN NUEVO ---
 
 signals:
-  void newPixmapCaptured(const QPixmap &pixmap);
+  void newPixmapCaptured(const QPixmap& pixmap);
   void propertiesSupported(CameraPropertiesSupport support);
+  void cameraInfoChanged(const CameraInfo& values);
   void rangesSupported(CameraPropertyRanges ranges);
-  void cameraOpenFailed(int cameraId, const QString &errorMsg);
+  void cameraOpenFailed(int cameraId, const QString& errorMsg);
 
 protected:
   void run() override;
 
 private:
-  // --- MODIFICADO: Constructor privado para Singleton ---
-  explicit VideoCaptureHandler(QObject *parent = nullptr);
-  // --- FIN MODIFICADO ---
+  explicit VideoCaptureHandler(QObject* parent = nullptr);
 
-  QPixmap m_pixmap;
-  cv::Mat m_frame;
+  QPixmap          m_pixmap;
+  cv::Mat          m_frame;
   cv::VideoCapture m_VideoCapture;
 
   int m_currentCameraId{ID_CAMERA_DEFAULT};
+
+  CameraInfo m_cameraInfo;
 
   std::atomic<int> m_requestedCamera{NO_OP_CAMERA};
   std::atomic<int> m_requestedWidth{0};
@@ -104,8 +121,8 @@ private:
   std::atomic<int> m_requestedSaturation{STOP_CAMERA};
   std::atomic<int> m_requestedSharpness{STOP_CAMERA};
 
-  QImage cvMatToQImage(const cv::Mat &inMat);
-  QPixmap cvMatToQPixmap(const cv::Mat &inMat);
+  QImage  cvMatToQImage(const cv::Mat& inMat);
+  QPixmap cvMatToQPixmap(const cv::Mat& inMat);
 
   PropertyRange getPropertyRange(int propId);
 };

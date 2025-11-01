@@ -596,6 +596,8 @@
     </property>
     <addaction name="actionConnectVideo"/>
     <addaction name="actionDisconnectVideo"/>
+    <addaction name="separator"/>
+    <addaction name="actionCalibrationVideo"/>
    </widget>
    <widget class="QMenu" name="menuConnect">
     <property name="title">
@@ -662,6 +664,11 @@
   <action name="actionDisconnectVideo">
    <property name="text">
     <string>Disconnect</string>
+   </property>
+  </action>
+  <action name="actionCalibrationVideo">
+   <property name="text">
+    <string>Calibration</string>
    </property>
   </action>
  </widget>

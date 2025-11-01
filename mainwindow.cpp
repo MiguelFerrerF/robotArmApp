@@ -170,6 +170,17 @@ void MainWindow::on_actionDisconnectVideo_triggered()
   ui->labelCamera->clear();
 }
 
+void MainWindow::on_actionCalibrationVideo_triggered()
+{
+  if (!m_VideoCalibrationDialog) {
+    m_VideoCalibrationDialog = new VideoCalibrationDialog(this);
+  }
+
+  m_VideoCalibrationDialog->show();
+  m_VideoCalibrationDialog->raise();
+  m_VideoCalibrationDialog->activateWindow();
+}
+
 void MainWindow::connectVideoSignals()
 {
   VideoCaptureHandler& handler = VideoCaptureHandler::instance();

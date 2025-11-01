@@ -6,6 +6,7 @@
 #include "library-robot/RobotControlDialog.h"
 #include "library-robot/RobotHandler.h"
 #include "library-serial/SerialMonitorDialog.h"
+#include "library-video/VideoCalibrationDialog.h"
 #include "library-video/VideoManagerDialog.h"
 #include <QImage>
 #include <QMainWindow>
@@ -37,6 +38,7 @@ private slots:
   void on_actionDisconnectSerial_triggered();
   void on_actionConnectVideo_triggered();
   void on_actionDisconnectVideo_triggered();
+  void on_actionCalibrationVideo_triggered();
   void on_actionControlRobot_triggered();
   void on_actionCalibrateRobot_triggered();
   void onEfectorPositionChanged(double x, double y, double z);
@@ -66,13 +68,14 @@ private slots:
   void onCalibrateButtonClicked();
 
 private:
-  Ui::MainWindow*      ui;
-  SerialMonitorDialog* m_SerialMonitorDialog = nullptr;
-  RobotControlDialog*  m_RobotControl        = nullptr;
-  VideoManagerDialog*  m_VideoManagerDialog  = nullptr;
-  RobotHandler*        m_RobotHandler        = nullptr;
-  CalibrationHandler*  calibrationHandler;
-  QImage               m_lastCapturedFrame;
+  Ui::MainWindow*         ui;
+  SerialMonitorDialog*    m_SerialMonitorDialog    = nullptr;
+  RobotControlDialog*     m_RobotControl           = nullptr;
+  VideoManagerDialog*     m_VideoManagerDialog     = nullptr;
+  VideoCalibrationDialog* m_VideoCalibrationDialog = nullptr;
+  RobotHandler*           m_RobotHandler           = nullptr;
+  CalibrationHandler*     calibrationHandler;
+  QImage                  m_lastCapturedFrame;
 
   QSettings                  m_settings;
   RobotConfig::RobotSettings m_robotSettings;

@@ -6,6 +6,8 @@ VideoCalibrationDialog::VideoCalibrationDialog(QWidget* parent) : QDialog(parent
   ui->setupUi(this);
   this->setWindowTitle("Camera Calibration");
 
+  this->setWindowFlags(this->windowFlags() | Qt::WindowMinimizeButtonHint | Qt::WindowMaximizeButtonHint);
+
   VideoCaptureHandler& handler = VideoCaptureHandler::instance();
 
   // Conexión para recibir nuevos pixmaps capturados (Temporal mientras el

@@ -10,6 +10,8 @@ VideoManagerDialog::VideoManagerDialog(QWidget* parent) : QDialog(parent), ui(ne
   ui->setupUi(this);
   this->setWindowTitle("Camera Manager");
 
+  this->setWindowFlags(this->windowFlags() | Qt::WindowMinimizeButtonHint | Qt::WindowMaximizeButtonHint);
+
   VideoCaptureHandler& handler = VideoCaptureHandler::instance();
 
   // Conexión para recibir nuevos pixmaps capturados (Temporal mientras el

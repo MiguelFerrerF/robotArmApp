@@ -54,9 +54,9 @@ set(PROJECT_SOURCES
     library-video/VideoManagerDialog.cpp
     library-video/VideoManagerDialog.h
     library-video/VideoManagerDialog.ui
-
-    library-calibration/CalibrationHandler.h
-    library-calibration/CalibrationHandler.cpp
+    library-video/VideoCalibrationDialog.cpp
+    library-video/VideoCalibrationDialog.h
+    library-video/VideoCalibrationDialog.ui
 )
 
 # --- Creación del ejecutable ---

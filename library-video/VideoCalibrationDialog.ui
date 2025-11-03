@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>698</width>
+    <width>653</width>
     <height>530</height>
    </rect>
   </property>
@@ -14,6 +14,26 @@
    <string>Video Manager Dialog</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
+   <item row="3" column="2" colspan="2">
+    <widget class="QPushButton" name="pushButtonSelectDirectory">
+     <property name="text">
+      <string>Select Directory</string>
+     </property>
+     <property name="autoDefault">
+      <bool>false</bool>
+     </property>
+    </widget>
+   </item>
+   <item row="3" column="5">
+    <widget class="QPushButton" name="pushButtonCaptureImage">
+     <property name="text">
+      <string>Captura Image</string>
+     </property>
+     <property name="autoDefault">
+      <bool>false</bool>
+     </property>
+    </widget>
+   </item>
    <item row="0" column="0" rowspan="4">
     <widget class="QGroupBox" name="groupBox">
      <property name="title">
@@ -46,41 +66,21 @@
      </layout>
     </widget>
    </item>
-   <item row="2" column="4">
-    <spacer name="verticalSpacer_2">
+   <item row="3" column="4">
+    <spacer name="horizontalSpacer_2">
      <property name="orientation">
-      <enum>Qt::Orientation::Vertical</enum>
+      <enum>Qt::Orientation::Horizontal</enum>
      </property>
      <property name="sizeType">
       <enum>QSizePolicy::Policy::Preferred</enum>
      </property>
      <property name="sizeHint" stdset="0">
       <size>
-       <width>20</width>
-       <height>170</height>
+       <width>235</width>
+       <height>20</height>
       </size>
      </property>
     </spacer>
-   </item>
-   <item row="1" column="2" colspan="4">
-    <widget class="QTextEdit" name="textEditInfo">
-     <property name="maximumSize">
-      <size>
-       <width>16777215</width>
-       <height>136</height>
-      </size>
-     </property>
-    </widget>
-   </item>
-   <item row="3" column="5">
-    <widget class="QPushButton" name="pushButtonCaptureImage">
-     <property name="text">
-      <string>Captura Image</string>
-     </property>
-     <property name="autoDefault">
-      <bool>false</bool>
-     </property>
-    </widget>
    </item>
    <item row="0" column="2" colspan="4">
     <widget class="QLabel" name="videoLabel">
@@ -102,6 +102,28 @@
      <property name="alignment">
       <set>Qt::AlignmentFlag::AlignCenter</set>
      </property>
+    </widget>
+   </item>
+   <item row="1" column="2" colspan="4">
+    <widget class="QGroupBox" name="groupBoxCalibrationdata">
+     <property name="title">
+      <string>Calibration Data</string>
+     </property>
+     <layout class="QGridLayout" name="gridLayout_2">
+      <item row="0" column="0">
+       <widget class="QTextEdit" name="textEditInfo">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>136</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+     </layout>
     </widget>
    </item>
    <item row="0" column="1" rowspan="4">
@@ -173,31 +195,21 @@
      </layout>
     </widget>
    </item>
-   <item row="3" column="4">
-    <spacer name="horizontalSpacer_2">
+   <item row="2" column="4">
+    <spacer name="verticalSpacer_2">
      <property name="orientation">
-      <enum>Qt::Orientation::Horizontal</enum>
+      <enum>Qt::Orientation::Vertical</enum>
      </property>
      <property name="sizeType">
       <enum>QSizePolicy::Policy::Preferred</enum>
      </property>
      <property name="sizeHint" stdset="0">
       <size>
-       <width>235</width>
-       <height>20</height>
+       <width>20</width>
+       <height>170</height>
       </size>
      </property>
     </spacer>
-   </item>
-   <item row="3" column="2" colspan="2">
-    <widget class="QPushButton" name="pushButtonSelectDirectory">
-     <property name="text">
-      <string>Select Directory</string>
-     </property>
-     <property name="autoDefault">
-      <bool>false</bool>
-     </property>
-    </widget>
    </item>
   </layout>
  </widget>

@@ -56,9 +56,6 @@ void VideoCalibrationDialog::updateVideoLabel()
   ui->videoLabel->setPixmap(m_currentPixmap.scaled(ui->videoLabel->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
 }
 
-// NUEVA FUNCIONALIDAD: Selección de Directorio y Gestión de Archivos
-// ----------------------------------------------------------------------
-
 /**
  * @brief Abre el diálogo de selección de carpeta y actualiza la lista de archivos.
  */
@@ -94,11 +91,11 @@ void VideoCalibrationDialog::on_pushButtonCaptureImage_clicked()
 
   // Generar un nombre de archivo único con la fecha y hora
   QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd_hhmmsszzz");
-  QString fileName  = QString("capture_%1.png").arg(timestamp);
+  QString fileName  = QString("capture_%1.tiff").arg(timestamp);
   QString filePath  = QDir(m_selectedDirectoryPath).filePath(fileName);
 
   // Guardar la imagen
-  if (m_currentPixmap.save(filePath, "PNG")) {
+  if (m_currentPixmap.save(filePath, "TIFF")) {
     // Éxito: Mostrar mensaje de confirmación
     ui->textEditInfo->append(tr("Captura guardada: %1").arg(fileName));
     // Actualizar la lista para incluir la nueva imagen
@@ -136,9 +133,10 @@ void VideoCalibrationDialog::updateFilesList()
   QDir directory(m_selectedDirectoryPath);
   // Filtrar solo archivos con ciertas extensiones (por ejemplo, imágenes)
   QStringList nameFilters;
-  nameFilters << "*.png"
+  nameFilters << "*.tiff"
               << "*.jpg"
-              << "*.jpeg";
+              << "*.jpeg"
+              << "*.png";
   QFileInfoList fileList = directory.entryInfoList(nameFilters, QDir::Files, QDir::Name);
 
   // 3. Agregar los nombres de los archivos como QLabels

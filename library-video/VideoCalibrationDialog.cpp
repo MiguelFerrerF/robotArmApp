@@ -3,8 +3,12 @@
 #include <QDateTime>   // ¡Necesario para nombrar los archivos de imagen!
 #include <QDir>        // ¡Necesario para listar los archivos!
 #include <QFileDialog> // ¡Necesario para el diálogo de selección de carpeta!
+#include <QGridLayout> // Para la nueva organización
+#include <QIcon>
+#include <QImage>
 #include <QLabel>      // ¡Necesario para mostrar los nombres de los archivos!
 #include <QMessageBox> // ¡Necesario para los mensajes de aviso!
+#include <QPixmap>
 #include <QVBoxLayout> // ¡Necesario para organizar la lista de archivos!
 
 VideoCalibrationDialog::VideoCalibrationDialog(QWidget* parent) : QDialog(parent), ui(new Ui::VideoCalibrationDialog)
@@ -90,7 +94,7 @@ void VideoCalibrationDialog::on_pushButtonCaptureImage_clicked()
   }
 
   // Generar un nombre de archivo único con la fecha y hora
-  QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd_hhmmsszzz");
+  QString timestamp = QDateTime::currentDateTime().toString("dd_hhmmss");
   QString fileName  = QString("capture_%1.tiff").arg(timestamp);
   QString filePath  = QDir(m_selectedDirectoryPath).filePath(fileName);
 
@@ -108,43 +112,98 @@ void VideoCalibrationDialog::on_pushButtonCaptureImage_clicked()
 }
 
 /**
- * @brief Lee el contenido de la carpeta seleccionada y lo muestra en scrollAreaFiles.
+ * @brief Lee el contenido de la carpeta seleccionada y lo muestra en scrollAreaFiles como miniaturas.
  */
 void VideoCalibrationDialog::updateFilesList()
 {
-  // 1. Limpiar la lista actual
   QWidget* contentWidget = ui->scrollAreaWidgetContents;
   QLayout* layout        = contentWidget->layout();
-  if (layout) {
-    QLayoutItem* item;
-    // Eliminar todos los widgets del layout
-    while ((item = layout->takeAt(0)) != nullptr) {
-      delete item->widget(); // Borrar el widget (QLabel)
-      delete item;           // Borrar el QLayoutItem
+
+  // Si el layout no existe o no es un QGridLayout, lo creamos/reemplazamos.
+  QGridLayout* gridLayout = qobject_cast<QGridLayout*>(layout);
+  if (!gridLayout) {
+    if (layout) {
+      // Si es un layout diferente, lo limpiamos antes de reemplazarlo
+      QLayoutItem* item;
+      while ((item = layout->takeAt(0)) != nullptr) {
+        delete item->widget();
+        delete item;
+      }
+      delete layout;
     }
+    gridLayout = new QGridLayout(contentWidget);
+    gridLayout->setAlignment(Qt::AlignLeft | Qt::AlignTop); // Alinear de izquierda a arriba
+    gridLayout->setSpacing(10);                             // Espacio entre miniaturas
   }
-  else {
-    // Esto no debería pasar si se inicializó correctamente en el constructor,
-    // pero es una comprobación de seguridad.
-    return;
+
+  // 1. Limpiar los widgets (miniaturas) actuales
+  QLayoutItem* item;
+  while ((item = gridLayout->takeAt(0)) != nullptr) {
+    delete item->widget(); // Borrar el widget contenedor de la miniatura
+    delete item;           // Borrar el QLayoutItem
   }
 
   // 2. Leer los archivos del directorio
-  QDir directory(m_selectedDirectoryPath);
-  // Filtrar solo archivos con ciertas extensiones (por ejemplo, imágenes)
+  QDir        directory(m_selectedDirectoryPath);
   QStringList nameFilters;
-  nameFilters << "*.tiff"
+  nameFilters << "*.png"
               << "*.jpg"
               << "*.jpeg"
-              << "*.png";
+              << "*.tiff";
   QFileInfoList fileList = directory.entryInfoList(nameFilters, QDir::Files, QDir::Name);
 
-  // 3. Agregar los nombres de los archivos como QLabels
+  // 3. Configuración para el diseño de cuadrícula
+  const int THUMBNAIL_WIDTH = 120;                                             // Ancho fijo para la miniatura y su widget
+  int       MAX_COLUMNS     = contentWidget->width() / (THUMBNAIL_WIDTH + 10); // Calcular dinámicamente el número de columnas
+  MAX_COLUMNS               = qMax(1, MAX_COLUMNS);                            // Asegurarse de que haya al menos una columna
+  int row                   = 0;
+  int col                   = 0;
+
+  // 4. Agregar las miniaturas y títulos
   for (const QFileInfo& fileInfo : fileList) {
-    QLabel* fileLabel = new QLabel(fileInfo.fileName());
-    layout->addWidget(fileLabel);
+    QString filePath = fileInfo.absoluteFilePath();
+
+    // a. Cargar imagen y generar miniatura
+    QPixmap originalPixmap(filePath);
+    if (originalPixmap.isNull()) {
+      // Si falla la carga, pasamos al siguiente archivo
+      continue;
+    }
+    QPixmap thumbnail = originalPixmap.scaled(THUMBNAIL_WIDTH, THUMBNAIL_WIDTH, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+
+    // b. Crear el widget contenedor para cada miniatura
+    QWidget*     itemWidget = new QWidget();
+    QVBoxLayout* itemLayout = new QVBoxLayout(itemWidget);
+    itemLayout->setAlignment(Qt::AlignCenter);
+    itemLayout->setContentsMargins(0, 0, 0, 0);
+
+    // c. QLabel para la miniatura
+    QLabel* imageLabel = new QLabel();
+    imageLabel->setPixmap(thumbnail);
+    imageLabel->setAlignment(Qt::AlignCenter);
+    imageLabel->setFixedSize(THUMBNAIL_WIDTH, THUMBNAIL_WIDTH); // Mantiene el tamaño para la consistencia
+
+    // d. QLabel para el nombre del archivo
+    QLabel* nameLabel = new QLabel(fileInfo.fileName());
+    nameLabel->setAlignment(Qt::AlignLeft | Qt::AlignTop);
+    nameLabel->setFixedWidth(THUMBNAIL_WIDTH); // Restringir el ancho
+    nameLabel->setWordWrap(true);              // Permitir que el nombre largo salte de línea
+
+    // e. Ensamblar el widget
+    itemLayout->addWidget(imageLabel);
+    itemLayout->addWidget(nameLabel);
+
+    // f. Agregar al QGridLayout
+    gridLayout->addWidget(itemWidget, row, col);
+
+    // g. Actualizar la posición de la cuadrícula
+    col++;
+    if (col >= MAX_COLUMNS) {
+      col = 0;
+      row++;
+    }
   }
 
-  // Asegurarse de que el layout se actualice
-  contentWidget->update();
+  // Asegurarse de que el QScrollArea actualice su contenido
+  contentWidget->adjustSize();
 }

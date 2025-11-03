@@ -86,6 +86,7 @@
         "xtree": "cpp",
         "xutility": "cpp",
         "qcameradevice": "cpp",
-        "qfiledialog": "cpp"
+        "qfiledialog": "cpp",
+        "qfileinfo": "cpp"
     }
 }

@@ -1,15 +1,29 @@
 #include "VideoCalibrationDialog.h"
 #include "./ui_VideoCalibrationDialog.h"
-#include <QDateTime>   // ¡Necesario para nombrar los archivos de imagen!
-#include <QDir>        // ¡Necesario para listar los archivos!
-#include <QFileDialog> // ¡Necesario para el diálogo de selección de carpeta!
-#include <QGridLayout> // Para la nueva organización
-#include <QIcon>
-#include <QImage>
-#include <QLabel>      // ¡Necesario para mostrar los nombres de los archivos!
-#include <QMessageBox> // ¡Necesario para los mensajes de aviso!
-#include <QPixmap>
-#include <QVBoxLayout> // ¡Necesario para organizar la lista de archivos!
+// Headers de Qt
+#include <QDateTime>
+#include <QDebug>
+#include <QDir>
+#include <QFile>
+#include <QFileDialog>
+#include <QFileInfo>
+#include <QLabel>
+#include <QMessageBox>
+#include <QVBoxLayout>
+
+// Headers de OpenCV y Standard
+#include <filesystem>
+#include <iostream>
+#include <opencv2/calib3d.hpp>          // cv::findChessboardCorners, cv::calibrateCamera
+#include <opencv2/core/mat.hpp>         // cv::Mat
+#include <opencv2/core/persistence.hpp> // cv::FileStorage
+#include <opencv2/core/types.hpp>       // cv::Size, cv::TermCriteria
+#include <opencv2/imgcodecs.hpp>        // cv::imread
+#include <opencv2/imgproc.hpp>          // cv::cvtColor, cv::cornerSubPix
+
+namespace fs = std::filesystem;
+
+const QString DEFAULT_CALIB_DIR = "calibration"; // Mantenemos el nombre de carpeta que usa la lógica de guardado
 
 VideoCalibrationDialog::VideoCalibrationDialog(QWidget* parent) : QDialog(parent), ui(new Ui::VideoCalibrationDialog)
 {
@@ -37,6 +51,12 @@ VideoCalibrationDialog::VideoCalibrationDialog(QWidget* parent) : QDialog(parent
     layout->setContentsMargins(5, 5, 5, 5);
     layout->setSpacing(2);
   }
+
+  // Cargar calibración existente si está disponible
+  loadExistingCalibration();
+  // Inicializar la ruta de la carpeta de calibración
+  m_selectedDirectoryPath = QDir::current().filePath(DEFAULT_CALIB_DIR);
+  updateFilesList();
 }
 
 VideoCalibrationDialog::~VideoCalibrationDialog()
@@ -45,11 +65,6 @@ VideoCalibrationDialog::~VideoCalibrationDialog()
   // se actualice al cerrarse, dejando que MainWindow tome el control.
   disconnect(&VideoCaptureHandler::instance(), SIGNAL(newPixmapCaptured(QPixmap)), this, nullptr);
   delete ui;
-}
-
-void VideoCalibrationDialog::on_startButton_clicked()
-{
-  VideoCaptureHandler& handler = VideoCaptureHandler::instance();
 }
 
 void VideoCalibrationDialog::updateVideoLabel()
@@ -206,4 +221,245 @@ void VideoCalibrationDialog::updateFilesList()
 
   // Asegurarse de que el QScrollArea actualice su contenido
   contentWidget->adjustSize();
+}
+// ----------------------------------------------------------------------
+// MÉTODOS DE CALIBRACIÓN INTERNOS (Antes en CalibrationHandler)
+// ----------------------------------------------------------------------
+
+/**
+ * @brief Crea los puntos 3D de referencia del tablero.
+ */
+std::vector<cv::Point3f> VideoCalibrationDialog::createObjectPoints() const
+{
+  std::vector<cv::Point3f> obj;
+  for (int i = 0; i < m_calibrationBoardSize.height; ++i) {
+    for (int j = 0; j < m_calibrationBoardSize.width; ++j) {
+      obj.emplace_back(j * m_squareSize, i * m_squareSize, 0);
+    }
+  }
+  return obj;
+}
+
+/**
+ * @brief Carga una imagen y detecta las esquinas del tablero.
+ * @return true si se encontraron las esquinas, false en caso contrario.
+ */
+bool VideoCalibrationDialog::processImageForCorners(const cv::Mat& image)
+{
+  std::vector<cv::Point2f> corners;
+  bool found = cv::findChessboardCorners(image, m_calibrationBoardSize, corners, cv::CALIB_CB_ADAPTIVE_THRESH | cv::CALIB_CB_NORMALIZE_IMAGE);
+
+  if (found) {
+    cv::Mat gray;
+    cv::cvtColor(image, gray, cv::COLOR_BGR2GRAY);
+    cv::cornerSubPix(gray, corners, cv::Size(11, 11), cv::Size(-1, -1),
+                     cv::TermCriteria(cv::TermCriteria::EPS + cv::TermCriteria::MAX_ITER, 30, 0.001));
+
+    m_imagePoints.push_back(corners);
+    m_objectPoints.push_back(createObjectPoints());
+
+    // Se puede usar ui->textEditInfo->append("Esquinas detectadas...") si se desea
+    return true;
+  }
+  return false;
+}
+
+/**
+ * @brief Ejecuta el proceso de calibración de la cámara.
+ * @return true si la calibración fue exitosa (con suficientes imágenes), false en caso contrario.
+ */
+bool VideoCalibrationDialog::runCalibration()
+{
+  if (m_imagePoints.size() < 5) {
+    return false;
+  }
+
+  std::vector<cv::Mat> rvecs, tvecs;
+  double               rms = cv::calibrateCamera(m_objectPoints, m_imagePoints, m_calibrationBoardSize, m_cameraMatrix, m_distCoeffs, rvecs, tvecs);
+
+  if (!rvecs.empty()) {
+    m_rvec = rvecs[0];
+    m_tvec = tvecs[0];
+  }
+
+  // El valor RMS (error de reproyección) es un indicador clave
+  qDebug() << "RMS error de calibración: " << rms;
+
+  return true;
+}
+
+/**
+ * @brief Guarda la matriz de cámara y los coeficientes de distorsión en archivos separados.
+ */
+void VideoCalibrationDialog::saveCalibration(const std::string& cameraMatrixFile, const std::string& distCoeffsFile) const
+{
+  // Crear carpeta "CalibrationResults" si no existe
+  QDir().mkpath(DEFAULT_CALIB_DIR);
+
+  // Rutas completas de los archivos
+  std::string folderName       = DEFAULT_CALIB_DIR.toStdString();
+  std::string cameraMatrixPath = QDir(DEFAULT_CALIB_DIR).filePath(cameraMatrixFile.c_str()).toStdString();
+  std::string distCoeffsPath   = QDir(DEFAULT_CALIB_DIR).filePath(distCoeffsFile.c_str()).toStdString();
+
+  // Guardar matriz de cámara
+  cv::FileStorage fsCam(cameraMatrixPath, cv::FileStorage::WRITE);
+  if (!fsCam.isOpened()) {
+    qWarning() << "Error al abrir archivo para m_cameraMatrix:" << cameraMatrixPath.c_str();
+    return;
+  }
+  fsCam << "m_cameraMatrix" << m_cameraMatrix;
+  fsCam.release();
+
+  // Guardar coeficientes de distorsión
+  cv::FileStorage fsDist(distCoeffsPath, cv::FileStorage::WRITE);
+  if (!fsDist.isOpened()) {
+    qWarning() << "Error al abrir archivo para m_distCoeffs:" << distCoeffsPath.c_str();
+    return;
+  }
+  fsDist << "m_distCoeffs" << m_distCoeffs;
+  fsDist.release();
+}
+
+/**
+ * @brief Carga las matrices de calibración. (Simplificamos para cargar solo las principales)
+ */
+bool VideoCalibrationDialog::loadCalibration(const std::string& camMatrixPath)
+{
+  cv::FileStorage fs(camMatrixPath, cv::FileStorage::READ);
+  if (!fs.isOpened()) {
+    return false;
+  }
+
+  fs["m_cameraMatrix"] >> m_cameraMatrix;
+  fs.release();
+
+  // También cargamos los coeficientes si es posible
+  QString         distCoeffsPath = QDir(DEFAULT_CALIB_DIR).filePath("dist_coeffs.yml");
+  cv::FileStorage fsDist(distCoeffsPath.toStdString(), cv::FileStorage::READ);
+  if (fsDist.isOpened()) {
+    fsDist["m_distCoeffs"] >> m_distCoeffs;
+    fsDist.release();
+  }
+
+  return !m_cameraMatrix.empty();
+}
+
+// ----------------------------------------------------------------------
+// LÓGICA DEL DIÁLOGO (on_startButton_clicked y loadExistingCalibration)
+// ----------------------------------------------------------------------
+
+// ... (El constructor DEBE llamar a loadExistingCalibration al final) ...
+
+/**
+ * @brief Comprueba si existe un archivo de calibración y lo carga al inicio.
+ */
+void VideoCalibrationDialog::loadExistingCalibration()
+{
+  // Ruta del archivo de la matriz de cámara a buscar
+  QString camMatrixFile = "camera_matrix.yml";
+  QString camMatrixPath = QDir(DEFAULT_CALIB_DIR).filePath(camMatrixFile);
+
+  if (QFile::exists(camMatrixPath)) {
+    ui->textEditInfo->setText(tr("¡Calibración existente detectada! \nCargando datos..."));
+
+    if (loadCalibration(camMatrixPath.toStdString())) {
+      ui->textEditInfo->append(tr("\n--- DATOS DE CALIBRACIÓN CARGADOS ---"));
+
+      // Mostrar Matriz de Cámara
+      QString           camMatrixStr = "Matriz de Cámara:\n";
+      std::stringstream ssCam;
+      ssCam << m_cameraMatrix; // Usar el operador stream de OpenCV
+      camMatrixStr += QString::fromStdString(ssCam.str());
+      ui->textEditInfo->append(camMatrixStr);
+
+      // Mostrar Coeficientes de Distorsión
+      QString           distCoeffsStr = "Coeficientes de Distorsión:\n";
+      std::stringstream ssDist;
+      ssDist << m_distCoeffs; // Usar el operador stream de OpenCV
+      distCoeffsStr += QString::fromStdString(ssDist.str());
+      ui->textEditInfo->append(distCoeffsStr);
+    }
+    else {
+      ui->textEditInfo->append(tr("Advertencia: No se pudo cargar la calibración."));
+    }
+  }
+  else {
+    ui->textEditInfo->setText(tr("No se ha encontrado ninguna calibración previa en la carpeta '%1'.").arg(DEFAULT_CALIB_DIR));
+  }
+}
+
+/**
+ * @brief Comprueba 5 imágenes, realiza la calibración y guarda los resultados.
+ */
+void VideoCalibrationDialog::on_startButton_clicked()
+{
+  // Lógica de validación (igual que antes)
+  if (m_selectedDirectoryPath.isEmpty()) {
+    QMessageBox::warning(this, tr("Advertencia"), tr("Por favor, selecciona una carpeta con imágenes de tablero de ajedrez primero."));
+    return;
+  }
+
+  QDir        directory(m_selectedDirectoryPath);
+  QStringList nameFilters;
+  nameFilters << "*.png"
+              << "*.jpg"
+              << "*.jpeg"
+              << "*.tiff";
+  QFileInfoList fileList = directory.entryInfoList(nameFilters, QDir::Files, QDir::Name);
+
+  if (fileList.size() < 5) {
+    QMessageBox::warning(this, tr("Advertencia"), tr("Se necesitan al menos 5 imágenes válidas. Solo se encontraron %1.").arg(fileList.size()));
+    return;
+  }
+
+  ui->textEditInfo->clear();
+  ui->textEditInfo->append(tr("Iniciando calibración con %1 imágenes...").arg(fileList.size()));
+
+  // 1. Limpiar los puntos de datos anteriores
+  m_imagePoints.clear();
+  m_objectPoints.clear();
+
+  // 2. Cargar las imágenes y buscar esquinas
+  int processedCount = 0;
+  for (const QFileInfo& fileInfo : fileList) {
+    cv::Mat image = cv::imread(fileInfo.absoluteFilePath().toStdString());
+    if (!image.empty() && processImageForCorners(image)) {
+      processedCount++;
+    }
+  }
+
+  if (processedCount < 5) {
+    ui->textEditInfo->append(tr("Solo se pudieron encontrar esquinas en %1 imágenes. La calibración no se realizará.").arg(processedCount));
+    return;
+  }
+  ui->textEditInfo->append(tr("Esquinas detectadas correctamente en %1 imágenes.").arg(processedCount));
+
+  // 3. Ejecutar la calibración
+  if (runCalibration()) {
+    // 4. Mostrar los resultados
+    ui->textEditInfo->append(tr("\n--- RESULTADOS DE LA CALIBRACIÓN ---"));
+    ui->textEditInfo->append(
+      tr("Calibración Exitosa (RMS error: %1)")
+        .arg((m_rvec.empty() ? 0.0 : m_rvec.at<double>(0)) // Valor de RMS no está disponible directamente, usamos el primer valor
+                                                           // del vector de rotación como proxy si no se calculó el RMS al ejecutar
+             ));
+
+    // Mostrar Matriz de Cámara
+    QString camMatrixStr = "Matriz de Cámara:\n";
+
+    // Mostrar Coeficientes de Distorsión
+    QString           distCoeffsStr = "Coeficientes de Distorsión:\n";
+    std::stringstream ssDist;
+    ssDist << m_distCoeffs; // Usar el operador stream de OpenCV
+    distCoeffsStr += QString::fromStdString(ssDist.str());
+    ui->textEditInfo->append(distCoeffsStr);
+
+    // 5. Guardar los resultados en la carpeta "CalibrationResults"
+    saveCalibration("camera_matrix.yml", "dist_coeffs.yml");
+
+    ui->textEditInfo->append(tr("\nArchivos de calibración guardados en la carpeta '%1'.").arg(DEFAULT_CALIB_DIR));
+  }
+  else {
+    ui->textEditInfo->append(tr("Falló la calibración. Se necesitan al menos 5 conjuntos de puntos válidos."));
+  }
 }

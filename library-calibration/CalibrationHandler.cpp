@@ -1,4 +1,4 @@
-#include "CalibrationHandler.h"
+ï»¿#include "CalibrationHandler.h"
 #include <iostream>
 #include <fstream>
 #include <filesystem> 
@@ -25,7 +25,9 @@ std::vector<cv::Point3f> CalibrationHandler::createObjectPoints() const {
 }
 
 void CalibrationHandler::addImage(const cv::Mat& image) {
-    std::vector<cv::Point2f> corners;
+  imageSize = image.size();
+  
+  std::vector<cv::Point2f> corners;
     bool found = cv::findChessboardCorners(image, boardSize, corners,
         cv::CALIB_CB_ADAPTIVE_THRESH | cv::CALIB_CB_NORMALIZE_IMAGE);
 
@@ -47,24 +49,24 @@ void CalibrationHandler::addImage(const cv::Mat& image) {
 
 bool CalibrationHandler::runCalibration() {
     if (imagePoints.size() < 5) {
-        std::cerr << "Error: se necesitan al menos 5 imágenes válidas para calibrar.\n";
+        std::cerr << "Error: se necesitan al menos 5 imÃ¡genes vÃ¡lidas para calibrar.\n";
         return false;
     }
 
     std::vector<cv::Mat> rvecs, tvecs;
-    double rms = cv::calibrateCamera(objectPoints, imagePoints, boardSize,
+    double rms = cv::calibrateCamera(objectPoints, imagePoints, imageSize,
         cameraMatrix, distCoeffs, rvecs, tvecs);
 
-    std::cout << "RMS error de calibración: " << rms << std::endl;
-    std::cout << "Matriz de cámara:\n" << cameraMatrix << std::endl;
-    std::cout << "Coeficientes de distorsión:\n" << distCoeffs << std::endl;
+    std::cout << "RMS error de calibraciÃ³n: " << rms << std::endl;
+    std::cout << "Matriz de cÃ¡mara:\n" << cameraMatrix << std::endl;
+    std::cout << "Coeficientes de distorsiÃ³n:\n" << distCoeffs << std::endl;
 
-    // Tomar la primera extrínseca como referencia
+    // Tomar la primera extrÃ­nseca como referencia
     if (!rvecs.empty()) {
         rvec = rvecs[0];
         tvec = tvecs[0];
-        std::cout << "Rotación:\n" << rvec << std::endl;
-        std::cout << "Traslación:\n" << tvec << std::endl;
+        std::cout << "RotaciÃ³n:\n" << rvec << std::endl;
+        std::cout << "TraslaciÃ³n:\n" << tvec << std::endl;
     }
 
     return true;
@@ -84,7 +86,7 @@ void CalibrationHandler::saveCalibration(const std::string& cameraMatrixFile,
     std::string cameraMatrixPath = folderName + "/" + cameraMatrixFile;
     std::string distCoeffsPath = folderName + "/" + distCoeffsFile;
 
-    // Guardar matriz de cámara
+    // Guardar matriz de cÃ¡mara
     cv::FileStorage fsCam(cameraMatrixPath, cv::FileStorage::WRITE);
     if (!fsCam.isOpened()) {
         std::cerr << "Error al abrir archivo para cameraMatrix: " << cameraMatrixPath << std::endl;
@@ -92,9 +94,9 @@ void CalibrationHandler::saveCalibration(const std::string& cameraMatrixFile,
     }
     fsCam << "cameraMatrix" << cameraMatrix;
     fsCam.release();
-    std::cout << "Matriz de cámara guardada en " << cameraMatrixPath << std::endl;
+    std::cout << "Matriz de cÃ¡mara guardada en " << cameraMatrixPath << std::endl;
 
-    // Guardar coeficientes de distorsión
+    // Guardar coeficientes de distorsiÃ³n
     cv::FileStorage fsDist(distCoeffsPath, cv::FileStorage::WRITE);
     if (!fsDist.isOpened()) {
         std::cerr << "Error al abrir archivo para distCoeffs: " << distCoeffsPath << std::endl;
@@ -102,14 +104,14 @@ void CalibrationHandler::saveCalibration(const std::string& cameraMatrixFile,
     }
     fsDist << "distCoeffs" << distCoeffs;
     fsDist.release();
-    std::cout << "Coeficientes de distorsión guardados en " << distCoeffsPath << std::endl;
+    std::cout << "Coeficientes de distorsiÃ³n guardados en " << distCoeffsPath << std::endl;
 }
 
 
 bool CalibrationHandler::loadCalibration(const std::string& filename) {
     cv::FileStorage fs(filename, cv::FileStorage::READ);
     if (!fs.isOpened()) {
-        std::cerr << "Error al abrir el archivo de calibración.\n";
+        std::cerr << "Error al abrir el archivo de calibraciÃ³n.\n";
         return false;
     }
 
@@ -118,6 +120,6 @@ bool CalibrationHandler::loadCalibration(const std::string& filename) {
     fs["rvec"] >> rvec;
     fs["tvec"] >> tvec;
     fs.release();
-    std::cout << "Calibración cargada desde " << filename << std::endl;
+    std::cout << "CalibraciÃ³n cargada desde " << filename << std::endl;
     return true;
 }

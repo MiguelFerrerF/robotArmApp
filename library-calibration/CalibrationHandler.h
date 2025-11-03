@@ -22,6 +22,7 @@ public:
 
 private:
     cv::Size boardSize;        // Tamaño del tablero (nº de esquinas interiores)
+    cv::Size imageSize;
     float squareSize;          // Tamaño real de cada cuadrado
     std::vector<std::vector<cv::Point2f>> imagePoints;
     std::vector<std::vector<cv::Point3f>> objectPoints;

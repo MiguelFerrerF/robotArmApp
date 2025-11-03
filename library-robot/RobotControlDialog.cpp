@@ -68,57 +68,53 @@ void RobotControlDialog::connectLineEditsToSliders() {
   }
 }
 
-void RobotControlDialog::setLineEditToSliderValue(int motorIndex, int value) {
-    if (!m_robotSettings) {
-        emit errorOccurred("Robot settings not initialized.");
-        return;
-    }
+void RobotControlDialog::setLineEditToSliderValue(int motorIndex, int value)
+{
+  if (!m_robotSettings) {
+    emit errorOccurred("Robot settings not initialized.");
+    return;
+  }
 
-    // Invertir dirección de motores 2 y 5
-    if (motorIndex == 2 || motorIndex == 5) {
-        value = 180 - value;  // Invertimos el sentido
-    }
+  // Guardamos el valor deseado tal como lo ve el usuario
+  if (m_robotSettings) {
+    m_robotSettings->motors[motorIndex - 1].desiredAngle = value;
+  }
 
-    switch (motorIndex) {
+  // Actualizamos el QLineEdit
+  switch (motorIndex) {
     case 1:
-        ui->lineEditMotor1->setText(QString::number(value));
-        if (!m_isAll)
-            emit motorAngleChanged(1, value);
-        break;
+      ui->lineEditMotor1->setText(QString::number(value));
+      break;
     case 2:
-        ui->lineEditMotor2->setText(QString::number(value));
-        if (!m_isAll)
-            emit motorAngleChanged(2, value);
-        break;
+      ui->lineEditMotor2->setText(QString::number(value));
+      break;
     case 3:
-        ui->lineEditMotor3->setText(QString::number(value));
-        if (!m_isAll)
-            emit motorAngleChanged(3, value);
-        break;
+      ui->lineEditMotor3->setText(QString::number(value));
+      break;
     case 4:
-        ui->lineEditMotor4->setText(QString::number(value));
-        if (!m_isAll)
-            emit motorAngleChanged(4, value);
-        break;
+      ui->lineEditMotor4->setText(QString::number(value));
+      break;
     case 5:
-        ui->lineEditMotor5->setText(QString::number(value));
-        if (!m_isAll)
-            emit motorAngleChanged(5, value);
-        break;
+      ui->lineEditMotor5->setText(QString::number(value));
+      break;
     case 6:
-        ui->lineEditMotor6->setText(QString::number(value));
-        if (!m_isAll)
-            emit motorAngleChanged(6, value);
-        break;
+      ui->lineEditMotor6->setText(QString::number(value));
+      break;
     default:
-        emit errorOccurred("Invalid motor index");
-        break;
-    }
+      emit errorOccurred("Invalid motor index");
+      return;
+  }
 
-    if (m_robotSettings) {
-        m_robotSettings->motors[motorIndex - 1].desiredAngle = value;
+  if (!m_isAll) {
+    // Invertimos la señal solo al enviar a los motores físicos 2 y 5
+    int motorValueToSend = value;
+    if (motorIndex == 2 || motorIndex == 5) {
+      motorValueToSend = 180 - value;
     }
+    emit motorAngleChanged(motorIndex, motorValueToSend);
+  }
 }
+
 
 void RobotControlDialog::on_pushButtonReset_clicked() {
   if (!m_robotSettings) {
@@ -126,37 +122,33 @@ void RobotControlDialog::on_pushButtonReset_clicked() {
     return;
   }
 
-  ui->horizontalSlider1->setValue(m_robotSettings->motors[0].defaultAngle-60);
-  ui->horizontalSlider2->setValue(m_robotSettings->motors[1].defaultAngle-13);
+  ui->horizontalSlider1->setValue(m_robotSettings->motors[0].defaultAngle);
+  ui->horizontalSlider2->setValue(m_robotSettings->motors[1].defaultAngle);
   ui->horizontalSlider3->setValue(m_robotSettings->motors[2].defaultAngle);
-  ui->horizontalSlider4->setValue(m_robotSettings->motors[3].defaultAngle+44);
-  ui->horizontalSlider5->setValue(m_robotSettings->motors[4].defaultAngle+21);
-  ui->horizontalSlider6->setValue(m_robotSettings->motors[5].defaultAngle-90);
+  ui->horizontalSlider4->setValue(m_robotSettings->motors[3].defaultAngle);
+  ui->horizontalSlider5->setValue(m_robotSettings->motors[4].defaultAngle);
+  ui->horizontalSlider6->setValue(m_robotSettings->motors[5].defaultAngle);
 
   emit allMotorsReset();
 }
 
-void RobotControlDialog::on_pushButtonSetup_clicked() {
+void RobotControlDialog::on_pushButtonSetup_clicked()
+{
   if (!m_robotSettings) {
     emit errorOccurred("Robot settings not initialized.");
     return;
   }
 
-  // Tomamos los valores de los sliders
-  int val1 = ui->horizontalSlider1->value();
-  int val2 = ui->horizontalSlider2->value();
-  int val3 = ui->horizontalSlider3->value();
-  int val4 = ui->horizontalSlider4->value();
-  int val5 = ui->horizontalSlider5->value();
-  int val6 = ui->horizontalSlider6->value();
+  int vals[6] = {ui->horizontalSlider1->value(), ui->horizontalSlider2->value(), ui->horizontalSlider3->value(),
+                 ui->horizontalSlider4->value(), ui->horizontalSlider5->value(), ui->horizontalSlider6->value()};
 
-  // Invertimos solo al enviar los motores 2 y 5
-  emit motorAngleChanged(1, val1);
-  emit motorAngleChanged(2, 180 - val2);
-  emit motorAngleChanged(3, val3);
-  emit motorAngleChanged(4, val4);
-  emit motorAngleChanged(5, 180 - val5);
-  emit motorAngleChanged(6, val6);
+  for (int i = 0; i < 6; ++i) {
+    int valToSend = vals[i];
+    if (i == 1 || i == 4) { // Motores 2 y 5 (índice 1 y 4)
+      valToSend = 180 - valToSend;
+    }
+    emit motorAngleChanged(i + 1, valToSend);
+  }
 }
 
 void RobotControlDialog::on_pushButtonAllSingle_clicked() {

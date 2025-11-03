@@ -6,6 +6,7 @@
 #include <QPixmap>
 #include <QResizeEvent>
 #include <QSize>
+#include <QString>
 
 namespace Ui
 {
@@ -22,12 +23,16 @@ public:
 
 private slots:
   void on_startButton_clicked();
+  void on_pushButtonSelectDirectory_clicked();
+  void on_pushButtonCaptureImage_clicked();
 
 private:
   Ui::VideoCalibrationDialog* ui;
 
   QPixmap m_currentPixmap;
+  QString m_selectedDirectoryPath;
 
   void updateVideoLabel();
+  void updateFilesList();
 };
 #endif // VIDEOCALIBRATIONDIALOG_H

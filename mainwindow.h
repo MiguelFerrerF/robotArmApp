@@ -1,7 +1,6 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
-#include "library-calibration/CalibrationHandler.h"
 #include "library-log/LogHandler.h"
 #include "library-robot/RobotControlDialog.h"
 #include "library-robot/RobotHandler.h"
@@ -64,9 +63,6 @@ private slots:
   void onCameraInfoChanged(const CameraInfo& info);
   void on_pushButtonCaptureImage_clicked();
 
-  // Calibration
-  void onCalibrateButtonClicked();
-
 private:
   Ui::MainWindow*         ui;
   SerialMonitorDialog*    m_SerialMonitorDialog    = nullptr;
@@ -74,7 +70,6 @@ private:
   VideoManagerDialog*     m_VideoManagerDialog     = nullptr;
   VideoCalibrationDialog* m_VideoCalibrationDialog = nullptr;
   RobotHandler*           m_RobotHandler           = nullptr;
-  CalibrationHandler*     calibrationHandler;
   QImage                  m_lastCapturedFrame;
 
   QSettings                  m_settings;

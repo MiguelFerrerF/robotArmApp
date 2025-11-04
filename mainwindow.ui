@@ -61,6 +61,9 @@
          <property name="enabled">
           <bool>false</bool>
          </property>
+         <property name="readOnly">
+          <bool>true</bool>
+         </property>
         </widget>
        </item>
        <item row="1" column="0">
@@ -68,8 +71,8 @@
          <property name="enabled">
           <bool>false</bool>
          </property>
-         <property name="focusPolicy">
-          <enum>Qt::FocusPolicy::NoFocus</enum>
+         <property name="readOnly">
+          <bool>true</bool>
          </property>
         </widget>
        </item>
@@ -106,6 +109,9 @@
          <property name="enabled">
           <bool>false</bool>
          </property>
+         <property name="readOnly">
+          <bool>true</bool>
+         </property>
         </widget>
        </item>
        <item row="8" column="0">
@@ -125,17 +131,13 @@
          </property>
         </widget>
        </item>
-       <item row="1" column="1">
-        <widget class="QPushButton" name="pushButtonCaptureImage">
-         <property name="text">
-          <string>Capture Image</string>
-         </property>
-        </widget>
-       </item>
        <item row="6" column="1">
         <widget class="QLineEdit" name="lineEditSharpness">
          <property name="enabled">
           <bool>false</bool>
+         </property>
+         <property name="readOnly">
+          <bool>true</bool>
          </property>
         </widget>
        </item>
@@ -144,12 +146,18 @@
          <property name="enabled">
           <bool>false</bool>
          </property>
+         <property name="readOnly">
+          <bool>true</bool>
+         </property>
         </widget>
        </item>
        <item row="4" column="1">
         <widget class="QLineEdit" name="lineEditContrast">
          <property name="enabled">
           <bool>false</bool>
+         </property>
+         <property name="readOnly">
+          <bool>true</bool>
          </property>
         </widget>
        </item>
@@ -174,12 +182,18 @@
          <property name="enabled">
           <bool>false</bool>
          </property>
+         <property name="readOnly">
+          <bool>true</bool>
+         </property>
         </widget>
        </item>
        <item row="2" column="1">
         <widget class="QLineEdit" name="lineEditResolution">
          <property name="enabled">
           <bool>false</bool>
+         </property>
+         <property name="readOnly">
+          <bool>true</bool>
          </property>
         </widget>
        </item>
@@ -206,7 +220,14 @@
       </property>
       <layout class="QGridLayout" name="gridLayout_5">
        <item row="0" column="0">
-        <widget class="QTextEdit" name="textEditLog"/>
+        <widget class="QTextEdit" name="textEditLog">
+         <property name="enabled">
+          <bool>true</bool>
+         </property>
+         <property name="readOnly">
+          <bool>true</bool>
+         </property>
+        </widget>
        </item>
       </layout>
      </widget>
@@ -225,7 +246,7 @@
      </spacer>
     </item>
     <item row="3" column="1">
-     <widget class="QPushButton" name="calibrateButton">
+     <widget class="QPushButton" name="startButton">
       <property name="minimumSize">
        <size>
         <width>150</width>
@@ -239,7 +260,7 @@
        </size>
       </property>
       <property name="text">
-       <string>Calibrate</string>
+       <string>Start</string>
       </property>
      </widget>
     </item>

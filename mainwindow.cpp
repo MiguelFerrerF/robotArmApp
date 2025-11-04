@@ -17,12 +17,6 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
 
   setupConnections();
   connectVideoSignals();
-
-  // Inicializamos el CalibrationHandler con el tablero 9x6 y cuadrados de 10mm
-  calibrationHandler = new CalibrationHandler(cv::Size(9, 6), 10.0f);
-
-  // Conectar el boton al slot
-  connect(ui->calibrateButton, &QPushButton::clicked, this, &MainWindow::onCalibrateButtonClicked);
 }
 
 MainWindow::~MainWindow()
@@ -32,51 +26,7 @@ MainWindow::~MainWindow()
   delete m_SerialMonitorDialog;
   delete m_RobotControl;
   delete m_VideoManagerDialog;
-  delete calibrationHandler;
   delete ui;
-}
-
-void MainWindow::onCalibrateButtonClicked()
-{
-  QString folderPath = QDir::currentPath() + "/images/calibration"; // Carpeta con im�genes de calibraci�n
-  QDir    dir(folderPath);
-
-  if (!dir.exists()) {
-    qDebug() << "La carpeta de imagenes no existe:" << folderPath;
-    return;
-  }
-
-  QStringList filters;
-  filters << "*.jpg"
-          << "*.png"
-          << "*.tif";
-  QFileInfoList fileList = dir.entryInfoList(filters, QDir::Files);
-
-  if (fileList.isEmpty()) {
-    qDebug() << "No se encontraron im�genes en" << folderPath;
-    return;
-  }
-
-  // A�adir todas las im�genes al CalibrationHandler
-  for (const QFileInfo& fileInfo : fileList) {
-    cv::Mat image = cv::imread(fileInfo.absoluteFilePath().toStdString());
-    if (!image.empty()) {
-      calibrationHandler->addImage(image);
-    }
-    else {
-      qDebug() << "No se pudo leer la imagen:" << fileInfo.fileName();
-    }
-  }
-
-  // Ejecutar calibraci�n
-  if (calibrationHandler->runCalibration()) {
-    // Guardar resultados
-    calibrationHandler->saveCalibration("cameraMatrix.yml", "distCoeffs.yml");
-    qDebug() << "Calibraci�n completada y guardada correctamente.";
-  }
-  else {
-    qDebug() << "Calibraci�n fallida.";
-  }
 }
 
 void MainWindow::setupConnections()

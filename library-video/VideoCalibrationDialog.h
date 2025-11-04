@@ -7,17 +7,60 @@
 #include <QResizeEvent>
 #include <QSize>
 #include <QString>
+#include <QThread>
 #include <opencv2/opencv.hpp>
 
-namespace Ui {
+namespace Ui
+{
 class VideoCalibrationDialog;
 }
 
-class VideoCalibrationDialog : public QDialog {
+struct CalibrationResult
+{
+  double  rms = -1.0;
+  cv::Mat cameraMatrix;
+  cv::Mat distCoeffs;
+  int     processedCount = 0;
+};
+Q_DECLARE_METATYPE(CalibrationResult)
+
+// Esta clase contiene la lógica de calibración que se ejecutará en segundo plano
+class CalibrationWorker : public QObject
+{
+  Q_OBJECT
+public:
+  CalibrationWorker(QObject* parent = nullptr) : QObject(parent)
+  {
+    qRegisterMetaType<CalibrationResult>();
+  }
+
+public slots:
+  // Slot que será llamado por el hilo principal para iniciar la tarea
+  void doCalibration(const QString& directoryPath, cv::Size boardSize, float squareSize);
+
+signals:
+  // Señales para enviar resultados al hilo principal (VideoCalibrationDialog)
+  void calibrationFinished(const CalibrationResult& result);
+  void calibrationError(const QString& message);
+  void progressUpdate(const QString& message); // Para mostrar el progreso
+
+private:
+  // Métodos de calibración movidos del VideoCalibrationDialog
+  std::vector<cv::Point3f> createObjectPoints(cv::Size boardSize, float squareSize) const;
+  bool processImageForCorners(const cv::Mat& image, cv::Size boardSize, float squareSize, std::vector<std::vector<cv::Point2f>>& imagePoints,
+                              std::vector<std::vector<cv::Point3f>>& objectPoints);
+  bool runCalibration(cv::Size boardSize, std::vector<std::vector<cv::Point2f>>& imagePoints, std::vector<std::vector<cv::Point3f>>& objectPoints,
+                      CalibrationResult& result);
+  void saveCalibration(const std::string& cameraMatrixFile, const std::string& distCoeffsFile, const cv::Mat& cameraMatrix,
+                       const cv::Mat& distCoeffs) const;
+};
+
+class VideoCalibrationDialog : public QDialog
+{
   Q_OBJECT
 
 public:
-  VideoCalibrationDialog(QWidget *parent = nullptr);
+  VideoCalibrationDialog(QWidget* parent = nullptr);
   ~VideoCalibrationDialog();
 
 private slots:
@@ -25,33 +68,32 @@ private slots:
   void on_pushButtonSelectDirectory_clicked();
   void on_pushButtonCaptureImage_clicked();
 
+  // Nuevos slots para recibir la respuesta del Worker
+  void on_calibrationFinished(const CalibrationResult& result);
+  void on_calibrationError(const QString& message);
+  void on_progressUpdate(const QString& message);
+
 private:
-  Ui::VideoCalibrationDialog *ui;
+  Ui::VideoCalibrationDialog* ui;
 
   QPixmap m_currentPixmap;
   QString m_selectedDirectoryPath;
 
-  cv::Size m_calibrationBoardSize = cv::Size(
-      9, 6); // Tamaño del tablero de ajedrez (número de esquinas interiores)
-  float m_squareSize = 10.0f; // Tamaño real de cada cuadrado en mm
-  std::vector<std::vector<cv::Point2f>>
-      m_imagePoints; // Puntos 2D detectados en las imágenes
-  std::vector<std::vector<cv::Point3f>>
-      m_objectPoints; // Puntos 3D correspondientes en el espacio del mundo
+  cv::Size m_calibrationBoardSize = cv::Size(9, 6); // Tamaño del tablero de ajedrez (número de esquinas interiores)
+  float    m_squareSize           = 10.0f;          // Tamaño real de cada cuadrado en mm
 
   cv::Mat m_cameraMatrix; // Matriz de cámara
   cv::Mat m_distCoeffs;   // Coeficientes de distorsión
-  cv::Mat m_rvec, m_tvec; // Vectores de rotación y traslación
+
+  // Miembros para gestionar el hilo de trabajo
+  QThread*           m_workerThread = nullptr;
+  CalibrationWorker* m_worker       = nullptr;
 
   void updateVideoLabel();
   void updateFilesList();
+  void displayCalibrationResults(const cv::Mat& cameraMatrix, const cv::Mat& distCoeffs, double rms);
 
-  std::vector<cv::Point3f> createObjectPoints() const;
-  bool processImageForCorners(const cv::Mat &image);
-  bool runCalibration();
-  void saveCalibration(const std::string &cameraMatrixFile,
-                       const std::string &distCoeffsFile) const;
-  bool loadCalibration(const std::string &filename);
+  bool loadCalibration(const std::string& filename);
   void loadExistingCalibration();
 };
 #endif // VIDEOCALIBRATIONDIALOG_H

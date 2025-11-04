@@ -6,33 +6,29 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>653</width>
-    <height>530</height>
+    <width>687</width>
+    <height>543</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Video Manager Dialog</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="3" column="2" colspan="2">
-    <widget class="QPushButton" name="pushButtonSelectDirectory">
-     <property name="text">
-      <string>Select Directory</string>
+   <item row="3" column="4">
+    <spacer name="horizontalSpacer_2">
+     <property name="orientation">
+      <enum>Qt::Orientation::Horizontal</enum>
      </property>
-     <property name="autoDefault">
-      <bool>false</bool>
+     <property name="sizeType">
+      <enum>QSizePolicy::Policy::Preferred</enum>
      </property>
-    </widget>
-   </item>
-   <item row="3" column="5">
-    <widget class="QPushButton" name="pushButtonCaptureImage">
-     <property name="text">
-      <string>Captura Image</string>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>235</width>
+       <height>20</height>
+      </size>
      </property>
-     <property name="autoDefault">
-      <bool>false</bool>
-     </property>
-    </widget>
+    </spacer>
    </item>
    <item row="0" column="0" rowspan="4">
     <widget class="QGroupBox" name="groupBox">
@@ -57,7 +53,7 @@
            <x>0</x>
            <y>0</y>
            <width>298</width>
-           <height>398</height>
+           <height>411</height>
           </rect>
          </property>
         </widget>
@@ -65,79 +61,6 @@
       </item>
      </layout>
     </widget>
-   </item>
-   <item row="3" column="4">
-    <spacer name="horizontalSpacer_2">
-     <property name="orientation">
-      <enum>Qt::Orientation::Horizontal</enum>
-     </property>
-     <property name="sizeType">
-      <enum>QSizePolicy::Policy::Preferred</enum>
-     </property>
-     <property name="sizeHint" stdset="0">
-      <size>
-       <width>235</width>
-       <height>20</height>
-      </size>
-     </property>
-    </spacer>
-   </item>
-   <item row="0" column="2" colspan="4">
-    <widget class="QLabel" name="videoLabel">
-     <property name="minimumSize">
-      <size>
-       <width>200</width>
-       <height>150</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>400</width>
-       <height>300</height>
-      </size>
-     </property>
-     <property name="text">
-      <string/>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignmentFlag::AlignCenter</set>
-     </property>
-    </widget>
-   </item>
-   <item row="1" column="2" colspan="4">
-    <widget class="QGroupBox" name="groupBoxCalibrationdata">
-     <property name="title">
-      <string>Calibration Data</string>
-     </property>
-     <layout class="QGridLayout" name="gridLayout_2">
-      <item row="0" column="0">
-       <widget class="QTextEdit" name="textEditInfo">
-        <property name="enabled">
-         <bool>false</bool>
-        </property>
-        <property name="maximumSize">
-         <size>
-          <width>16777215</width>
-          <height>136</height>
-         </size>
-        </property>
-       </widget>
-      </item>
-     </layout>
-    </widget>
-   </item>
-   <item row="0" column="1" rowspan="4">
-    <spacer name="verticalSpacer">
-     <property name="orientation">
-      <enum>Qt::Orientation::Vertical</enum>
-     </property>
-     <property name="sizeHint" stdset="0">
-      <size>
-       <width>20</width>
-       <height>448</height>
-      </size>
-     </property>
-    </spacer>
    </item>
    <item row="4" column="0" colspan="6">
     <widget class="QGroupBox" name="botones">
@@ -195,6 +118,16 @@
      </layout>
     </widget>
    </item>
+   <item row="3" column="2" colspan="2">
+    <widget class="QPushButton" name="pushButtonSelectDirectory">
+     <property name="text">
+      <string>Select Directory</string>
+     </property>
+     <property name="autoDefault">
+      <bool>false</bool>
+     </property>
+    </widget>
+   </item>
    <item row="2" column="4">
     <spacer name="verticalSpacer_2">
      <property name="orientation">
@@ -210,6 +143,82 @@
       </size>
      </property>
     </spacer>
+   </item>
+   <item row="3" column="5">
+    <widget class="QPushButton" name="pushButtonCaptureImage">
+     <property name="text">
+      <string>Captura Image</string>
+     </property>
+     <property name="autoDefault">
+      <bool>false</bool>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="1" rowspan="4">
+    <spacer name="verticalSpacer">
+     <property name="orientation">
+      <enum>Qt::Orientation::Vertical</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>448</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+   <item row="1" column="2" colspan="4">
+    <widget class="QGroupBox" name="groupBoxCalibrationdata">
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
+       <height>500</height>
+      </size>
+     </property>
+     <property name="title">
+      <string>Calibration Data</string>
+     </property>
+     <layout class="QGridLayout" name="gridLayout_2">
+      <item row="0" column="0">
+       <widget class="QTextEdit" name="textEditInfo">
+        <property name="enabled">
+         <bool>true</bool>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>600</height>
+         </size>
+        </property>
+        <property name="readOnly">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item row="0" column="2" colspan="4">
+    <widget class="QLabel" name="videoLabel">
+     <property name="minimumSize">
+      <size>
+       <width>200</width>
+       <height>150</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>400</width>
+       <height>300</height>
+      </size>
+     </property>
+     <property name="text">
+      <string/>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignmentFlag::AlignCenter</set>
+     </property>
+    </widget>
    </item>
   </layout>
  </widget>

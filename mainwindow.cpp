@@ -131,6 +131,18 @@ void MainWindow::on_actionCalibrationVideo_triggered()
   m_VideoCalibrationDialog->activateWindow();
 }
 
+void MainWindow::on_actionProcessingVideo_triggered()
+{
+  if (!m_VideoProcessingDialog) {
+    m_VideoProcessingDialog = new VideoProcessingDialog(this);
+  }
+
+  // Si la cámara ya está corriendo, el diálogo mostrará el stream actual.
+  m_VideoProcessingDialog->show();
+  m_VideoProcessingDialog->raise();
+  m_VideoProcessingDialog->activateWindow();
+}
+
 void MainWindow::connectVideoSignals()
 {
   VideoCaptureHandler& handler = VideoCaptureHandler::instance();

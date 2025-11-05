@@ -17,10 +17,12 @@ class VideoCalibrationDialog;
 
 struct CalibrationResult
 {
-  double  rms = -1.0;
-  cv::Mat cameraMatrix;
-  cv::Mat distCoeffs;
-  int     processedCount = 0;
+  double   rms = -1.0;
+  cv::Mat  cameraMatrix;
+  cv::Mat  distCoeffs;
+  cv::Mat  newCameraMatrix; // Matriz óptima
+  cv::Rect roi;             // Región de interés
+  int      processedCount = 0;
 };
 Q_DECLARE_METATYPE(CalibrationResult)
 
@@ -51,8 +53,8 @@ private:
                               std::vector<std::vector<cv::Point3f>>& objectPoints);
   bool runCalibration(cv::Size boardSize, std::vector<std::vector<cv::Point2f>>& imagePoints, std::vector<std::vector<cv::Point3f>>& objectPoints,
                       CalibrationResult& result);
-  void saveCalibration(const std::string& cameraMatrixFile, const std::string& distCoeffsFile, const cv::Mat& cameraMatrix,
-                       const cv::Mat& distCoeffs) const;
+  void saveCalibration(const std::string& cameraMatrixFile, const std::string& distCoeffsFile, const cv::Mat& cameraMatrix, const cv::Mat& distCoeffs,
+                       const cv::Mat& newCameraMatrix) const;
 };
 
 class VideoCalibrationDialog : public QDialog
@@ -84,6 +86,7 @@ private:
 
   cv::Mat m_cameraMatrix; // Matriz de cámara
   cv::Mat m_distCoeffs;   // Coeficientes de distorsión
+  cv::Mat m_newCameraMatrix; // Matriz de cámara óptima cargada
 
   // Miembros para gestionar el hilo de trabajo
   QThread*           m_workerThread = nullptr;
@@ -91,7 +94,7 @@ private:
 
   void updateVideoLabel();
   void updateFilesList();
-  void displayCalibrationResults(const cv::Mat& cameraMatrix, const cv::Mat& distCoeffs, double rms);
+  void displayCalibrationResults(const cv::Mat& cameraMatrix, const cv::Mat& distCoeffs, const cv::Mat& newCameraMatrix, double rms);
 
   bool loadCalibration(const std::string& filename);
   void loadExistingCalibration();

@@ -61,6 +61,9 @@
          <property name="enabled">
           <bool>false</bool>
          </property>
+         <property name="readOnly">
+          <bool>true</bool>
+         </property>
         </widget>
        </item>
        <item row="1" column="0">
@@ -68,8 +71,8 @@
          <property name="enabled">
           <bool>false</bool>
          </property>
-         <property name="focusPolicy">
-          <enum>Qt::FocusPolicy::NoFocus</enum>
+         <property name="readOnly">
+          <bool>true</bool>
          </property>
         </widget>
        </item>
@@ -106,6 +109,9 @@
          <property name="enabled">
           <bool>false</bool>
          </property>
+         <property name="readOnly">
+          <bool>true</bool>
+         </property>
         </widget>
        </item>
        <item row="8" column="0">
@@ -130,6 +136,9 @@
          <property name="enabled">
           <bool>false</bool>
          </property>
+         <property name="readOnly">
+          <bool>true</bool>
+         </property>
         </widget>
        </item>
        <item row="7" column="1">
@@ -137,12 +146,18 @@
          <property name="enabled">
           <bool>false</bool>
          </property>
+         <property name="readOnly">
+          <bool>true</bool>
+         </property>
         </widget>
        </item>
        <item row="4" column="1">
         <widget class="QLineEdit" name="lineEditContrast">
          <property name="enabled">
           <bool>false</bool>
+         </property>
+         <property name="readOnly">
+          <bool>true</bool>
          </property>
         </widget>
        </item>
@@ -167,12 +182,18 @@
          <property name="enabled">
           <bool>false</bool>
          </property>
+         <property name="readOnly">
+          <bool>true</bool>
+         </property>
         </widget>
        </item>
        <item row="2" column="1">
         <widget class="QLineEdit" name="lineEditResolution">
          <property name="enabled">
           <bool>false</bool>
+         </property>
+         <property name="readOnly">
+          <bool>true</bool>
          </property>
         </widget>
        </item>
@@ -199,7 +220,14 @@
       </property>
       <layout class="QGridLayout" name="gridLayout_5">
        <item row="0" column="0">
-        <widget class="QTextEdit" name="textEditLog"/>
+        <widget class="QTextEdit" name="textEditLog">
+         <property name="enabled">
+          <bool>true</bool>
+         </property>
+         <property name="readOnly">
+          <bool>true</bool>
+         </property>
+        </widget>
        </item>
       </layout>
      </widget>
@@ -216,6 +244,25 @@
        </size>
       </property>
      </spacer>
+    </item>
+    <item row="3" column="1">
+     <widget class="QPushButton" name="startButton">
+      <property name="minimumSize">
+       <size>
+        <width>150</width>
+        <height>0</height>
+       </size>
+      </property>
+      <property name="maximumSize">
+       <size>
+        <width>200</width>
+        <height>24</height>
+       </size>
+      </property>
+      <property name="text">
+       <string>Start</string>
+      </property>
+     </widget>
     </item>
     <item row="1" column="3" rowspan="3">
      <widget class="QGroupBox" name="groupBoxRobotInfo">
@@ -539,25 +586,6 @@
       </layout>
      </widget>
     </item>
-    <item row="3" column="1">
-     <widget class="QPushButton" name="startButton">
-      <property name="minimumSize">
-       <size>
-        <width>150</width>
-        <height>0</height>
-       </size>
-      </property>
-      <property name="maximumSize">
-       <size>
-        <width>200</width>
-        <height>24</height>
-       </size>
-      </property>
-      <property name="text">
-       <string>Start</string>
-      </property>
-     </widget>
-    </item>
    </layout>
   </widget>
   <widget class="QMenuBar" name="menubar">
@@ -591,6 +619,7 @@
     <addaction name="actionDisconnectVideo"/>
     <addaction name="separator"/>
     <addaction name="actionCalibrationVideo"/>
+    <addaction name="actionProcessingVideo"/>
    </widget>
    <widget class="QMenu" name="menuConnect">
     <property name="title">
@@ -662,6 +691,11 @@
   <action name="actionCalibrationVideo">
    <property name="text">
     <string>Calibration</string>
+   </property>
+  </action>
+  <action name="actionProcessingVideo">
+   <property name="text">
+    <string>Processing</string>
    </property>
   </action>
  </widget>

@@ -7,6 +7,7 @@
 #include "library-serial/SerialMonitorDialog.h"
 #include "library-video/VideoCalibrationDialog.h"
 #include "library-video/VideoManagerDialog.h"
+#include "library-video/VideoProcessingDialog.h"
 #include <QImage>
 #include <QMainWindow>
 #include <QPixmap>
@@ -38,6 +39,7 @@ private slots:
   void on_actionConnectVideo_triggered();
   void on_actionDisconnectVideo_triggered();
   void on_actionCalibrationVideo_triggered();
+  void on_actionProcessingVideo_triggered();
   void on_actionControlRobot_triggered();
   void on_actionCalibrateRobot_triggered();
   void onEfectorPositionChanged(double x, double y, double z);
@@ -61,6 +63,7 @@ private slots:
   void onCameraStopped();
   void onCameraError(const QString& error);
   void onCameraInfoChanged(const CameraInfo& info);
+  void on_pushButtonCaptureImage_clicked();
 
 private:
   Ui::MainWindow*         ui;
@@ -68,6 +71,7 @@ private:
   RobotControlDialog*     m_RobotControl           = nullptr;
   VideoManagerDialog*     m_VideoManagerDialog     = nullptr;
   VideoCalibrationDialog* m_VideoCalibrationDialog = nullptr;
+  VideoProcessingDialog*  m_VideoProcessingDialog  = nullptr;
   RobotHandler*           m_RobotHandler           = nullptr;
   QImage                  m_lastCapturedFrame;
 

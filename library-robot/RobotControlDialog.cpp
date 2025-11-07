@@ -107,11 +107,7 @@ void RobotControlDialog::setLineEditToSliderValue(int motorIndex, int value)
   }
 
   if (!m_isAll) {
-    // Invertimos la señal solo al enviar a los motores físicos 2 y 5
     int motorValueToSend = value;
-    if (motorIndex == 2 || motorIndex == 5) {
-      motorValueToSend = 180 - value;
-    }
     emit motorAngleChanged(motorIndex, motorValueToSend);
   }
 }
@@ -133,8 +129,7 @@ void RobotControlDialog::on_pushButtonReset_clicked() {
   emit allMotorsReset();
 }
 
-void RobotControlDialog::on_pushButtonSetup_clicked()
-{
+void RobotControlDialog::on_pushButtonSetup_clicked() {
   if (!m_robotSettings) {
     emit errorOccurred("Robot settings not initialized.");
     return;
@@ -145,16 +140,11 @@ void RobotControlDialog::on_pushButtonSetup_clicked()
 
   for (int i = 0; i < 6; ++i) {
     int valToSend = vals[i];
-    if (i == 1 || i == 4) { // Motores 2 y 5 (índice 1 y 4)
-      valToSend = 180 - valToSend;
-    }
     emit motorAngleChanged(i + 1, valToSend);
   }
 }
 
-
-void RobotControlDialog::on_pushButtonAllSingle_clicked()
-{
+void RobotControlDialog::on_pushButtonAllSingle_clicked() {
   m_isAll = !m_isAll;
   if (m_isAll) {
     ui->pushButtonAllSingle->setText("All");
@@ -163,5 +153,21 @@ void RobotControlDialog::on_pushButtonAllSingle_clicked()
   else {
     ui->pushButtonAllSingle->setText("Single");
     ui->pushButtonSetup->setEnabled(false);
+  }
+}
+
+void RobotControlDialog::on_pushButtonSetOffsets_clicked() {
+  if (!m_robotSettings) {
+    emit errorOccurred("Robot settings not initialized.");
+    return;
+  }
+
+  int vals[6] = {ui->horizontalSlider1->value(), ui->horizontalSlider2->value(), ui->horizontalSlider3->value(),
+                 ui->horizontalSlider4->value(), ui->horizontalSlider5->value(), ui->horizontalSlider6->value()};
+
+  for (int i = 0; i < 6; ++i) {
+    m_robotSettings->motors[i].defaultAngle = vals[i];
+    int  newOffset = vals[i];
+    emit motorOffsetChanged(i + 1, newOffset);
   }
 }

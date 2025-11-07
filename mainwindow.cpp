@@ -188,6 +188,7 @@ void MainWindow::on_actionControlRobot_triggered()
   connect(m_RobotControl, &RobotControlDialog::errorOccurred, this, &MainWindow::onRobotControlError);
   connect(m_RobotControl, &RobotControlDialog::motorAngleChanged, this, &MainWindow::onRobotMotorAngleChanged);
   connect(m_RobotControl, &RobotControlDialog::allMotorsReset, this, &MainWindow::onAllMotorsReset);
+  connect(m_RobotControl, &RobotControlDialog::motorOffsetChanged, this, &MainWindow::onRobotMotorOffsetChanged);
 }
 
 void MainWindow::on_actionCalibrateRobot_triggered()
@@ -242,6 +243,19 @@ void MainWindow::onRobotMotorAngleChanged(int motorIndex, int angle)
   // send command to robot via serial
   if (SerialPortHandler::instance().isConnected()) {
     QString command = QString("SETUP:SERVO%1:%2").arg(motorIndex).arg(angle);
+    SerialPortHandler::instance().sendData(command.toUtf8());
+    LogHandler::info(ui->textEditLog, QString("Sent command to motor %1: %2").arg(motorIndex).arg(command.trimmed()));
+  }
+  else {
+    LogHandler::warning(ui->textEditLog, "Cannot send command: Serial port not connected");
+  }
+}
+
+void MainWindow::onRobotMotorOffsetChanged(int motorIndex, int newOffset)
+{
+  // send command to robot via serial
+  if (SerialPortHandler::instance().isConnected()) {
+    QString command = QString("SETUP:OFFSET%1:%2").arg(motorIndex).arg(newOffset);
     SerialPortHandler::instance().sendData(command.toUtf8());
     LogHandler::info(ui->textEditLog, QString("Sent command to motor %1: %2").arg(motorIndex).arg(command.trimmed()));
   }

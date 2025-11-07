@@ -22,12 +22,12 @@ struct RobotSettings
 {
   // Definimos cada motor con defaultAngle y offset
   MotorConfig motors[6] = {
-    {0, 180, 30, 100, 0, 0}, // Motor 1
-    {0, 180, 77, 100, 0, 0}, // Motor 2
-    {0, 180, 90, 100, 0, 0},   // Motor 3
-    {0, 180, 134, 100, 0, 0},  // Motor 4
-    {0, 180, 111, 100, 0, 0},  // Motor 5
-    {0, 180, 0, 100, 0, 0}  // Motor 6
+    {0, 180, 24, 100, 0, 0},   // Motor 1
+    {0, 180, 103, 100, 0, 0},  // Motor 2
+    {0, 180, 20, 100, 0, 0},   // Motor 3
+    {0, 180, 148, 100, 0, 0},  // Motor 4
+    {0, 180, 82, 100, 0, 0},   // Motor 5
+    {0, 180, 0, 100, 0, 0}     // Motor 6
   };
 };
 

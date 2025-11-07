@@ -56,6 +56,7 @@ private slots:
   void onRobotMotorAngleChanged(int motorIndex, int angle);
   void onAllMotorsReset();
   void onRobotMotorAngleUpdatedFromSerial(int motorIndex, int angle);
+  void onRobotMotorOffsetChanged(int motorIndex, int newOffset);
 
   // Video Capture
   void onVideoCapture(const QImage& image);

@@ -80,7 +80,7 @@ void RobotHandler::actualizarMatrices(const cv::Mat &q) {
   double q1_rad = q.at<int>(0, 0) * M_PI / 180.0;
   double q2_rad = q.at<int>(0, 1) * M_PI / 180.0;
   double q3_rad = q.at<int>(0, 2) * M_PI / 180.0;
-  double q5_rad = q.at<int>(0, 3) * M_PI / 180.0;
+  double q5_rad = q.at<int>(0, 4) * M_PI / 180.0;
 
   // RTb1 � Base al primer eslab�n
   RTb1 = cv::Mat::eye(4, 4, CV_64F);
@@ -107,12 +107,19 @@ void RobotHandler::actualizarMatrices(const cv::Mat &q) {
   RT23.at<double>(2, 2) = cos(q3_rad);
 
   // RT35 � Tercer eslab�n al efector final
-  RT35 = cv::Mat::eye(4, 4, CV_64F);
-  RT35.at<double>(0, 0) = cos(q5_rad);
-  RT35.at<double>(0, 2) = sin(q5_rad);
-  RT35.at<double>(2, 3) = a5;
-  RT35.at<double>(2, 0) = -sin(q5_rad);
-  RT35.at<double>(2, 2) = cos(q5_rad);
+  // RT35 — Tercer eslabón al efector final (rotación Y seguida de traslación en Z local)
+  cv::Mat R35          = cv::Mat::eye(4, 4, CV_64F);
+  R35.at<double>(0, 0) = cos(q5_rad);
+  R35.at<double>(0, 2) = sin(q5_rad);
+  R35.at<double>(2, 0) = -sin(q5_rad);
+  R35.at<double>(2, 2) = cos(q5_rad);
+
+  // Traslación en el marco LOCAL del efector (a5 sobre z_local)
+  cv::Mat T_local          = cv::Mat::eye(4, 4, CV_64F);
+  T_local.at<double>(2, 3) = a5;
+
+  // Aplicar traslación en el marco rotado: RT35 = Rot * Trans_local
+  RT35 = R35 * T_local;
 
   // Transformaci�n total
   RTbt = RTb1 * RT12 * RT23 * RT35;

@@ -20,11 +20,14 @@ signals:
   void errorOccurred(const QString &error);
   void motorAngleChanged(int motorIndex, int angle);
   void allMotorsReset();
+  void motorOffsetChanged(int motorIndex, int newOffset);
+
 
 private slots:
   void on_pushButtonReset_clicked();
   void on_pushButtonSetup_clicked();
   void on_pushButtonAllSingle_clicked();
+  void on_pushButtonSetOffsets_clicked();
 
 private:
   Ui::RobotControlDialog *ui;

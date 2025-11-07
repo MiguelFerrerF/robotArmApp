@@ -121,6 +121,13 @@ private:
   std::atomic<int> m_requestedSaturation{STOP_CAMERA};
   std::atomic<int> m_requestedSharpness{STOP_CAMERA};
 
+  bool    m_isCalibrated;
+  cv::Mat m_cameraMatrix;    // Matriz original
+  cv::Mat m_distCoeffs;      // Coeficientes de distorsión
+  cv::Mat m_newCameraMatrix; // Matriz óptima
+
+  void loadCalibration(); // Función auxiliar
+
   QImage  cvMatToQImage(const cv::Mat& inMat);
   QPixmap cvMatToQPixmap(const cv::Mat& inMat);
 

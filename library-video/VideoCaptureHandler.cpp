@@ -1,6 +1,8 @@
 #include "VideoCaptureHandler.h"
 #include <QDebug>
+#include <QDir>
 #include <QtMath>
+#include <opencv2/core/persistence.hpp>
 
 VideoCaptureHandler& VideoCaptureHandler::instance()
 {
@@ -13,6 +15,10 @@ VideoCaptureHandler::VideoCaptureHandler(QObject* parent) : QThread(parent)
   qRegisterMetaType<CameraPropertiesSupport>();
   qRegisterMetaType<CameraPropertyRanges>();
   qRegisterMetaType<CameraInfo>();
+
+  m_isCalibrated = false; // Inicializar
+  loadCalibration();      // Cargar la calibración al iniciar
+
   start(QThread::HighestPriority);
 }
 
@@ -92,7 +98,6 @@ void VideoCaptureHandler::setExposure(int value)
   m_cameraInfo.exposure = value;
   emit cameraInfoChanged(m_cameraInfo);
 }
-
 PropertyRange VideoCaptureHandler::getPropertyRange(int propId)
 {
   PropertyRange range;
@@ -109,6 +114,44 @@ PropertyRange VideoCaptureHandler::getPropertyRange(int propId)
     range.current = 126;
   }
   return range;
+}
+
+void VideoCaptureHandler::loadCalibration()
+{
+  QString dirPath        = "calibration";
+  QString camMatrixPath  = QDir(dirPath).filePath("camera_matrix.yml");
+  QString distCoeffsPath = QDir(dirPath).filePath("dist_coeffs.yml");
+
+  qDebug() << "Cargando archivos de calibración desde:" << camMatrixPath << "y" << distCoeffsPath;
+
+  cv::FileStorage fsCam(camMatrixPath.toStdString(), cv::FileStorage::READ);
+  cv::FileStorage fsDist(distCoeffsPath.toStdString(), cv::FileStorage::READ);
+
+  if (fsCam.isOpened() && fsDist.isOpened()) {
+    fsCam["m_cameraMatrix"] >> m_cameraMatrix;
+    fsCam["m_newCameraMatrix"] >> m_newCameraMatrix; // <-- ¡NUEVO! Cargar
+    fsDist["m_distCoeffs"] >> m_distCoeffs;
+
+    // Imprimir en consola (como tenías antes)
+    std::cout << "Matriz de Cámara (Original):\\n" << m_cameraMatrix << std::endl;
+    std::cout << "Matriz de Cámara (Óptima):\\n" << m_newCameraMatrix << std::endl;
+    std::cout << "Coeficientes de Distorsión:\\n" << m_distCoeffs << std::endl;
+
+    // Comprobar que se cargaron las TRES matrices
+    if (!m_cameraMatrix.empty() && !m_distCoeffs.empty() && !m_newCameraMatrix.empty()) {
+      m_isCalibrated = true;
+      qDebug() << "Calibración cargada exitosamente.";
+    }
+    else {
+      qWarning() << "No se pudieron leer todos los datos de los archivos de calibración.";
+    }
+  }
+  else {
+    qWarning() << "No se encontraron archivos de calibración. El vídeo no será corregido.";
+  }
+
+  fsCam.release();
+  fsDist.release();
 }
 
 void VideoCaptureHandler::run()
@@ -214,7 +257,23 @@ void VideoCaptureHandler::run()
 
       m_VideoCapture >> m_frame;
       if (!m_frame.empty()) {
-        m_pixmap = cvMatToQPixmap(m_frame);
+
+        cv::Mat correctedFrame; // Fotograma corregido
+
+        if (m_isCalibrated) {
+          cv::undistort(m_frame,            // 1. Entrada
+                        correctedFrame,     // 2. Salida
+                        m_cameraMatrix,     // 3. Matriz Original
+                        m_distCoeffs,       // 4. Coeficientes
+                        m_newCameraMatrix); // 5. Matriz Óptima
+        }
+        else {
+          // Si no hay calibración, solo clonar
+          correctedFrame = m_frame.clone();
+        }
+
+        // Emitir la imagen corregida
+        m_pixmap = cvMatToQPixmap(correctedFrame);
         emit newPixmapCaptured(m_pixmap);
       }
       QThread::msleep(10);

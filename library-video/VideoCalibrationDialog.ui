@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>687</width>
-    <height>543</height>
+    <width>704</width>
+    <height>530</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -53,7 +53,7 @@
            <x>0</x>
            <y>0</y>
            <width>298</width>
-           <height>411</height>
+           <height>398</height>
           </rect>
          </property>
         </widget>
@@ -202,8 +202,8 @@
     <widget class="QLabel" name="videoLabel">
      <property name="minimumSize">
       <size>
-       <width>200</width>
-       <height>150</height>
+       <width>320</width>
+       <height>180</height>
       </size>
      </property>
      <property name="maximumSize">

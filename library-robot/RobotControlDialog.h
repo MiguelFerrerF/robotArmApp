@@ -16,6 +16,8 @@ public:
                               RobotConfig::RobotSettings *settings = nullptr);
   ~RobotControlDialog();
 
+  void setupOffsets();
+
 signals:
   void errorOccurred(const QString &error);
   void motorAngleChanged(int motorIndex, int angle);

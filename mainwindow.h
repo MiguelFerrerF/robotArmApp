@@ -56,6 +56,7 @@ private slots:
   void onRobotMotorAngleChanged(int motorIndex, int angle);
   void onAllMotorsReset();
   void onRobotMotorAngleUpdatedFromSerial(int motorIndex, int angle);
+  void onRobotMotorOffsetsReadFromMemory(int motorIndex, int offset);
   void onRobotMotorOffsetChanged(int motorIndex, int newOffset);
 
   // Video Capture

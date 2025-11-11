@@ -36,7 +36,7 @@ void RobotHandler::onDataReceived(const QByteArray &data) {
   int servoNum = 0, valor = 0;
 
   // Extraer servo y valor con sscanf
-  if (sscanf(msg.toUtf8().constData(), "ANGLE:SERVO%d:%d", &servoNum, &valor) ==
+  if (sscanf(msg.toUtf8().constData(), "ANGLE_WITH_OFFSET:SERVO%d:%d", &servoNum, &valor) ==
       2) {
     // Validar rangos
     if (servoNum < 1 || servoNum > 6) {
@@ -65,8 +65,18 @@ void RobotHandler::onDataReceived(const QByteArray &data) {
 
     // Emitir se�al informando cambio de �ngulo
     emit motorAngleChanged(servoNum, valor);
-  } else {
-    qDebug() << "[RobotHandler] Mensaje invalido:" << msg;
+  } 
+  else if (sscanf(msg.toUtf8().constData(), "OFFSET:SERVO%d:%d", &servoNum, &valor) == 2) {
+    if (servoNum < 1 || servoNum > 6) {
+      qDebug() << "[RobotHandler] Servo inválido:" << servoNum;
+      emit errorOccurred(QString("Invalid servo index: %1").arg(servoNum));
+      return;
+    }
+    // Puedes ajustar el rango de offset si lo necesitas
+    emit motorOffsetsChanged(servoNum, valor);
+  }
+  else {
+    qDebug() << "[RobotHandler] Mensaje no reconocido:" << msg;
   }
 }
 
@@ -157,13 +167,28 @@ void RobotHandler::inverseCinematic(const cv::Point3d &efectorGlobal) {
 
   qDebug("Valores R y Z calculados: R = %d, Z = %d", R, Z);
 
-  double B_rad =
-      acos((R * R + (Z - a1 + a5) * (Z - a1 + a5) - a2 * a2 - a3 * a3) /
-           (2 * a2 * a3) / 1000);
+  double B_rad = acos((R * R + (Z - a1 + a5) * (Z - a1 + a5) - a2 * a2 - a3 * a3) / (2 * a2 * a3));
   int B = B_rad * 180 / M_PI;
-  int A = 180 - B;
 
-  qDebug("Angulos calculados: A = q2 = %d, B = q3 = %d", A, B);
+  double numerador_mas   = R * (a2 + a3 * cos(B_rad)) + a3 * sin(B_rad) * (Z - a1 + a5);
+  double numerador_menos = R * (a2 + a3 * cos(B_rad)) - a3 * sin(B_rad) * (Z - a1 + a5);
+  double denominador     = a2 * a2 + a3 * a3 + 2 * a2 * a3 * cos(B_rad);
+
+  double senA_mas   = numerador_mas / denominador;
+  double senA_menos = numerador_menos / denominador;
+
+  double A_rad_mas   = asin(senA_mas);
+  double A_rad_menos = asin(senA_menos);
+
+  int A_mas   = A_rad_mas * 180 / M_PI;
+  int A_menos = A_rad_menos * 180 / M_PI;
+
+  int C_mas = 180 - A_mas - B;
+  int C_menos = 180 - A_menos - B;
+
+  qDebug("Angulos calculados: A+ = %d, A- = %d, B = %d, C+ = %d, C- = %d", A_mas, A_menos, B, C_mas, C_menos);
+
+  //qDebug("Angulos calculados: A = q2 = %d, B = q3 = %d", A, B);
 }
 
 // Transforma un punto del efector en coordenadas de la base

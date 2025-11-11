@@ -41,6 +41,7 @@ signals:
   void matrixsUpdated(cv::Mat RTbt); 
   void messageOccurred(const QString& message);
   void motorAngleChanged(int motorIndex, int angle);
+  void motorOffsetsChanged(int motorIndex, int offset);
   void allMotorsReset();
   void efectorPositionChanged(double x, double y, double z);
 

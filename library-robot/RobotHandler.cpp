@@ -87,10 +87,10 @@ void RobotHandler::actualizarMatrices(const cv::Mat &q) {
   }
 
   // Convertir �ngulos de grados a radianes
-  double q1_rad = q.at<int>(0, 0) * M_PI / 180.0;
-  double q2_rad = q.at<int>(0, 1) * M_PI / 180.0;
-  double q3_rad = q.at<int>(0, 2) * M_PI / 180.0;
-  double q5_rad = q.at<int>(0, 4) * M_PI / 180.0;
+  double q1_rad = -q.at<int>(0, 0) * M_PI / 180.0;
+  double q2_rad = -q.at<int>(0, 1) * M_PI / 180.0;
+  double q3_rad = -q.at<int>(0, 2) * M_PI / 180.0;
+  double q5_rad = -q.at<int>(0, 4) * M_PI / 180.0;
 
   // RTb1 � Base al primer eslab�n
   RTb1 = cv::Mat::eye(4, 4, CV_64F);
@@ -98,13 +98,13 @@ void RobotHandler::actualizarMatrices(const cv::Mat &q) {
   RTb1.at<double>(0, 1) = -sin(q1_rad);
   RTb1.at<double>(1, 0) = sin(q1_rad);
   RTb1.at<double>(1, 1) = cos(q1_rad);
-  RTb1.at<double>(2, 3) = a1; // traslaci�n en z
+  RTb1.at<double>(2, 3) = -a1; // traslaci�n en z
 
   // RT12 � Primer eslab�n al segundo
   RT12 = cv::Mat::eye(4, 4, CV_64F);
   RT12.at<double>(0, 0) = cos(q2_rad);
   RT12.at<double>(0, 2) = sin(q2_rad);
-  RT12.at<double>(2, 3) = a2;
+  RT12.at<double>(2, 3) = -a2;
   RT12.at<double>(2, 0) = -sin(q2_rad);
   RT12.at<double>(2, 2) = cos(q2_rad);
 
@@ -112,27 +112,24 @@ void RobotHandler::actualizarMatrices(const cv::Mat &q) {
   RT23 = cv::Mat::eye(4, 4, CV_64F);
   RT23.at<double>(0, 0) = cos(q3_rad);
   RT23.at<double>(0, 2) = sin(q3_rad);
-  RT23.at<double>(2, 3) = a3;
+  RT23.at<double>(2, 3) = -a3;
   RT23.at<double>(2, 0) = -sin(q3_rad);
   RT23.at<double>(2, 2) = cos(q3_rad);
 
   // RT35 � Tercer eslab�n al efector final
-  // RT35 — Tercer eslabón al efector final (rotación Y seguida de traslación en Z local)
-  cv::Mat R35          = cv::Mat::eye(4, 4, CV_64F);
-  R35.at<double>(0, 0) = cos(q5_rad);
-  R35.at<double>(0, 2) = sin(q5_rad);
-  R35.at<double>(2, 0) = -sin(q5_rad);
-  R35.at<double>(2, 2) = cos(q5_rad);
-
-  // Traslación en el marco LOCAL del efector (a5 sobre z_local)
-  cv::Mat T_local          = cv::Mat::eye(4, 4, CV_64F);
-  T_local.at<double>(2, 3) = a5;
-
-  // Aplicar traslación en el marco rotado: RT35 = Rot * Trans_local
-  RT35 = R35 * T_local;
+  cv::Mat RT35          = cv::Mat::eye(4, 4, CV_64F);
+  RT35.at<double>(0, 0) = cos(q5_rad);
+  RT35.at<double>(0, 2) = sin(q5_rad);
+  RT35.at<double>(2, 3) = -a5;
+  RT35.at<double>(2, 0) = -sin(q5_rad);
+  RT35.at<double>(2, 2) = cos(q5_rad);
 
   // Transformaci�n total
-  RTbt = RTb1 * RT12 * RT23 * RT35;
+  /*RTbt = RTb1 * RT12 * RT23 * RT35;*/
+  RTbt = RT35 * RT23 * RT12 * RTb1;
+  /*cv::Mat RTbt2 = RT35.inv() * RT23.inv() * RT12.inv() * RTb1.inv();
+  cv::Mat mult = RTbt * RTbt2;
+  double* f     = &(mult.at<double>(0, 0));*/
 
   emit messageOccurred("Matrices updated successfully.");
   emit matrixsUpdated(RTbt);
@@ -198,7 +195,7 @@ cv::Point3d RobotHandler::transformarPunto(const cv::Point3d &puntoLocal) {
       (cv::Mat_<double>(4, 1) << puntoLocal.x, puntoLocal.y, puntoLocal.z, 1);
 
   // Aplicar transformaci�n total RTbt
-  cv::Mat puntoGlobal = RTbt * puntoHom;
+  cv::Mat puntoGlobal = RTbt.inv() * puntoHom;
 
   // Devolver el punto transformado (coordenadas en la base del robot)
   return cv::Point3d(puntoGlobal.at<double>(0, 0), puntoGlobal.at<double>(1, 0),

@@ -24,8 +24,6 @@ VideoProcessingDialog::VideoProcessingDialog(QWidget* parent) : QDialog(parent),
   connect(&handler, &VideoCaptureHandler::rangesSupported, this, &VideoProcessingDialog::on_rangesSupported);
   connect(&handler, &VideoCaptureHandler::cameraOpenFailed, this, &VideoProcessingDialog::on_cameraOpenFailed);
 
-  connect(ui->checkBoxSegmentacion, &QCheckBox::toggled, this, &VideoProcessingDialog::on_checkboxsegmentacionToggled);
-
   // Rellenar ComboBox de cámaras
   QStringList cameraNames;
   for (const QCameraDevice& camera : QMediaDevices::videoInputs()) {

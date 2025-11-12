@@ -4,7 +4,7 @@
 #include <QDebug>
 #include <QIntValidator>
 #include <QPixmap>
-#include <QSlider>
+#include <QSlider> 
 
 RobotControlDialog::RobotControlDialog(QWidget* parent, RobotConfig::RobotSettings* settings)
   : QDialog(parent), ui(new Ui::RobotControlDialog), m_robotSettings(settings)
@@ -22,6 +22,8 @@ RobotControlDialog::RobotControlDialog(QWidget* parent, RobotConfig::RobotSettin
 
   connectSlidersToLineEdits();
   connectLineEditsToSliders();
+ 
+  on_pushButtonReset_clicked();
 }
 
 RobotControlDialog::~RobotControlDialog()
@@ -118,14 +120,7 @@ void RobotControlDialog::on_pushButtonReset_clicked() {
     emit errorOccurred("Robot settings not initialized.");
     return;
   }
-
-  ui->horizontalSlider1->setValue(m_robotSettings->motors[0].defaultAngle);
-  ui->horizontalSlider2->setValue(m_robotSettings->motors[1].defaultAngle);
-  ui->horizontalSlider3->setValue(m_robotSettings->motors[2].defaultAngle);
-  ui->horizontalSlider4->setValue(m_robotSettings->motors[3].defaultAngle);
-  ui->horizontalSlider5->setValue(m_robotSettings->motors[4].defaultAngle);
-  ui->horizontalSlider6->setValue(m_robotSettings->motors[5].defaultAngle);
-
+  setupOffsets();
   emit allMotorsReset();
 }
 
@@ -170,4 +165,17 @@ void RobotControlDialog::on_pushButtonSetOffsets_clicked() {
     int  newOffset = vals[i];
     emit motorOffsetChanged(i + 1, newOffset);
   }
+}
+
+void RobotControlDialog::setupOffsets() {
+  if (!m_robotSettings) {
+    emit errorOccurred("Robot settings not initialized.");
+    return;
+  }
+  ui->horizontalSlider1->setValue(m_robotSettings->motors[0].defaultAngle);
+  ui->horizontalSlider2->setValue(m_robotSettings->motors[1].defaultAngle);
+  ui->horizontalSlider3->setValue(m_robotSettings->motors[2].defaultAngle);
+  ui->horizontalSlider4->setValue(m_robotSettings->motors[3].defaultAngle);
+  ui->horizontalSlider5->setValue(m_robotSettings->motors[4].defaultAngle);
+  ui->horizontalSlider6->setValue(m_robotSettings->motors[5].defaultAngle);
 }

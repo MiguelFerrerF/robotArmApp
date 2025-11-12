@@ -10,6 +10,7 @@ struct MotorConfig {
   int speed = 100;
   int desiredAngle = 0;
   int currentAngle = 0;
+  int fixedAngle   = 0;
 };
 
 struct RobotClawPosition { // Angles for claw 

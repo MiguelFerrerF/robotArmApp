@@ -36,6 +36,7 @@ void MainWindow::setupConnections()
   connect(&serial, &SerialPortHandler::connectionStatusChanged, this, &MainWindow::onSerialStatusChanged);
   connect(&serial, &SerialPortHandler::dataReceived, this, &MainWindow::onDataReceived);
   connect(m_RobotHandler, &RobotHandler::motorAngleChanged, this, &MainWindow::onRobotMotorAngleUpdatedFromSerial);
+  connect(m_RobotHandler, &RobotHandler::motorOffsetsChanged, this, &MainWindow::onRobotMotorOffsetsReadFromMemory);
   connect(m_RobotHandler, &RobotHandler::errorOccurred, this, &MainWindow::onSerialError);
   connect(m_RobotHandler, &RobotHandler::efectorPositionChanged, this, &MainWindow::onEfectorPositionChanged);
 }
@@ -189,6 +190,17 @@ void MainWindow::on_actionControlRobot_triggered()
   connect(m_RobotControl, &RobotControlDialog::motorAngleChanged, this, &MainWindow::onRobotMotorAngleChanged);
   connect(m_RobotControl, &RobotControlDialog::allMotorsReset, this, &MainWindow::onAllMotorsReset);
   connect(m_RobotControl, &RobotControlDialog::motorOffsetChanged, this, &MainWindow::onRobotMotorOffsetChanged);
+
+  // Enviar comando al Arduino para leer los offsets
+  if (SerialPortHandler::instance().isConnected()) {
+    QString commandOffset = "READ:OFFSETS";
+    SerialPortHandler::instance().sendData(commandOffset.toUtf8());
+    QString commandAngles = "READ:ANGLES_WITH_OFFSET";
+    SerialPortHandler::instance().sendData(commandAngles.toUtf8());
+  }
+  else {
+    LogHandler::warning(ui->textEditLog, "No se puede enviar comando: puerto serie no conectado");
+  }
 }
 
 void MainWindow::on_actionCalibrateRobot_triggered()
@@ -300,6 +312,18 @@ void MainWindow::onRobotMotorAngleUpdatedFromSerial(int motorIndex, int angle)
     LogHandler::warning(ui->textEditLog, QString("UI widget not found: %1").arg(objName));
     qDebug() << "[MainWindow] UI widget not found:" << objName;
   }
+}
+
+void MainWindow::onRobotMotorOffsetsReadFromMemory(int motorIndex, int offset)
+{
+    if (motorIndex < 1 || motorIndex > 6)
+        return;
+
+    m_robotSettings.motors[motorIndex-1].defaultAngle = offset;
+
+    m_RobotControl->setupOffsets();
+
+    LogHandler::info(ui->textEditLog, QString("Updated offset for motor %1 with value %2").arg(motorIndex).arg(offset));
 }
 
 void MainWindow::onEfectorPositionChanged(double x, double y, double z)

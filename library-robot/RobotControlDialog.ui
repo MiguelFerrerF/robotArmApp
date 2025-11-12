@@ -6,100 +6,42 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>810</width>
-    <height>480</height>
+    <width>750</width>
+    <height>489</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Dialog</string>
   </property>
   <layout class="QGridLayout" name="gridLayout_2">
-   <item row="8" column="3">
-    <widget class="QPushButton" name="pushButtonSetup">
+   <item row="8" column="0">
+    <widget class="QPushButton" name="pushButtonAllSingle">
      <property name="text">
-      <string>Setup</string>
+      <string>All</string>
      </property>
      <property name="autoDefault">
-      <bool>true</bool>
+      <bool>false</bool>
      </property>
     </widget>
    </item>
-   <item row="8" column="1">
-    <spacer name="horizontalSpacer">
-     <property name="orientation">
-      <enum>Qt::Orientation::Horizontal</enum>
-     </property>
-     <property name="sizeHint" stdset="0">
+   <item row="0" column="6" rowspan="7" colspan="3">
+    <widget class="QLabel" name="labelRobotImage">
+     <property name="minimumSize">
       <size>
-       <width>226</width>
-       <height>20</height>
+       <width>400</width>
+       <height>400</height>
       </size>
      </property>
-    </spacer>
-   </item>
-   <item row="7" column="0" colspan="4">
-    <widget class="Line" name="line">
-     <property name="orientation">
-      <enum>Qt::Orientation::Horizontal</enum>
+     <property name="text">
+      <string/>
      </property>
     </widget>
    </item>
-   <item row="6" column="1" colspan="2">
+   <item row="8" column="2">
     <widget class="QPushButton" name="pushButtonSetOffsets">
      <property name="text">
       <string>Set Offsets</string>
      </property>
-    </widget>
-   </item>
-   <item row="1" column="0" colspan="4">
-    <widget class="QGroupBox" name="groupBoxMotor2">
-     <property name="minimumSize">
-      <size>
-       <width>300</width>
-       <height>0</height>
-      </size>
-     </property>
-     <property name="title">
-      <string>Motor 2</string>
-     </property>
-     <layout class="QHBoxLayout" name="horizontalLayout_2">
-      <item>
-       <widget class="QLabel" name="labelDegrees2">
-        <property name="text">
-         <string>Degrees</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QSlider" name="horizontalSlider2">
-        <property name="maximum">
-         <number>180</number>
-        </property>
-        <property name="value">
-         <number>90</number>
-        </property>
-        <property name="orientation">
-         <enum>Qt::Orientation::Horizontal</enum>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QLineEdit" name="lineEditMotor2">
-        <property name="maximumSize">
-         <size>
-          <width>30</width>
-          <height>16777215</height>
-         </size>
-        </property>
-        <property name="text">
-         <string>90</string>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignmentFlag::AlignCenter</set>
-        </property>
-       </widget>
-      </item>
-     </layout>
     </widget>
    </item>
    <item row="3" column="0" colspan="4">
@@ -153,57 +95,8 @@
      </layout>
     </widget>
    </item>
-   <item row="8" column="2">
-    <widget class="QPushButton" name="pushButtonReset">
-     <property name="text">
-      <string>Reset</string>
-     </property>
-     <property name="autoDefault">
-      <bool>false</bool>
-     </property>
-     <property name="default">
-      <bool>false</bool>
-     </property>
-    </widget>
-   </item>
-   <item row="0" column="6" rowspan="9">
-    <widget class="QLabel" name="labelRobotImage">
-     <property name="minimumSize">
-      <size>
-       <width>400</width>
-       <height>400</height>
-      </size>
-     </property>
-     <property name="text">
-      <string/>
-     </property>
-    </widget>
-   </item>
-   <item row="8" column="0">
-    <widget class="QPushButton" name="pushButtonAllSingle">
-     <property name="text">
-      <string>All</string>
-     </property>
-     <property name="autoDefault">
-      <bool>false</bool>
-     </property>
-    </widget>
-   </item>
-   <item row="0" column="5" rowspan="9">
-    <spacer name="verticalSpacer">
-     <property name="orientation">
-      <enum>Qt::Orientation::Vertical</enum>
-     </property>
-     <property name="sizeHint" stdset="0">
-      <size>
-       <width>20</width>
-       <height>411</height>
-      </size>
-     </property>
-    </spacer>
-   </item>
-   <item row="2" column="0" colspan="4">
-    <widget class="QGroupBox" name="groupBoxMotor3">
+   <item row="4" column="0" colspan="4">
+    <widget class="QGroupBox" name="groupBoxMotor5">
      <property name="minimumSize">
       <size>
        <width>300</width>
@@ -211,18 +104,18 @@
       </size>
      </property>
      <property name="title">
-      <string>Motor 3</string>
+      <string>Motor 5</string>
      </property>
-     <layout class="QHBoxLayout" name="horizontalLayout_3">
+     <layout class="QHBoxLayout" name="horizontalLayout_5">
       <item>
-       <widget class="QLabel" name="labelDegrees3">
+       <widget class="QLabel" name="labelDegrees5">
         <property name="text">
          <string>Degrees</string>
         </property>
        </widget>
       </item>
       <item>
-       <widget class="QSlider" name="horizontalSlider3">
+       <widget class="QSlider" name="horizontalSlider5">
         <property name="maximum">
          <number>180</number>
         </property>
@@ -232,13 +125,10 @@
         <property name="orientation">
          <enum>Qt::Orientation::Horizontal</enum>
         </property>
-        <property name="tickPosition">
-         <enum>QSlider::TickPosition::NoTicks</enum>
-        </property>
        </widget>
       </item>
       <item>
-       <widget class="QLineEdit" name="lineEditMotor3">
+       <widget class="QLineEdit" name="lineEditMotor5">
         <property name="maximumSize">
          <size>
           <width>30</width>
@@ -255,6 +145,29 @@
       </item>
      </layout>
     </widget>
+   </item>
+   <item row="8" column="8">
+    <widget class="QPushButton" name="pushButtonSetup">
+     <property name="text">
+      <string>Setup</string>
+     </property>
+     <property name="autoDefault">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item row="8" column="1">
+    <spacer name="horizontalSpacer">
+     <property name="orientation">
+      <enum>Qt::Orientation::Horizontal</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>226</width>
+       <height>20</height>
+      </size>
+     </property>
+    </spacer>
    </item>
    <item row="0" column="0" colspan="4">
     <widget class="QGroupBox" name="groupBoxMotor1">
@@ -316,6 +229,131 @@
      </layout>
     </widget>
    </item>
+   <item row="1" column="0" colspan="4">
+    <widget class="QGroupBox" name="groupBoxMotor2">
+     <property name="minimumSize">
+      <size>
+       <width>300</width>
+       <height>0</height>
+      </size>
+     </property>
+     <property name="title">
+      <string>Motor 2</string>
+     </property>
+     <layout class="QHBoxLayout" name="horizontalLayout_2">
+      <item>
+       <widget class="QLabel" name="labelDegrees2">
+        <property name="text">
+         <string>Degrees</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QSlider" name="horizontalSlider2">
+        <property name="maximum">
+         <number>180</number>
+        </property>
+        <property name="value">
+         <number>90</number>
+        </property>
+        <property name="orientation">
+         <enum>Qt::Orientation::Horizontal</enum>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLineEdit" name="lineEditMotor2">
+        <property name="maximumSize">
+         <size>
+          <width>30</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>90</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignmentFlag::AlignCenter</set>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item row="2" column="0" colspan="4">
+    <widget class="QGroupBox" name="groupBoxMotor3">
+     <property name="minimumSize">
+      <size>
+       <width>300</width>
+       <height>0</height>
+      </size>
+     </property>
+     <property name="title">
+      <string>Motor 3</string>
+     </property>
+     <layout class="QHBoxLayout" name="horizontalLayout_3">
+      <item>
+       <widget class="QLabel" name="labelDegrees3">
+        <property name="text">
+         <string>Degrees</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QSlider" name="horizontalSlider3">
+        <property name="maximum">
+         <number>180</number>
+        </property>
+        <property name="value">
+         <number>90</number>
+        </property>
+        <property name="orientation">
+         <enum>Qt::Orientation::Horizontal</enum>
+        </property>
+        <property name="tickPosition">
+         <enum>QSlider::TickPosition::NoTicks</enum>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLineEdit" name="lineEditMotor3">
+        <property name="maximumSize">
+         <size>
+          <width>30</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>90</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignmentFlag::AlignCenter</set>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item row="0" column="5" rowspan="9">
+    <spacer name="verticalSpacer">
+     <property name="orientation">
+      <enum>Qt::Orientation::Vertical</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>411</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+   <item row="7" column="0" colspan="4">
+    <widget class="Line" name="line">
+     <property name="orientation">
+      <enum>Qt::Orientation::Horizontal</enum>
+     </property>
+    </widget>
+   </item>
    <item row="5" column="0" colspan="4">
     <widget class="QGroupBox" name="groupBoxMotor6">
      <property name="minimumSize">
@@ -367,32 +405,55 @@
      </layout>
     </widget>
    </item>
-   <item row="4" column="0" colspan="4">
-    <widget class="QGroupBox" name="groupBoxMotor5">
-     <property name="minimumSize">
+   <item row="8" column="6">
+    <widget class="QPushButton" name="pushButtonReset">
+     <property name="text">
+      <string>Reset</string>
+     </property>
+     <property name="autoDefault">
+      <bool>false</bool>
+     </property>
+     <property name="default">
+      <bool>false</bool>
+     </property>
+    </widget>
+   </item>
+   <item row="8" column="7">
+    <spacer name="horizontalSpacer_2">
+     <property name="orientation">
+      <enum>Qt::Orientation::Horizontal</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
       <size>
-       <width>300</width>
-       <height>0</height>
+       <width>40</width>
+       <height>20</height>
       </size>
      </property>
+    </spacer>
+   </item>
+   <item row="6" column="0" colspan="4">
+    <widget class="QGroupBox" name="groupBoxSpeed">
      <property name="title">
-      <string>Motor 5</string>
+      <string>Moving Speed</string>
      </property>
-     <layout class="QHBoxLayout" name="horizontalLayout_5">
+     <layout class="QHBoxLayout" name="horizontalLayout">
       <item>
-       <widget class="QLabel" name="labelDegrees5">
+       <widget class="QLabel" name="Speed">
         <property name="text">
-         <string>Degrees</string>
+         <string>Speed   </string>
         </property>
        </widget>
       </item>
       <item>
-       <widget class="QSlider" name="horizontalSlider5">
+       <widget class="QSlider" name="horizontalSliderSpeed">
+        <property name="minimum">
+         <number>1</number>
+        </property>
         <property name="maximum">
-         <number>180</number>
+         <number>100</number>
         </property>
         <property name="value">
-         <number>90</number>
+         <number>100</number>
         </property>
         <property name="orientation">
          <enum>Qt::Orientation::Horizontal</enum>
@@ -400,7 +461,7 @@
        </widget>
       </item>
       <item>
-       <widget class="QLineEdit" name="lineEditMotor5">
+       <widget class="QLineEdit" name="lineEditSpeed">
         <property name="maximumSize">
          <size>
           <width>30</width>
@@ -408,7 +469,7 @@
          </size>
         </property>
         <property name="text">
-         <string>90</string>
+         <string>100</string>
         </property>
         <property name="alignment">
          <set>Qt::AlignmentFlag::AlignCenter</set>

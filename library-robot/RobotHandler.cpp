@@ -167,25 +167,12 @@ void RobotHandler::inverseCinematic(const cv::Point3d &efectorGlobal) {
   double B_rad = acos((R * R + (Z - a1 + a5) * (Z - a1 + a5) - a2 * a2 - a3 * a3) / (2 * a2 * a3));
   int B = B_rad * 180 / M_PI;
 
-  double numerador_mas   = R * (a2 + a3 * cos(B_rad)) + a3 * sin(B_rad) * (Z - a1 + a5);
-  double numerador_menos = R * (a2 + a3 * cos(B_rad)) - a3 * sin(B_rad) * (Z - a1 + a5);
-  double denominador     = a2 * a2 + a3 * a3 + 2 * a2 * a3 * cos(B_rad);
+  double A_rad = asin((R * (a2 + a3 * cos(B_rad)) - a3 * sin(B_rad) * (Z - a1 + a5)) / (a2 * a2 + a3 * a3 + 2 * a2 * a3 * cos(B_rad)));
+  int A = A_rad * 180 / M_PI;
 
-  double senA_mas   = numerador_mas / denominador;
-  double senA_menos = numerador_menos / denominador;
+  int C = 180 - A - B;
 
-  double A_rad_mas   = asin(senA_mas);
-  double A_rad_menos = asin(senA_menos);
-
-  int A_mas   = A_rad_mas * 180 / M_PI;
-  int A_menos = A_rad_menos * 180 / M_PI;
-
-  int C_mas = 180 - A_mas - B;
-  int C_menos = 180 - A_menos - B;
-
-  qDebug("Angulos calculados: A+ = %d, A- = %d, B = %d, C+ = %d, C- = %d", A_mas, A_menos, B, C_mas, C_menos);
-
-  //qDebug("Angulos calculados: A = q2 = %d, B = q3 = %d", A, B);
+  qDebug("Angulos calculados: A (q2) = %d, B (q3) = %d, C (q5) = %d", A, B, C);
 }
 
 // Transforma un punto del efector en coordenadas de la base

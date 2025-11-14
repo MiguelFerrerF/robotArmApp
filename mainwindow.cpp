@@ -184,6 +184,7 @@ void MainWindow::on_actionControlRobot_triggered()
   disconnect(m_RobotControl, &RobotControlDialog::errorOccurred, this, &MainWindow::onRobotControlError);
   disconnect(m_RobotControl, &RobotControlDialog::motorAngleChanged, this, &MainWindow::onRobotMotorAngleChanged);
   disconnect(m_RobotControl, &RobotControlDialog::allMotorsReset, this, &MainWindow::onAllMotorsReset);
+  disconnect(m_RobotControl, &RobotControlDialog::motorOffsetChanged, this, &MainWindow::onRobotMotorOffsetChanged);
 
   // Connect signals from RobotControlDialog
   connect(m_RobotControl, &RobotControlDialog::errorOccurred, this, &MainWindow::onRobotControlError);
@@ -195,8 +196,8 @@ void MainWindow::on_actionControlRobot_triggered()
   if (SerialPortHandler::instance().isConnected()) {
     QString commandOffset = "READ:OFFSETS";
     SerialPortHandler::instance().sendData(commandOffset.toUtf8());
-    QString commandAngles = "READ:ANGLES_WITH_OFFSET";
-    SerialPortHandler::instance().sendData(commandAngles.toUtf8());
+    // QString commandAngles = "READ:ANGLES_WITH_OFFSET";
+    // SerialPortHandler::instance().sendData(commandAngles.toUtf8());
   }
   else {
     LogHandler::warning(ui->textEditLog, "No se puede enviar comando: puerto serie no conectado");
@@ -316,14 +317,14 @@ void MainWindow::onRobotMotorAngleUpdatedFromSerial(int motorIndex, int angle)
 
 void MainWindow::onRobotMotorOffsetsReadFromMemory(int motorIndex, int offset)
 {
-    if (motorIndex < 1 || motorIndex > 6)
-        return;
+  if (motorIndex < 1 || motorIndex > 6)
+    return;
 
-    m_robotSettings.motors[motorIndex-1].defaultAngle = offset;
+  m_robotSettings.motors[motorIndex - 1].defaultAngle = offset;
 
-    m_RobotControl->setupOffsets();
+  m_RobotControl->setupOffsets();
 
-    LogHandler::info(ui->textEditLog, QString("Updated offset for motor %1 with value %2").arg(motorIndex).arg(offset));
+  LogHandler::info(ui->textEditLog, QString("Updated offset for motor %1 with value %2").arg(motorIndex).arg(offset));
 }
 
 void MainWindow::onEfectorPositionChanged(double x, double y, double z)

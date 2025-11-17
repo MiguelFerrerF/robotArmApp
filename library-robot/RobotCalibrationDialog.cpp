@@ -7,6 +7,8 @@
 #include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QJsonArray>
+#include <QJsonObject>
 #include <QLabel>
 #include <QMessageBox>
 #include <QVBoxLayout>
@@ -71,7 +73,8 @@ bool RobotCalibrationWorker::runCalibration(cv::Size boardSize, std::vector<std:
   cv::TermCriteria criteria(cv::TermCriteria::EPS + cv::TermCriteria::MAX_ITER, 100, 1e-6);
 
   // 2. Definir Banderas (Flags) de Calibración
-  // int flags = cv::CALIB_FIX_ASPECT_RATIO | cv::CALIB_RATIONAL_MODEL | cv::CALIB_ZERO_TANGENT_DIST | cv::CALIB_USE_LU;
+  // int flags = cv::CALIB_FIX_ASPECT_RATIO | cv::CALIB_RATIONAL_MODEL |
+  // cv::CALIB_ZERO_TANGENT_DIST | cv::CALIB_USE_LU;
   int flags = cv::CALIB_USE_LU;
 
   // 3. Llamada a la función de calibración principal con Criterios y Banderas
@@ -163,11 +166,15 @@ void RobotCalibrationWorker::doCalibration(const QString& directoryPath, cv::Siz
   result.processedCount = processedCount;
 
   if (processedCount < 5) {
-    emit calibrationError(tr("Solo se pudieron encontrar esquinas en %1 imágenes. La calibración no se realizará.").arg(processedCount));
+    emit calibrationError(tr("Solo se pudieron encontrar esquinas en %1 "
+                             "imágenes. La calibración no se realizará.")
+                            .arg(processedCount));
     return;
   }
 
-  emit progressUpdate(tr("Esquinas detectadas correctamente en %1 imágenes.\nEjecutando calibración...").arg(processedCount));
+  emit progressUpdate(tr("Esquinas detectadas correctamente en %1 "
+                         "imágenes.\nEjecutando calibración...")
+                        .arg(processedCount));
 
   // Pasamos el imageSize a runCalibration
   if (runCalibration(imageSize, imagePoints, objectPoints, result)) {
@@ -177,10 +184,12 @@ void RobotCalibrationWorker::doCalibration(const QString& directoryPath, cv::Siz
     emit calibrationFinished(result);
   }
   else
-    emit calibrationError(tr("Falló la calibración. Se necesitan al menos 5 conjuntos de puntos válidos."));
+    emit calibrationError(tr("Falló la calibración. Se necesitan al menos 5 "
+                             "conjuntos de puntos válidos."));
 }
 
-RobotCalibrationDialog::RobotCalibrationDialog(QWidget* parent) : QDialog(parent), ui(new Ui::RobotCalibrationDialog)
+RobotCalibrationDialog::RobotCalibrationDialog(QWidget* parent, RobotConfig::RobotSettings* settings)
+  : QDialog(parent), ui(new Ui::RobotCalibrationDialog), m_robotSettings(settings)
 {
   ui->setupUi(this);
   this->setWindowTitle("Robot Calibration");
@@ -280,6 +289,59 @@ void RobotCalibrationDialog::on_pushButtonCaptureImage_clicked()
   else {
     QMessageBox::critical(this, tr("Error de Guardado"), tr("No se pudo guardar la imagen en: %1").arg(filePath));
   }
+
+  // Guardar un archivo json con la configuración actual y el nombre de la
+  // imagen
+  if (m_robotSettings) {
+    QString jsonFileName = QString("capture_%1.json").arg(timestamp);
+    QString jsonFilePath = QDir(m_selectedDirectoryPath).filePath(jsonFileName);
+
+    if (saveMotorAnglesToJson(*m_robotSettings, jsonFilePath)) {
+      ui->textEditInfo->append(tr("Configuración de ángulos guardada: %1").arg(jsonFileName));
+    }
+    else {
+      QMessageBox::critical(this, tr("Error de Guardado de Configuración"), tr("No se pudo guardar la configuración JSON en: %1").arg(jsonFilePath));
+    }
+  }
+}
+
+bool RobotCalibrationDialog::saveMotorAnglesToJson(const RobotConfig::RobotSettings& settings, const QString& filePath)
+{
+  QJsonObject rootObject;
+  QJsonArray  motorsArray;
+
+  // Asumiendo que el array motors tiene 6 elementos
+  for (int i = 0; i < 6; ++i) {
+    QJsonObject motorObject;
+    // Utilizamos desiredAngle o currentAngle, ajusta según el campo que
+    // contenga el ángulo actual. He elegido `currentAngle` ya que parece ser el
+    // más representativo del estado actual.
+    motorObject["motorIndex"] = i + 1;
+    motorObject["angle"]      = settings.motors[i].currentAngle;
+
+    // Si necesitas otros valores (por ejemplo, el default o el fijo), añádelos:
+    motorObject["defaultAngle"] = settings.motors[i].defaultAngle;
+    motorObject["fixedAngle"]   = settings.motors[i].fixedAngle;
+
+    motorsArray.append(motorObject);
+  }
+
+  rootObject["timestamp"]   = QDateTime::currentDateTime().toString(Qt::ISODate);
+  rootObject["motorAngles"] = motorsArray;
+
+  QJsonDocument doc(rootObject);
+  QFile         file(filePath);
+
+  if (file.open(QIODevice::WriteOnly)) {
+    // Usamos el formato JSON legible con indentación (Compact para archivos
+    // pequeños)
+    file.write(doc.toJson(QJsonDocument::Indented));
+    file.close();
+    return true;
+  }
+
+  qWarning() << "Error al abrir o escribir archivo JSON:" << filePath;
+  return false;
 }
 
 void RobotCalibrationDialog::updateFilesList()

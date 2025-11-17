@@ -87,6 +87,9 @@
         "xutility": "cpp",
         "qcameradevice": "cpp",
         "qfiledialog": "cpp",
-        "qfileinfo": "cpp"
+        "qfileinfo": "cpp",
+        "qlabel": "cpp",
+        "qjsondocument": "cpp",
+        "qmessagebox": "cpp"
     }
 }

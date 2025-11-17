@@ -2,6 +2,7 @@
 #define ROBOTCALIBRATIONDIALOG_H
 
 #include "../library-video/VideoCaptureHandler.h"
+#include "RobotConfig.h"
 #include <QDialog>
 #include <QPixmap>
 #include <QResizeEvent>
@@ -63,7 +64,7 @@ class RobotCalibrationDialog : public QDialog
   Q_OBJECT
 
 public:
-  RobotCalibrationDialog(QWidget* parent = nullptr);
+  RobotCalibrationDialog(QWidget* parent = nullptr, RobotConfig::RobotSettings* settings = nullptr);
   ~RobotCalibrationDialog();
 
 private slots:
@@ -93,9 +94,14 @@ private:
   QThread*                m_workerThread = nullptr;
   RobotCalibrationWorker* m_worker       = nullptr;
 
+  // Robot settings pointer
+  RobotConfig::RobotSettings* m_robotSettings;
+
   void updateVideoLabel();
   void updateFilesList();
   void displayCalibrationResults(const cv::Mat& cameraMatrix, const cv::Mat& distCoeffs, const cv::Mat& newCameraMatrix, double rms);
+
+  bool saveMotorAnglesToJson(const RobotConfig::RobotSettings& settings, const QString& filePath);
 
   bool loadCalibration(const std::string& filename);
   void loadExistingCalibration();

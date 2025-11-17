@@ -207,7 +207,7 @@ void MainWindow::on_actionControlRobot_triggered()
 void MainWindow::on_actionCalibrateRobot_triggered()
 {
   if (!m_RobotCalibrationDialog) {
-    m_RobotCalibrationDialog = new RobotCalibrationDialog(this);
+    m_RobotCalibrationDialog = new RobotCalibrationDialog(this, &m_robotSettings);
   }
 
   m_RobotCalibrationDialog->show();

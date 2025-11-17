@@ -60,6 +60,8 @@ set(PROJECT_SOURCES
     library-video/VideoProcessingDialog.cpp
     library-video/VideoProcessingDialog.h
     library-video/VideoProcessingDialog.ui
+    library-video/ClickableLabel.cpp
+    library-video/ClickableLabel.h
 )
 
 # --- Creación del ejecutable ---

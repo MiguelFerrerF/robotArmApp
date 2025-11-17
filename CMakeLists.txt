@@ -48,6 +48,9 @@ set(PROJECT_SOURCES
     library-robot/RobotControlDialog.h
     library-robot/RobotControlDialog.cpp
     library-robot/RobotControlDialog.ui
+    library-robot/RobotCalibrationDialog.cpp
+    library-robot/RobotCalibrationDialog.h
+    library-robot/RobotCalibrationDialog.ui
 
     library-video/VideoCaptureHandler.h
     library-video/VideoCaptureHandler.cpp

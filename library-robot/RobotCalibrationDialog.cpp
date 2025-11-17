@@ -1,5 +1,5 @@
-#include "VideoCalibrationDialog.h"
-#include "./ui_VideoCalibrationDialog.h"
+#include "RobotCalibrationDialog.h"
+#include "./ui_RobotCalibrationDialog.h"
 // Headers de Qt
 #include <QDateTime>
 #include <QDebug>
@@ -7,6 +7,8 @@
 #include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QJsonArray>
+#include <QJsonObject>
 #include <QLabel>
 #include <QMessageBox>
 #include <QVBoxLayout>
@@ -23,10 +25,10 @@
 
 namespace fs = std::filesystem;
 
-const QString DEFAULT_CALIB_DIR = "calibration/camera"; // Mantenemos el nombre de carpeta que usa la lógica de
-                                                        // guardado
+const QString DEFAULT_CALIB_DIR = "calibration/robot"; // Mantenemos el nombre de carpeta que usa la lógica de
+                                                       // guardado
 
-std::vector<cv::Point3f> VideoCalibrationWorker::createObjectPoints(cv::Size boardSize, float squareSize) const
+std::vector<cv::Point3f> RobotCalibrationWorker::createObjectPoints(cv::Size boardSize, float squareSize) const
 {
   std::vector<cv::Point3f> obj;
   for (int i = 0; i < boardSize.height; ++i) {
@@ -37,7 +39,7 @@ std::vector<cv::Point3f> VideoCalibrationWorker::createObjectPoints(cv::Size boa
   return obj;
 }
 
-bool VideoCalibrationWorker::processImageForCorners(const cv::Mat& image, cv::Size boardSize, float squareSize,
+bool RobotCalibrationWorker::processImageForCorners(const cv::Mat& image, cv::Size boardSize, float squareSize,
                                                     std::vector<std::vector<cv::Point2f>>& imagePoints,
                                                     std::vector<std::vector<cv::Point3f>>& objectPoints)
 {
@@ -58,8 +60,8 @@ bool VideoCalibrationWorker::processImageForCorners(const cv::Mat& image, cv::Si
   return false;
 }
 
-bool VideoCalibrationWorker::runCalibration(cv::Size boardSize, std::vector<std::vector<cv::Point2f>>& imagePoints,
-                                            std::vector<std::vector<cv::Point3f>>& objectPoints, VideoCalibrationResult& result)
+bool RobotCalibrationWorker::runCalibration(cv::Size boardSize, std::vector<std::vector<cv::Point2f>>& imagePoints,
+                                            std::vector<std::vector<cv::Point3f>>& objectPoints, RobotCalibrationResult& result)
 {
   if (imagePoints.size() < 5) {
     return false;
@@ -71,7 +73,8 @@ bool VideoCalibrationWorker::runCalibration(cv::Size boardSize, std::vector<std:
   cv::TermCriteria criteria(cv::TermCriteria::EPS + cv::TermCriteria::MAX_ITER, 100, 1e-6);
 
   // 2. Definir Banderas (Flags) de Calibración
-  // int flags = cv::CALIB_FIX_ASPECT_RATIO | cv::CALIB_RATIONAL_MODEL | cv::CALIB_ZERO_TANGENT_DIST | cv::CALIB_USE_LU;
+  // int flags = cv::CALIB_FIX_ASPECT_RATIO | cv::CALIB_RATIONAL_MODEL |
+  // cv::CALIB_ZERO_TANGENT_DIST | cv::CALIB_USE_LU;
   int flags = cv::CALIB_USE_LU;
 
   // 3. Llamada a la función de calibración principal con Criterios y Banderas
@@ -86,7 +89,7 @@ bool VideoCalibrationWorker::runCalibration(cv::Size boardSize, std::vector<std:
 /**
  * @brief Guarda la matriz de cámara y los coeficientes de distorsión.
  */
-void VideoCalibrationWorker::saveCalibration(const std::string& cameraMatrixFile, const std::string& distCoeffsFile, const cv::Mat& cameraMatrix,
+void RobotCalibrationWorker::saveCalibration(const std::string& cameraMatrixFile, const std::string& distCoeffsFile, const cv::Mat& cameraMatrix,
                                              const cv::Mat& distCoeffs, const cv::Mat& newCameraMatrix) const
 {
   QDir().mkpath(DEFAULT_CALIB_DIR);
@@ -117,7 +120,7 @@ void VideoCalibrationWorker::saveCalibration(const std::string& cameraMatrixFile
 /**
  * @brief Slot principal del worker: realiza la calibración.
  */
-void VideoCalibrationWorker::doCalibration(const QString& directoryPath, cv::Size boardSize, float squareSize)
+void RobotCalibrationWorker::doCalibration(const QString& directoryPath, cv::Size boardSize, float squareSize)
 {
   QDir        directory(directoryPath);
   QStringList nameFilters;
@@ -132,7 +135,7 @@ void VideoCalibrationWorker::doCalibration(const QString& directoryPath, cv::Siz
 
   std::vector<std::vector<cv::Point2f>> imagePoints;
   std::vector<std::vector<cv::Point3f>> objectPoints;
-  VideoCalibrationResult                result;
+  RobotCalibrationResult                result;
 
   // Necesitamos el tamaño de la imagen para getOptimalNewCameraMatrix ---
   cv::Size imageSize;
@@ -163,11 +166,15 @@ void VideoCalibrationWorker::doCalibration(const QString& directoryPath, cv::Siz
   result.processedCount = processedCount;
 
   if (processedCount < 5) {
-    emit calibrationError(tr("Solo se pudieron encontrar esquinas en %1 imágenes. La calibración no se realizará.").arg(processedCount));
+    emit calibrationError(tr("Solo se pudieron encontrar esquinas en %1 "
+                             "imágenes. La calibración no se realizará.")
+                            .arg(processedCount));
     return;
   }
 
-  emit progressUpdate(tr("Esquinas detectadas correctamente en %1 imágenes.\nEjecutando calibración...").arg(processedCount));
+  emit progressUpdate(tr("Esquinas detectadas correctamente en %1 "
+                         "imágenes.\nEjecutando calibración...")
+                        .arg(processedCount));
 
   // Pasamos el imageSize a runCalibration
   if (runCalibration(imageSize, imagePoints, objectPoints, result)) {
@@ -177,26 +184,28 @@ void VideoCalibrationWorker::doCalibration(const QString& directoryPath, cv::Siz
     emit calibrationFinished(result);
   }
   else
-    emit calibrationError(tr("Falló la calibración. Se necesitan al menos 5 conjuntos de puntos válidos."));
+    emit calibrationError(tr("Falló la calibración. Se necesitan al menos 5 "
+                             "conjuntos de puntos válidos."));
 }
 
-VideoCalibrationDialog::VideoCalibrationDialog(QWidget* parent) : QDialog(parent), ui(new Ui::VideoCalibrationDialog)
+RobotCalibrationDialog::RobotCalibrationDialog(QWidget* parent, RobotConfig::RobotSettings* settings)
+  : QDialog(parent), ui(new Ui::RobotCalibrationDialog), m_robotSettings(settings)
 {
   ui->setupUi(this);
-  this->setWindowTitle("Camera Calibration");
+  this->setWindowTitle("Robot Calibration");
 
   this->setWindowFlags(this->windowFlags() | Qt::WindowMinimizeButtonHint | Qt::WindowMaximizeButtonHint);
 
   VideoCaptureHandler& handler = VideoCaptureHandler::instance();
 
   m_workerThread = new QThread(this);
-  m_worker       = new VideoCalibrationWorker();
+  m_worker       = new RobotCalibrationWorker();
   m_worker->moveToThread(m_workerThread);
 
   connect(m_workerThread, &QThread::finished, m_worker, &QObject::deleteLater);
-  connect(m_worker, &VideoCalibrationWorker::calibrationFinished, this, &VideoCalibrationDialog::on_calibrationFinished);
-  connect(m_worker, &VideoCalibrationWorker::calibrationError, this, &VideoCalibrationDialog::on_calibrationError);
-  connect(m_worker, &VideoCalibrationWorker::progressUpdate, this, &VideoCalibrationDialog::on_progressUpdate);
+  connect(m_worker, &RobotCalibrationWorker::calibrationFinished, this, &RobotCalibrationDialog::on_calibrationFinished);
+  connect(m_worker, &RobotCalibrationWorker::calibrationError, this, &RobotCalibrationDialog::on_calibrationError);
+  connect(m_worker, &RobotCalibrationWorker::progressUpdate, this, &RobotCalibrationDialog::on_progressUpdate);
 
   m_workerThread->start(); // Iniciar el hilo
 
@@ -223,7 +232,7 @@ VideoCalibrationDialog::VideoCalibrationDialog(QWidget* parent) : QDialog(parent
   updateFilesList();
 }
 
-VideoCalibrationDialog::~VideoCalibrationDialog()
+RobotCalibrationDialog::~RobotCalibrationDialog()
 {
   disconnect(&VideoCaptureHandler::instance(), SIGNAL(newPixmapCaptured(QPixmap)), this, nullptr);
 
@@ -239,7 +248,7 @@ VideoCalibrationDialog::~VideoCalibrationDialog()
   delete ui;
 }
 
-void VideoCalibrationDialog::updateVideoLabel()
+void RobotCalibrationDialog::updateVideoLabel()
 {
   if (m_currentPixmap.isNull()) {
     return;
@@ -247,7 +256,7 @@ void VideoCalibrationDialog::updateVideoLabel()
   ui->videoLabel->setPixmap(m_currentPixmap.scaled(ui->videoLabel->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
 }
 
-void VideoCalibrationDialog::on_pushButtonSelectDirectory_clicked()
+void RobotCalibrationDialog::on_pushButtonSelectDirectory_clicked()
 {
   QString newDirPath = QFileDialog::getExistingDirectory(this, tr("Seleccionar Carpeta para Calibración"), m_selectedDirectoryPath);
 
@@ -257,7 +266,7 @@ void VideoCalibrationDialog::on_pushButtonSelectDirectory_clicked()
   }
 }
 
-void VideoCalibrationDialog::on_pushButtonCaptureImage_clicked()
+void RobotCalibrationDialog::on_pushButtonCaptureImage_clicked()
 {
   if (m_selectedDirectoryPath.isEmpty()) {
     QMessageBox::warning(this, tr("Advertencia de Carpeta"), tr("Por favor, selecciona primero una carpeta de destino."));
@@ -280,9 +289,62 @@ void VideoCalibrationDialog::on_pushButtonCaptureImage_clicked()
   else {
     QMessageBox::critical(this, tr("Error de Guardado"), tr("No se pudo guardar la imagen en: %1").arg(filePath));
   }
+
+  // Guardar un archivo json con la configuración actual y el nombre de la
+  // imagen
+  if (m_robotSettings) {
+    QString jsonFileName = QString("capture_%1.json").arg(timestamp);
+    QString jsonFilePath = QDir(m_selectedDirectoryPath).filePath(jsonFileName);
+
+    if (saveMotorAnglesToJson(*m_robotSettings, jsonFilePath)) {
+      ui->textEditInfo->append(tr("Configuración de ángulos guardada: %1").arg(jsonFileName));
+    }
+    else {
+      QMessageBox::critical(this, tr("Error de Guardado de Configuración"), tr("No se pudo guardar la configuración JSON en: %1").arg(jsonFilePath));
+    }
+  }
 }
 
-void VideoCalibrationDialog::updateFilesList()
+bool RobotCalibrationDialog::saveMotorAnglesToJson(const RobotConfig::RobotSettings& settings, const QString& filePath)
+{
+  QJsonObject rootObject;
+  QJsonArray  motorsArray;
+
+  // Asumiendo que el array motors tiene 6 elementos
+  for (int i = 0; i < 6; ++i) {
+    QJsonObject motorObject;
+    // Utilizamos desiredAngle o currentAngle, ajusta según el campo que
+    // contenga el ángulo actual. He elegido `currentAngle` ya que parece ser el
+    // más representativo del estado actual.
+    motorObject["motorIndex"] = i + 1;
+    motorObject["angle"]      = settings.motors[i].currentAngle;
+
+    // Si necesitas otros valores (por ejemplo, el default o el fijo), añádelos:
+    motorObject["defaultAngle"] = settings.motors[i].defaultAngle;
+    motorObject["fixedAngle"]   = settings.motors[i].fixedAngle;
+
+    motorsArray.append(motorObject);
+  }
+
+  rootObject["timestamp"]   = QDateTime::currentDateTime().toString(Qt::ISODate);
+  rootObject["motorAngles"] = motorsArray;
+
+  QJsonDocument doc(rootObject);
+  QFile         file(filePath);
+
+  if (file.open(QIODevice::WriteOnly)) {
+    // Usamos el formato JSON legible con indentación (Compact para archivos
+    // pequeños)
+    file.write(doc.toJson(QJsonDocument::Indented));
+    file.close();
+    return true;
+  }
+
+  qWarning() << "Error al abrir o escribir archivo JSON:" << filePath;
+  return false;
+}
+
+void RobotCalibrationDialog::updateFilesList()
 {
   QWidget* contentWidget = ui->scrollAreaWidgetContents;
   QLayout* layout        = contentWidget->layout();
@@ -364,7 +426,7 @@ void VideoCalibrationDialog::updateFilesList()
 /**
  * @brief Carga las matrices de calibración.
  */
-bool VideoCalibrationDialog::loadCalibration(const std::string& camMatrixPath)
+bool RobotCalibrationDialog::loadCalibration(const std::string& camMatrixPath)
 {
   cv::FileStorage fs(camMatrixPath, cv::FileStorage::READ);
   if (!fs.isOpened()) {
@@ -389,7 +451,7 @@ bool VideoCalibrationDialog::loadCalibration(const std::string& camMatrixPath)
 /**
  * @brief Función auxiliar para mostrar los resultados de la calibración.
  */
-void VideoCalibrationDialog::displayCalibrationResults(const cv::Mat& cameraMatrix, const cv::Mat& distCoeffs, const cv::Mat& newCameraMatrix,
+void RobotCalibrationDialog::displayCalibrationResults(const cv::Mat& cameraMatrix, const cv::Mat& distCoeffs, const cv::Mat& newCameraMatrix,
                                                        double rms)
 {
   // Mostrar Matriz de Cámara
@@ -420,7 +482,7 @@ void VideoCalibrationDialog::displayCalibrationResults(const cv::Mat& cameraMatr
 /**
  * @brief Comprueba si existe un archivo de calibración y lo carga al inicio.
  */
-void VideoCalibrationDialog::loadExistingCalibration()
+void RobotCalibrationDialog::loadExistingCalibration()
 {
   // Ruta del archivo de la matriz de cámara a buscar
   QString camMatrixFile = "camera_matrix.yml";
@@ -445,7 +507,7 @@ void VideoCalibrationDialog::loadExistingCalibration()
 /**
  * @brief Inicia el proceso de calibración en el Worker Thread.
  */
-void VideoCalibrationDialog::on_startButton_clicked()
+void RobotCalibrationDialog::on_startButton_clicked()
 {
   // 1. Validaciones
   if (m_selectedDirectoryPath.isEmpty()) {
@@ -480,7 +542,7 @@ void VideoCalibrationDialog::on_startButton_clicked()
 /**
  * @brief Slot para recibir mensajes de progreso del worker.
  */
-void VideoCalibrationDialog::on_progressUpdate(const QString& message)
+void RobotCalibrationDialog::on_progressUpdate(const QString& message)
 {
   ui->textEditInfo->append(message);
 }
@@ -488,7 +550,7 @@ void VideoCalibrationDialog::on_progressUpdate(const QString& message)
 /**
  * @brief Slot para recibir errores del worker.
  */
-void VideoCalibrationDialog::on_calibrationError(const QString& message)
+void RobotCalibrationDialog::on_calibrationError(const QString& message)
 {
   ui->textEditInfo->append(tr("\n--- ERROR DE CALIBRACIÓN ---"));
   ui->textEditInfo->append(message);
@@ -498,7 +560,7 @@ void VideoCalibrationDialog::on_calibrationError(const QString& message)
 /**
  * @brief Slot para recibir los resultados finales del worker.
  */
-void VideoCalibrationDialog::on_calibrationFinished(const VideoCalibrationResult& result)
+void RobotCalibrationDialog::on_calibrationFinished(const RobotCalibrationResult& result)
 {
   // 1. Guardar localmente (para la carga la próxima vez)
   m_cameraMatrix    = result.cameraMatrix;

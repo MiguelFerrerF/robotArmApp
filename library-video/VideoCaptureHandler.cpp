@@ -118,7 +118,7 @@ PropertyRange VideoCaptureHandler::getPropertyRange(int propId)
 
 void VideoCaptureHandler::loadCalibration()
 {
-  QString dirPath        = "calibration";
+  QString dirPath        = "calibration/camera";
   QString camMatrixPath  = QDir(dirPath).filePath("camera_matrix.yml");
   QString distCoeffsPath = QDir(dirPath).filePath("dist_coeffs.yml");
 

@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 
 #include "library-log/LogHandler.h"
+#include "library-robot/RobotCalibrationDialog.h"
 #include "library-robot/RobotControlDialog.h"
 #include "library-robot/RobotHandler.h"
 #include "library-serial/SerialMonitorDialog.h"
@@ -14,6 +15,7 @@
 #include <QSettings>
 #include <QVideoFrame>
 #include <QVideoSink>
+
 
 QT_BEGIN_NAMESPACE
 namespace Ui
@@ -71,6 +73,7 @@ private:
   Ui::MainWindow*         ui;
   SerialMonitorDialog*    m_SerialMonitorDialog    = nullptr;
   RobotControlDialog*     m_RobotControl           = nullptr;
+  RobotCalibrationDialog* m_RobotCalibrationDialog = nullptr;
   VideoManagerDialog*     m_VideoManagerDialog     = nullptr;
   VideoCalibrationDialog* m_VideoCalibrationDialog = nullptr;
   VideoProcessingDialog*  m_VideoProcessingDialog  = nullptr;

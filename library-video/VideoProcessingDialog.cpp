@@ -251,53 +251,42 @@ void VideoProcessingDialog::applySegmentacion(QPixmap& pixmap)
   if (pixmap.isNull())
     return;
 
-  // Convertir QPixmap -> QImage -> cv::Mat (BGR)
+  // ---- Convertir QPixmap -> cv::Mat ----
   QImage  img_qt = pixmap.toImage().convertToFormat(QImage::Format_RGB888);
   cv::Mat src_rgb(img_qt.height(), img_qt.width(), CV_8UC3, const_cast<uchar*>(img_qt.bits()), img_qt.bytesPerLine());
-  cv::Mat image;
-  cv::cvtColor(src_rgb, image, cv::COLOR_RGB2BGR); // OpenCV en BGR
 
-  // Convertir a gris y detectar bordes
+  cv::Mat image;
+  cv::cvtColor(src_rgb, image, cv::COLOR_RGB2BGR);
+
+  // ---- Gris + Canny ----
   cv::Mat gray, edges;
   cv::cvtColor(image, gray, cv::COLOR_BGR2GRAY);
   cv::GaussianBlur(gray, gray, cv::Size(5, 5), 0);
   cv::Canny(gray, edges, 50, 150);
 
-  // Encontrar contornos
+  // ---- Contornos ----
   std::vector<std::vector<cv::Point>> contours;
   cv::findContours(edges.clone(), contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
-  // Dibujar contornos y caja del más grande
   cv::Mat output      = image.clone();
   double  max_area    = 0;
   int     largest_idx = -1;
 
+  // === Solo identificar el más grande, NO dibujar los demás ===
   for (size_t i = 0; i < contours.size(); i++) {
     double area = cv::contourArea(contours[i]);
-    if (area < 100)
-      continue; // descartar muy pequeños
-
-    // Dibujar rectángulo verde y centro rojo
-    cv::Rect box = cv::boundingRect(contours[i]);
-    cv::rectangle(output, box, cv::Scalar(0, 255, 0), 2);
-
-    cv::Moments M = cv::moments(contours[i]);
-    if (M.m00 != 0) {
-      int cx = int(M.m10 / M.m00);
-      int cy = int(M.m01 / M.m00);
-      cv::circle(output, cv::Point(cx, cy), 4, cv::Scalar(0, 0, 255), -1);
-    }
-
     if (area > max_area) {
       max_area    = area;
       largest_idx = int(i);
     }
   }
 
-  // Resaltar el contorno más grande
+  // === Dibujar solo el contorno más grande ===
   if (largest_idx != -1) {
+
     cv::Rect largest_box = cv::boundingRect(contours[largest_idx]);
     cv::rectangle(output, largest_box, cv::Scalar(255, 0, 0), 3);
+
     cv::Moments M = cv::moments(contours[largest_idx]);
     if (M.m00 != 0) {
       int cx = int(M.m10 / M.m00);
@@ -306,12 +295,13 @@ void VideoProcessingDialog::applySegmentacion(QPixmap& pixmap)
     }
   }
 
-  // Convertir de nuevo a QPixmap
+  // ---- Convertir a QPixmap ----
   cv::Mat output_rgb;
   cv::cvtColor(output, output_rgb, cv::COLOR_BGR2RGB);
   QImage outImg(output_rgb.data, output_rgb.cols, output_rgb.rows, output_rgb.step, QImage::Format_RGB888);
-  pixmap = QPixmap::fromImage(outImg.copy()); // copia para asegurar memoria válida
+  pixmap = QPixmap::fromImage(outImg.copy());
 }
+
 // Actualizar label (Sin cambios)
 void VideoProcessingDialog::updateVideoLabel()
 {

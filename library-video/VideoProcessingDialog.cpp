@@ -251,53 +251,135 @@ void VideoProcessingDialog::applySegmentacion(QPixmap& pixmap)
   if (pixmap.isNull())
     return;
 
-  // ---- Convertir QPixmap -> cv::Mat ----
+  // 1. ---- Convertir QPixmap -> cv::Mat (BGR) ----
   QImage  img_qt = pixmap.toImage().convertToFormat(QImage::Format_RGB888);
   cv::Mat src_rgb(img_qt.height(), img_qt.width(), CV_8UC3, const_cast<uchar*>(img_qt.bits()), img_qt.bytesPerLine());
+  cv::Mat image_bgr;
+  cv::cvtColor(src_rgb, image_bgr, cv::COLOR_RGB2BGR); // Convertimos a BGR para el estándar de OpenCV
 
-  cv::Mat image;
-  cv::cvtColor(src_rgb, image, cv::COLOR_RGB2BGR);
+  // 2. ---- Gris + Canny ----
+  cv::Mat gray, blurred_gray, edges;
+  cv::cvtColor(image_bgr, gray, cv::COLOR_BGR2GRAY);
+  cv::GaussianBlur(gray, blurred_gray, cv::Size(5, 5), 0);
 
-  // ---- Gris + Canny ----
-  cv::Mat gray, edges;
-  cv::cvtColor(image, gray, cv::COLOR_BGR2GRAY);
-  cv::GaussianBlur(gray, gray, cv::Size(5, 5), 0);
-  cv::Canny(gray, edges, 50, 150);
+  QImage gray_qt(blurred_gray.data, blurred_gray.cols, blurred_gray.rows, blurred_gray.step, QImage::Format_Grayscale8);
+  ui->labelGray->setPixmap(QPixmap::fromImage(gray_qt).scaled(ui->labelGray->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
 
-  // ---- Contornos ----
+  cv::Canny(blurred_gray, edges, 20, 50);
+
+  // =========================================================
+  // 2.A. ---- NUEVO: Cerrar Bordes con Dilatación ----
+  // Dilatación: Expande las áreas claras (bordes) para cerrar pequeños espacios.
+  // Usamos un kernel de 3x3 o 5x5. Un kernel de 3x3 suele ser suficiente.
+  cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3));
+  cv::Mat dilated_edges;
+  cv::dilate(edges, dilated_edges, kernel, cv::Point(-1, -1), 1); // Iteraciones=1 (puede subir si es necesario)
+
+  // Ahora usaremos 'dilated_edges' para encontrar contornos.
+  // =========================================================
+
+  // 3. ---- Contornos ----
   std::vector<std::vector<cv::Point>> contours;
-  cv::findContours(edges.clone(), contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+  // IMPORTANTE: Buscamos contornos en la imagen DILATADA
+  cv::findContours(dilated_edges.clone(), contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
-  cv::Mat output      = image.clone();
+  cv::Mat output      = image_bgr.clone();
   double  max_area    = 0;
   int     largest_idx = -1;
 
-  // === Solo identificar el más grande, NO dibujar los demás ===
-  for (size_t i = 0; i < contours.size(); i++) {
-    double area = cv::contourArea(contours[i]);
+  // --- Umbral de área mínima y filtrado ---
+  const double                        MIN_CONTOUR_AREA = 500.0; // AJUSTAR ESTE VALOR SEGÚN SEA NECESARIO
+  std::vector<std::vector<cv::Point>> filtered_contours;
+
+  for (const auto& contour : contours) {
+    double area = cv::contourArea(contour);
+    if (area > MIN_CONTOUR_AREA) {
+      filtered_contours.push_back(contour);
+    }
+  }
+
+  // === 3.A. Identificar el contorno más grande entre los filtrados ===
+  for (size_t i = 0; i < filtered_contours.size(); i++) {
+    double area = cv::contourArea(filtered_contours[i]);
     if (area > max_area) {
       max_area    = area;
       largest_idx = int(i);
     }
   }
 
-  // === Dibujar solo el contorno más grande ===
+  // === 3.B. Crear la imagen filtrada para labelCanny ===
+  // La imagen base para el label sigue siendo el Canny filtrado (solo el contorno principal)
+  cv::Mat filtered_edges_display = cv::Mat::zeros(edges.size(), edges.type());
+
   if (largest_idx != -1) {
+    const auto& main_contour = filtered_contours[largest_idx];
 
-    cv::Rect largest_box = cv::boundingRect(contours[largest_idx]);
-    cv::rectangle(output, largest_box, cv::Scalar(255, 0, 0), 3);
+    // Dibuja SÓLO el contorno más grande y filtrado
+    // NOTA: Dibuja el contorno encontrado en la imagen DILATADA
+    cv::drawContours(filtered_edges_display, filtered_contours, largest_idx, cv::Scalar(255), 1);
 
-    cv::Moments M = cv::moments(contours[largest_idx]);
-    if (M.m00 != 0) {
-      int cx = int(M.m10 / M.m00);
-      int cy = int(M.m01 / M.m00);
-      cv::circle(output, cv::Point(cx, cy), 8, cv::Scalar(255, 255, 0), -1);
+    // --- 3.C. MOSTRAR IMAGEN FILTRADA EN labelCanny ---
+    QImage canny_qt(filtered_edges_display.data, filtered_edges_display.cols, filtered_edges_display.rows, filtered_edges_display.step,
+                    QImage::Format_Grayscale8);
+    ui->labelCanny->setPixmap(QPixmap::fromImage(canny_qt).scaled(ui->labelCanny->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
+
+    // 3.4. Rectángulo Delimitador (Bounding Box)
+    cv::Rect bounding_rect = cv::boundingRect(main_contour);
+    cv::rectangle(output, bounding_rect.tl(), bounding_rect.br(), cv::Scalar(255, 0, 0), 2); // Azul (BGR)
+
+    // 3.5. Centroide (Momento de la imagen)
+    cv::Moments M  = cv::moments(main_contour);
+    int         cx = -1, cy = -1; // Inicializamos fuera del if
+
+    if (M.m00 > 0) { // Evitar división por cero
+      cx = static_cast<int>(M.m10 / M.m00);
+      cy = static_cast<int>(M.m01 / M.m00);
+
+      // Dibujar el Centroide en la imagen final (output)
+      cv::circle(output, cv::Point(cx, cy), 5, cv::Scalar(0, 0, 255), -1); // Rojo (BGR)
+    }
+
+    // 3.6. Orientación y Línea Perpendicular (Eje Principal)
+    if (main_contour.size() >= 5) {
+      cv::RotatedRect min_rect = cv::minAreaRect(main_contour);
+      double          angle    = min_rect.angle;
+
+      if (min_rect.size.width < min_rect.size.height) {
+        angle = angle + 90.0;
+      }
+      if (angle < 0)
+        angle += 180.0;
+
+      // Mostrar el ángulo en el label
+      if (ui->labelCurrentPoint) {
+        ui->labelCurrentPoint->setText(QString::number(angle, 'f', 2) + "°");
+      }
+
+      // Dibujar el eje principal (línea de orientación)
+      if (cx != -1 && cy != -1) {
+        double rad         = angle * CV_PI / 180.0;
+        int    line_length = 100;
+
+        int x1 = cx + static_cast<int>(line_length * cos(rad));
+        int y1 = cy + static_cast<int>(line_length * sin(rad));
+        int x2 = cx - static_cast<int>(line_length * cos(rad));
+        int y2 = cy - static_cast<int>(line_length * sin(rad));
+
+        cv::line(output, cv::Point(x1, y1), cv::Point(x2, y2), cv::Scalar(0, 255, 255), 2); // Amarillo (BGR)
+      }
     }
   }
+  else {
+    // Si no se encuentra un contorno grande, muestra la imagen negra vacía
+    QImage canny_qt(filtered_edges_display.data, filtered_edges_display.cols, filtered_edges_display.rows, filtered_edges_display.step,
+                    QImage::Format_Grayscale8);
+    ui->labelCanny->setPixmap(QPixmap::fromImage(canny_qt).scaled(ui->labelCanny->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
+  }
 
-  // ---- Convertir a QPixmap ----
+  // 4. ---- Convertir cv::Mat (BGR) -> QPixmap ----
   cv::Mat output_rgb;
   cv::cvtColor(output, output_rgb, cv::COLOR_BGR2RGB);
+
   QImage outImg(output_rgb.data, output_rgb.cols, output_rgb.rows, output_rgb.step, QImage::Format_RGB888);
   pixmap = QPixmap::fromImage(outImg.copy());
 }

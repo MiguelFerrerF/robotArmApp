@@ -23,7 +23,7 @@ public:
   ~VideoProcessingDialog();
 
 private slots:
-   // Checkboxes y sliders
+  // Checkboxes y sliders
   void on_checkBoxSegmentacion_toggled(bool checked);
   void on_ButtonpointBL_clicked();
   void on_ButtonpointBR_clicked();
@@ -76,7 +76,6 @@ private:
                                std::vector<QPoint>& transformedPoints);
   // Nueva función para transformar un punto del crop al frame original
   QPoint transformCropPointToOriginal(const cv::Point2f& cropPoint);
-
 };
 
 #endif // VIDEOPROCESSINGDIALOG_H

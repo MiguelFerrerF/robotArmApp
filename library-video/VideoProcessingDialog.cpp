@@ -9,8 +9,7 @@
 #include <algorithm>
 #include <opencv2/opencv.hpp>
 
-VideoProcessingDialog::VideoProcessingDialog(QWidget* parent)
-  : QDialog(parent), ui(new Ui::VideoProcessingDialog), m_selectedCorner(None)
+VideoProcessingDialog::VideoProcessingDialog(QWidget* parent) : QDialog(parent), ui(new Ui::VideoProcessingDialog), m_selectedCorner(None)
 {
   ui->setupUi(this);
   this->setWindowTitle("Processing Video");
@@ -193,9 +192,8 @@ void VideoProcessingDialog::handleNewPixmap(const QPixmap& pixmap)
     // Actualizar info al recibir frame
     updatePointInfoLabel();
   }
-   // Mostrar la imagen original + puntos predefinidos
-   drawCropPointsOnLabel();
-  
+  // Mostrar la imagen original + puntos predefinidos
+  drawCropPointsOnLabel();
 }
 
 // CORRECCIÓN DE PERSPECTIVA
@@ -236,7 +234,6 @@ QPixmap VideoProcessingDialog::applyPerspectiveCrop(const QPixmap& original, con
 
   QImage out(rgb.data, rgb.cols, rgb.rows, rgb.step, QImage::Format_RGB888);
   return QPixmap::fromImage(out);
-  
 }
 
 // SEGMENTACIÓN
@@ -291,7 +288,7 @@ void VideoProcessingDialog::applySegmentacion(QPixmap& pixmap)
   QString point_str    = "Punto Recta img recortada: N/A";
   QString angle_str    = "N/A";
 
-cv::Mat filtered_edges_display = cv::Mat::zeros(edges.size(), edges.type());
+  cv::Mat filtered_edges_display = cv::Mat::zeros(edges.size(), edges.type());
 
   if (largest_idx != -1) {
     const auto& c = contours[largest_idx];

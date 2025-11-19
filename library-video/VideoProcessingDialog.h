@@ -45,10 +45,10 @@ private:
 
   // Imagen actual y puntos de recorte
   QPixmap m_currentPixmap;
-  QPoint  m_cropPointTL{170, 121};
-  QPoint  m_cropPointTR{423, 121};
-  QPoint  m_cropPointBR{478, 341};
-  QPoint  m_cropPointBL{127, 355};
+  QPoint  m_cropPointTL{175, 83};
+  QPoint  m_cropPointTR{423, 81};
+  QPoint  m_cropPointBR{487, 295};
+  QPoint  m_cropPointBL{123, 304};
 
   // Puntos transformados después de aplicar perspectiva
   std::vector<QPoint> m_transformedCropPoints;

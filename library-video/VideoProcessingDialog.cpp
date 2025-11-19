@@ -40,31 +40,6 @@ VideoProcessingDialog::~VideoProcessingDialog()
   delete ui;
 }
 
-void VideoProcessingDialog::on_ButtonpointBL_clicked()
-{
-  m_selectedCorner = BL;
-  updatePointInfoLabel();
-}
-
-void VideoProcessingDialog::on_ButtonpointBR_clicked()
-{
-  m_selectedCorner = BR;
-  updatePointInfoLabel();
-}
-
-void VideoProcessingDialog::on_ButtonpointTL_clicked()
-{
-  m_selectedCorner = TL;
-  updatePointInfoLabel();
-}
-
-void VideoProcessingDialog::on_ButtonpointTR_clicked()
-{
-  m_selectedCorner = TR;
-  updatePointInfoLabel();
-}
-
-
 // Click sobre la imagen para seleccionar puntos
 void VideoProcessingDialog::on_videoLabel_clicked(const QPoint& pos)
 {
@@ -104,6 +79,7 @@ void VideoProcessingDialog::on_videoLabel_clicked(const QPoint& pos)
   drawCropPointsOnLabel();
 }
 
+// Actualizar etiqueta con coordenadas de puntos
 void VideoProcessingDialog::updatePointInfoLabel()
 {
   QString info;
@@ -116,8 +92,7 @@ void VideoProcessingDialog::updatePointInfoLabel()
   ui->labelCurrentPoints->setText(info);
 }
 
-
-// Dibujar puntos transformados sobre la imagen
+// Dibujar puntos sobre la imagen
 void VideoProcessingDialog::drawCropPointsOnLabel()
 {
   if (m_currentPixmap.isNull())
@@ -129,8 +104,7 @@ void VideoProcessingDialog::drawCropPointsOnLabel()
 
   // 1. DIBUJAR PUNTOS DE RECORTE (TL, TR, BR, BL) y el POLÍGONO
 
-  // Definir colores para cada punto y el orden: TL (1), TR (2), BR (3), BL (4)
-  std::vector<QColor> colors = {Qt::red, Qt::green, Qt::blue, Qt::magenta};
+  // Definir para cada punto el orden: TL (1), TR (2), BR (3), BL (4)
   std::vector<QPoint> points = {m_cropPointTL, m_cropPointTR, m_cropPointBR, m_cropPointBL};
 
   // Dibujar el polígono que une los puntos
@@ -158,8 +132,8 @@ void VideoProcessingDialog::drawCropPointsOnLabel()
     if (pt == QPoint())
       continue; // saltar si el punto no está definido
 
-    painter.setPen(QPen(colors[i], 3));
-    painter.setBrush(colors[i]);
+    painter.setPen(QPen(Qt::green, 3));
+    painter.setBrush(Qt::green);
     painter.drawEllipse(pt, 6, 6);
 
     // Dibujar número del punto
@@ -170,7 +144,7 @@ void VideoProcessingDialog::drawCropPointsOnLabel()
 
   // 2. DIBUJAR PUNTOS DE SEGMENTACIÓN PERSISTENTES (Centroide en Rojo y Punto de Recta en Azul)
 
-  const int dotSize = 7; // Usaremos un tamaño un poco más grande para destacarlos
+  const int dotSize = 3; // Usaremos un tamaño un poco más grande para destacarlos
 
   // --- Dibujar el Centroide (ROJO) ---
   if (m_lastCentroidOriginal != QPoint()) {
@@ -224,7 +198,7 @@ void VideoProcessingDialog::handleNewPixmap(const QPixmap& pixmap)
   
 }
 
-// --- CORRECCIÓN DE PERSPECTIVA (Versión para Corregir Distorsión) ---
+// CORRECCIÓN DE PERSPECTIVA
 QPixmap VideoProcessingDialog::applyPerspectiveCrop(const QPixmap& original, const QPoint& tl, const QPoint& tr, const QPoint& br, const QPoint& bl,
                                                     std::vector<QPoint>& transformedPoints)
 {
@@ -407,8 +381,7 @@ cv::Mat filtered_edges_display = cv::Mat::zeros(edges.size(), edges.type());
   pixmap = QPixmap::fromImage(out.copy());
 }
 
-// Transforma una coordenada (en cv::Point2f) del frame recortado
-// a una coordenada (en QPoint) del frame original
+// Transforma una coordenada (en cv::Point2f) del frame recortado a una coordenada (en QPoint) del frame original
 QPoint VideoProcessingDialog::transformCropPointToOriginal(const cv::Point2f& cropPoint)
 {
   if (m_lastPerspectiveMatrix.empty()) {
@@ -446,4 +419,28 @@ void VideoProcessingDialog::on_checkBoxSegmentacion_toggled(bool checked)
     // Si 'checked' es false, se muestra la imagen original con los puntos.
     handleNewPixmap(m_currentPixmap);
   }
+}
+
+void VideoProcessingDialog::on_ButtonpointBL_clicked()
+{
+  m_selectedCorner = BL;
+  updatePointInfoLabel();
+}
+
+void VideoProcessingDialog::on_ButtonpointBR_clicked()
+{
+  m_selectedCorner = BR;
+  updatePointInfoLabel();
+}
+
+void VideoProcessingDialog::on_ButtonpointTL_clicked()
+{
+  m_selectedCorner = TL;
+  updatePointInfoLabel();
+}
+
+void VideoProcessingDialog::on_ButtonpointTR_clicked()
+{
+  m_selectedCorner = TR;
+  updatePointInfoLabel();
 }

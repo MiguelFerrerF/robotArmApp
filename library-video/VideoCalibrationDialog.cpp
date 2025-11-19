@@ -38,10 +38,9 @@ std::vector<cv::Point3f> VideoCalibrationWorker::createObjectPoints(cv::Size boa
 }
 
 bool VideoCalibrationWorker::processImageForCorners(const cv::Mat& image, cv::Size boardSize, float squareSize,
-                                                    std::vector<std::vector<cv::Point2f>>& imagePoints,
-                                                    std::vector<std::vector<cv::Point3f>>& objectPoints)
+                                               std::vector<cv::Point2f>& corners)
 {
-  std::vector<cv::Point2f> corners;
+  
   bool                     found = cv::findChessboardCorners(image, boardSize, corners, cv::CALIB_CB_ADAPTIVE_THRESH | cv::CALIB_CB_NORMALIZE_IMAGE);
 
   if (found) {
@@ -49,9 +48,6 @@ bool VideoCalibrationWorker::processImageForCorners(const cv::Mat& image, cv::Si
     cv::cvtColor(image, gray, cv::COLOR_BGR2GRAY);
     cv::cornerSubPix(gray, corners, cv::Size(11, 11), cv::Size(-1, -1),
                      cv::TermCriteria(cv::TermCriteria::EPS + cv::TermCriteria::MAX_ITER, 30, 0.001));
-
-    imagePoints.push_back(corners);
-    objectPoints.push_back(createObjectPoints(boardSize, squareSize));
 
     return true;
   }
@@ -154,8 +150,12 @@ void VideoCalibrationWorker::doCalibration(const QString& directoryPath, cv::Siz
       imageSize = image.size();
       qDebug() << "Tamaño de imagen detectado para calibración:" << imageSize.width << "x" << imageSize.height;
     }
-    if (processImageForCorners(image, boardSize, squareSize, imagePoints, objectPoints)) {
+    std::vector < cv::Point2f> cornersImg;
+    std::vector<cv::Point3f> cornersObj = createObjectPoints(boardSize, squareSize);
+    if (processImageForCorners(image, boardSize, squareSize, cornersImg)) {
       processedCount++;
+      imagePoints.push_back(cornersImg);
+      objectPoints.push_back(cornersObj);
       emit progressUpdate(tr("Procesando imagen: %1").arg(fileInfo.fileName()));
     }
   }

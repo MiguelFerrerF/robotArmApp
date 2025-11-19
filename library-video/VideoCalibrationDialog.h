@@ -49,8 +49,7 @@ signals:
 private:
   // Métodos de calibración movidos del VideoCalibrationDialog
   std::vector<cv::Point3f> createObjectPoints(cv::Size boardSize, float squareSize) const;
-  bool processImageForCorners(const cv::Mat& image, cv::Size boardSize, float squareSize, std::vector<std::vector<cv::Point2f>>& imagePoints,
-                              std::vector<std::vector<cv::Point3f>>& objectPoints);
+  bool                     processImageForCorners(const cv::Mat& image, cv::Size boardSize, float squareSize, std::vector<cv::Point2f>& corners);
   bool runCalibration(cv::Size boardSize, std::vector<std::vector<cv::Point2f>>& imagePoints, std::vector<std::vector<cv::Point3f>>& objectPoints,
                       VideoCalibrationResult& result);
   void saveCalibration(const std::string& cameraMatrixFile, const std::string& distCoeffsFile, const cv::Mat& cameraMatrix, const cv::Mat& distCoeffs,

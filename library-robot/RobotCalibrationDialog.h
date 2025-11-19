@@ -24,6 +24,7 @@ struct RobotCalibrationResult
   cv::Mat  newCameraMatrix; // Matriz óptima
   cv::Rect roi;             // Región de interés
   int      processedCount = 0;
+  cv::Mat RTcb;
 };
 Q_DECLARE_METATYPE(RobotCalibrationResult)
 
@@ -51,12 +52,11 @@ signals:
 private:
   // Métodos de calibración movidos delRobotCalibrationDialog
   std::vector<cv::Point3f> createObjectPoints(cv::Size boardSize, float squareSize) const;
-  bool processImageForCorners(const cv::Mat& image, cv::Size boardSize, float squareSize, std::vector<std::vector<cv::Point2f>>& imagePoints,
-                              std::vector<std::vector<cv::Point3f>>& objectPoints);
-  bool runCalibration(cv::Size boardSize, std::vector<std::vector<cv::Point2f>>& imagePoints, std::vector<std::vector<cv::Point3f>>& objectPoints,
-                      RobotCalibrationResult& result);
-  void saveCalibration(const std::string& cameraMatrixFile, const std::string& distCoeffsFile, const cv::Mat& cameraMatrix, const cv::Mat& distCoeffs,
-                       const cv::Mat& newCameraMatrix) const;
+   bool                     processImageForCorners(const cv::Mat& image, cv::Size boardSize, float squareSize, std::vector<cv::Point2f>& corners);
+
+  void saveCalibration(const std::string& RT_camera_base, const cv::Mat& RTcb) const;
+  bool loadCalibration(RobotCalibrationResult& result);
+  void getRTbaseToolFromFile(const std::string& jsonFilePath, cv::Mat& Rbt, cv::Mat& Tbt);
 };
 
 class RobotCalibrationDialog : public QDialog

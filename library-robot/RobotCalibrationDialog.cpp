@@ -40,10 +40,8 @@ std::vector<cv::Point3f> RobotCalibrationWorker::createObjectPoints(cv::Size boa
 }
 
 bool RobotCalibrationWorker::processImageForCorners(const cv::Mat& image, cv::Size boardSize, float squareSize,
-                                                    std::vector<std::vector<cv::Point2f>>& imagePoints,
-                                                    std::vector<std::vector<cv::Point3f>>& objectPoints)
+                                               std::vector<cv::Point2f>& corners)
 {
-  std::vector<cv::Point2f> corners;
   bool                     found = cv::findChessboardCorners(image, boardSize, corners, cv::CALIB_CB_ADAPTIVE_THRESH | cv::CALIB_CB_NORMALIZE_IMAGE);
 
   if (found) {
@@ -51,70 +49,154 @@ bool RobotCalibrationWorker::processImageForCorners(const cv::Mat& image, cv::Si
     cv::cvtColor(image, gray, cv::COLOR_BGR2GRAY);
     cv::cornerSubPix(gray, corners, cv::Size(11, 11), cv::Size(-1, -1),
                      cv::TermCriteria(cv::TermCriteria::EPS + cv::TermCriteria::MAX_ITER, 30, 0.001));
-
-    imagePoints.push_back(corners);
-    objectPoints.push_back(createObjectPoints(boardSize, squareSize));
-
     return true;
   }
   return false;
 }
 
-bool RobotCalibrationWorker::runCalibration(cv::Size boardSize, std::vector<std::vector<cv::Point2f>>& imagePoints,
-                                            std::vector<std::vector<cv::Point3f>>& objectPoints, RobotCalibrationResult& result)
-{
-  if (imagePoints.size() < 5) {
-    return false;
-  }
-
-  std::vector<cv::Mat> rvecs, tvecs;
-
-  // 1. Definir Criterios de Terminación más estrictos
-  cv::TermCriteria criteria(cv::TermCriteria::EPS + cv::TermCriteria::MAX_ITER, 100, 1e-6);
-
-  // 2. Definir Banderas (Flags) de Calibración
-  // int flags = cv::CALIB_FIX_ASPECT_RATIO | cv::CALIB_RATIONAL_MODEL |
-  // cv::CALIB_ZERO_TANGENT_DIST | cv::CALIB_USE_LU;
-  int flags = cv::CALIB_USE_LU;
-
-  // 3. Llamada a la función de calibración principal con Criterios y Banderas
-  result.rms = cv::calibrateCamera(objectPoints, imagePoints, boardSize, result.cameraMatrix, result.distCoeffs, rvecs, tvecs, flags, criteria);
-
-  // 4. Calcular la Matriz de Cámara Óptima
-  result.newCameraMatrix = cv::getOptimalNewCameraMatrix(result.cameraMatrix, result.distCoeffs, boardSize, 1, boardSize, &result.roi);
-
-  return true;
-}
-
 /**
- * @brief Guarda la matriz de cámara y los coeficientes de distorsión.
+ * @brief Guarda la RT cámara-base.
  */
-void RobotCalibrationWorker::saveCalibration(const std::string& cameraMatrixFile, const std::string& distCoeffsFile, const cv::Mat& cameraMatrix,
-                                             const cv::Mat& distCoeffs, const cv::Mat& newCameraMatrix) const
+void RobotCalibrationWorker::saveCalibration(const std::string& RTcameraBase, const cv::Mat& RTcb) const
 {
   QDir().mkpath(DEFAULT_CALIB_DIR);
 
-  std::string cameraMatrixPath = QDir(DEFAULT_CALIB_DIR).filePath(cameraMatrixFile.c_str()).toStdString();
-  std::string distCoeffsPath   = QDir(DEFAULT_CALIB_DIR).filePath(distCoeffsFile.c_str()).toStdString();
+  std::string RTcameraBasePath = QDir(DEFAULT_CALIB_DIR).filePath(RTcameraBase.c_str()).toStdString();
 
-  // Guardar matriz de cámara
-  cv::FileStorage fsCam(cameraMatrixPath, cv::FileStorage::WRITE);
+  // Guardar RT cámara-base
+  cv::FileStorage fsCam(RTcameraBasePath, cv::FileStorage::WRITE);
   if (!fsCam.isOpened()) {
-    qWarning() << "Error al abrir archivo para m_cameraMatrix:" << cameraMatrixPath.c_str();
+    qWarning() << "Error al abrir archivo para RTcameraBase:" << RTcameraBasePath.c_str();
     return;
   }
-  fsCam << "m_cameraMatrix" << cameraMatrix;
-  fsCam << "m_newCameraMatrix" << newCameraMatrix; // <-- AÑADIDO
+  fsCam << "RTcameraBase" << RTcameraBase;
   fsCam.release();
+}
 
-  // Guardar coeficientes de distorsión
-  cv::FileStorage fsDist(distCoeffsPath, cv::FileStorage::WRITE);
-  if (!fsDist.isOpened()) {
-    qWarning() << "Error al abrir archivo para m_distCoeffs:" << distCoeffsPath.c_str();
+void RobotCalibrationWorker::getRTbaseToolFromFile(const std::string& jsonFilePath, cv::Mat& Rbt, cv::Mat& Tbt)
+{
+  // Matrices de transformación
+  cv::Mat RTb1;
+  cv::Mat RT12;
+  cv::Mat RT23;
+  cv::Mat RT35;
+  cv::Mat RTbt;
+
+  // Constantes de la geometría del robot
+  double a1 = 130;
+  double a2 = 125;
+  double a3 = 125;
+  double a5 = 130;
+
+  QFile file(QString::fromStdString(jsonFilePath));
+  if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+    qWarning() << "No se pudo abrir el archivo JSON:" << QString::fromStdString(jsonFilePath);
     return;
   }
-  fsDist << "m_distCoeffs" << distCoeffs;
-  fsDist.release();
+
+  QByteArray jsonData = file.readAll();
+  file.close();
+
+  QJsonDocument doc = QJsonDocument::fromJson(jsonData);
+  if (!doc.isObject()) {
+    qWarning() << "El archivo JSON no tiene un objeto raíz válido.";
+    return;
+  }
+
+  QJsonObject rootObj     = doc.object();
+  QJsonArray  motorAngles = rootObj["motorAngles"].toArray();
+
+  // Inicializamos los ángulos
+  double q1 = 0, q2 = 0, q3 = 0, q5 = 0;
+  for (const QJsonValue& motorVal : motorAngles) {
+    QJsonObject motorObj = motorVal.toObject();
+    int         idx      = motorObj["motorIndex"].toInt();
+    double      defAngle = motorObj["defaultAngle"].toDouble();
+    if (idx == 1)
+      q1 = defAngle;
+    else if (idx == 2)
+      q2 = defAngle;
+    else if (idx == 3)
+      q3 = defAngle;
+    else if (idx == 5)
+      q5 = defAngle;
+  }
+
+  qDebug() << "Ángulos leídos del JSON:"
+           << "q1 =" << q1 << ", q2 =" << q2 << ", q3 =" << q3 << ", q5 =" << q5;
+
+  // Convertimos a radianes y cambiamos el signo como en la versión original
+  double q1_rad = -q1 * M_PI / 180.0;
+  double q2_rad = -q2 * M_PI / 180.0;
+  double q3_rad = -q3 * M_PI / 180.0;
+  double q5_rad = -q5 * M_PI / 180.0;
+
+  // RTb1 – Base al primer eslabón
+  RTb1                  = cv::Mat::eye(4, 4, CV_64F);
+  RTb1.at<double>(0, 0) = cos(q1_rad);
+  RTb1.at<double>(0, 1) = -sin(q1_rad);
+  RTb1.at<double>(1, 0) = sin(q1_rad);
+  RTb1.at<double>(1, 1) = cos(q1_rad);
+  RTb1.at<double>(2, 3) = -a1;
+
+  // RT12 – Primer eslabón al segundo
+  RT12                  = cv::Mat::eye(4, 4, CV_64F);
+  RT12.at<double>(0, 0) = cos(q2_rad);
+  RT12.at<double>(0, 2) = sin(q2_rad);
+  RT12.at<double>(2, 3) = -a2;
+  RT12.at<double>(2, 0) = -sin(q2_rad);
+  RT12.at<double>(2, 2) = cos(q2_rad);
+
+  // RT23 – Segundo al tercero
+  RT23                  = cv::Mat::eye(4, 4, CV_64F);
+  RT23.at<double>(0, 0) = cos(q3_rad);
+  RT23.at<double>(0, 2) = sin(q3_rad);
+  RT23.at<double>(2, 3) = -a3;
+  RT23.at<double>(2, 0) = -sin(q3_rad);
+  RT23.at<double>(2, 2) = cos(q3_rad);
+
+  // RT35 – Tercer eslabón al efector final
+  cv::Mat RT35          = cv::Mat::eye(4, 4, CV_64F);
+  RT35.at<double>(0, 0) = cos(q5_rad);
+  RT35.at<double>(0, 2) = sin(q5_rad);
+  RT35.at<double>(2, 3) = -a5;
+  RT35.at<double>(2, 0) = -sin(q5_rad);
+  RT35.at<double>(2, 2) = cos(q5_rad);
+
+  // Transformación total
+  RTbt = RT35 * RT23 * RT12 * RTb1;
+
+  // Print de la matriz completa para debug
+  for (int i = 0; i < RTbt.rows; ++i) {
+    QString rowStr;
+    for (int j = 0; j < RTbt.cols; ++j) {
+      rowStr += QString::number(RTbt.at<double>(i, j), 'f', 6) + "\t";
+    }
+    qDebug() << rowStr;
+  }
+
+  // Extraer submatrices
+  Rbt = RTbt(cv::Rect(0, 0, 3, 3)).clone(); // 3x3 rotación
+  Tbt = RTbt(cv::Rect(3, 0, 1, 3)).clone(); // 3x1 traslación
+
+  // Print para debug
+  qDebug() << "Matriz de Rotación Rbt:";
+  for (int i = 0; i < Rbt.rows; ++i) {
+    QString rowStr;
+    for (int j = 0; j < Rbt.cols; ++j) {
+      rowStr += QString::number(Rbt.at<double>(i, j), 'f', 6) + "\t";
+    }
+    qDebug() << rowStr;
+  }
+
+  qDebug() << "Vector de Traslación Tbt:";
+  for (int i = 0; i < Tbt.rows; ++i) {
+    QString rowStr;
+    for (int j = 0; j < Tbt.cols; ++j) {
+      rowStr += QString::number(Tbt.at<double>(i, j), 'f', 6) + "\t";
+    }
+    qDebug() << rowStr;
+  }
 }
 
 /**
@@ -133,12 +215,10 @@ void RobotCalibrationWorker::doCalibration(const QString& directoryPath, cv::Siz
   }
   emit progressUpdate(tr("Iniciando calibración con %1 imágenes...").arg(fileList.size()));
 
-  std::vector<std::vector<cv::Point2f>> imagePoints;
-  std::vector<std::vector<cv::Point3f>> objectPoints;
-  RobotCalibrationResult                result;
-
-  // Necesitamos el tamaño de la imagen para getOptimalNewCameraMatrix ---
-  cv::Size imageSize;
+  std::vector<cv::Mat> Rpc, Rbt, Tpc, Tbt;
+  std::vector<cv::Point2f> imagePoints;
+  std::vector<cv::Point3f> objectPoints = createObjectPoints(boardSize, squareSize);
+  RobotCalibrationResult   result;
 
   int processedCount = 0;
   for (const QFileInfo& fileInfo : fileList) {
@@ -152,13 +232,27 @@ void RobotCalibrationWorker::doCalibration(const QString& directoryPath, cv::Siz
       continue;
     }
 
-    // Guardar el tamaño de la primera imagen
-    if (processedCount == 0) {
-      imageSize = image.size();
-      qDebug() << "Tamaño de imagen detectado para calibración:" << imageSize.width << "x" << imageSize.height;
-    }
-    if (processImageForCorners(image, boardSize, squareSize, imagePoints, objectPoints)) {
+    if (processImageForCorners(image, boardSize, squareSize, imagePoints)) {
       processedCount++;
+
+      // Read camera matrix and distortion coefficients from previous calibration
+      if (!loadCalibration(result)) {
+        emit calibrationError(tr("Error al cargar la calibración de la cámara. Asegúrese de que los archivos existen y son válidos."));
+        return;
+      }
+
+      // Calculamos la RT panel-cámara
+      cv::Mat R, T;
+      cv::solvePnP(objectPoints, imagePoints, result.cameraMatrix, result.distCoeffs, R, T);
+      cv::Rodrigues(R, R); // Convertir a vector de rotación si es necesario
+      Rpc.push_back(R);
+      Tpc.push_back(T);
+
+      // Calculamos la RT base-tool
+      cv::Mat RR, TT;
+      getRTbaseToolFromFile(fileInfo.absoluteFilePath().toStdString(), RR, TT);
+      Rbt.push_back(RR);
+      Tbt.push_back(TT);
       emit progressUpdate(tr("Procesando imagen: %1").arg(fileInfo.fileName()));
     }
   }
@@ -176,16 +270,57 @@ void RobotCalibrationWorker::doCalibration(const QString& directoryPath, cv::Siz
                          "imágenes.\nEjecutando calibración...")
                         .arg(processedCount));
 
-  // Pasamos el imageSize a runCalibration
-  if (runCalibration(imageSize, imagePoints, objectPoints, result)) {
-    // Pasamos la newCameraMatrix a saveCalibration
-    saveCalibration("camera_matrix.yml", "dist_coeffs.yml", result.cameraMatrix, result.distCoeffs, result.newCameraMatrix);
-    emit progressUpdate(tr("Archivos de calibración guardados en la carpeta '%1'.").arg(DEFAULT_CALIB_DIR));
-    emit calibrationFinished(result);
+  // Calculamos la RT cámara-base usando calibración hand-eye
+  cv::Mat Rcam2base, Tcam2base; 
+  cv::calibrateHandEye(Rbt, Tbt, Rpc, Tpc, Rcam2base, Tcam2base, cv::CALIB_HAND_EYE_TSAI);
+  result.RTcb = cv::Mat::eye(4, 4, CV_64F);
+  Rcam2base.copyTo(result.RTcb(cv::Rect(0, 0, 3, 3)));
+  Tcam2base.copyTo(result.RTcb(cv::Rect(3, 0, 1, 3)));
+  
+  // Pasamos la RT cámara-base a saveCalibration
+  saveCalibration("RT_camera_base.yml", result.RTcb);
+  emit progressUpdate(tr("Archivos de calibración guardados en la carpeta '%1'.").arg(DEFAULT_CALIB_DIR));
+  emit calibrationFinished(result);
+}
+
+bool RobotCalibrationWorker::loadCalibration(RobotCalibrationResult& result)
+{
+  QString dirPath        = "calibration/camera";
+  QString camMatrixPath  = QDir(dirPath).filePath("camera_matrix.yml");
+  QString distCoeffsPath = QDir(dirPath).filePath("dist_coeffs.yml");
+
+  qDebug() << "Cargando archivos de calibración desde:" << camMatrixPath << "y" << distCoeffsPath;
+
+  cv::FileStorage fsCam(camMatrixPath.toStdString(), cv::FileStorage::READ);
+  cv::FileStorage fsDist(distCoeffsPath.toStdString(), cv::FileStorage::READ);
+
+  if (fsCam.isOpened() && fsDist.isOpened()) {
+    fsCam["m_cameraMatrix"] >> result.cameraMatrix;
+    fsCam["m_newCameraMatrix"] >> result.newCameraMatrix; 
+    fsDist["m_distCoeffs"] >> result.distCoeffs;
+
+    // Imprimir en consola (como tenías antes)
+    std::cout << "Matriz de Cámara (Original):\\n" << result.cameraMatrix << std::endl;
+    std::cout << "Matriz de Cámara (Óptima):\\n" << result.newCameraMatrix << std::endl;
+    std::cout << "Coeficientes de Distorsión:\\n" << result.distCoeffs << std::endl;
+
+    // Comprobar que se cargaron las TRES matrices
+    if (!result.cameraMatrix.empty() && !result.distCoeffs.empty() && !result.newCameraMatrix.empty()) {
+      qDebug() << "Calibración cargada exitosamente.";
+    }
+    else {
+      qWarning() << "No se pudieron leer todos los datos de los archivos de calibración.";
+      return false;
+    }
   }
-  else
-    emit calibrationError(tr("Falló la calibración. Se necesitan al menos 5 "
-                             "conjuntos de puntos válidos."));
+  else {
+    qWarning() << "No se encontraron archivos de calibración. El vídeo no será corregido.";
+    return false;
+  }
+
+  fsCam.release();
+  fsDist.release();
+  return true;
 }
 
 RobotCalibrationDialog::RobotCalibrationDialog(QWidget* parent, RobotConfig::RobotSettings* settings)

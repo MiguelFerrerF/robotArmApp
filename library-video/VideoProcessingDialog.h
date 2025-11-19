@@ -23,25 +23,12 @@ public:
   ~VideoProcessingDialog();
 
 private slots:
-  // Botones Start / Reset
-  void on_startButton_clicked();
-  void on_resetButton_clicked();
-
-  // Señales de soporte y cámara
-  void on_propertiesSupported(CameraPropertiesSupport support);
-  void on_rangesSupported(const CameraPropertyRanges& ranges);
-  void on_cameraOpenFailed(int cameraId, const QString& errorMsg);
-
   // Checkboxes y sliders
-  void on_checkBoxFocoAuto_toggled(bool checked);
-  void on_checkBoxExposicionAuto_toggled(bool checked);
   void on_checkBoxSegmentacion_toggled(bool checked);
-  void on_horizontalSliderFoco_sliderMoved(int value);
-  void on_horizontalSliderExposicion_sliderMoved(int value);
-  void on_horizontalSliderBrillo_sliderMoved(int value);
-  void on_horizontalSliderContraste_sliderMoved(int value);
-  void on_horizontalSliderSaturacion_sliderMoved(int value);
-  void on_horizontalSliderNitidez_sliderMoved(int value);
+  void on_ButtonpointBL_clicked();
+  void on_ButtonpointBR_clicked();
+  void on_ButtonpointTL_clicked();
+  void on_ButtonpointTR_clicked();
 
   // Captura de video
   void handleNewPixmap(const QPixmap& pixmap);
@@ -50,22 +37,23 @@ private slots:
 private:
   Ui::VideoProcessingDialog* ui;
 
+  cv::Mat m_lastPerspectiveMatrix;
+
   // Imagen actual y puntos de recorte
   QPixmap m_currentPixmap;
-  QPoint  m_cropPointTL{170, 121};
-  QPoint  m_cropPointTR{423, 121};
-  QPoint  m_cropPointBR{478, 341};
-  QPoint  m_cropPointBL{127, 355};
+  QPoint  m_cropPointTL{175, 83};
+  QPoint  m_cropPointTR{423, 81};
+  QPoint  m_cropPointBR{484, 285};
+  QPoint  m_cropPointBL{131, 302};
+
+  QPoint m_lastCentroidOriginal;   // Centroide en coordenadas del frame original
+  QPoint m_lastPointRectaOriginal; // Punto de la recta en coordenadas del frame original
 
   // Puntos transformados después de aplicar perspectiva
   std::vector<QPoint> m_transformedCropPoints;
 
   // Configuración
   bool m_applyPerspectiveCorrection = true;
-  bool m_applySegmentacion          = false;
-
-  CameraPropertiesSupport m_support;
-  CameraPropertyRanges    m_ranges;
 
   // Selección de punto activo
   enum CornerSelection
@@ -81,19 +69,13 @@ private:
   // Métodos internos
   void applySegmentacion(QPixmap& pixmap);
   void drawCropPointsOnLabel();
-  void updateVideoLabel();
-  void updateStartButtonState();
-  void setAllControlsEnabled(bool enabled);
+  void updatePointInfoLabel();
 
   // Transformación de perspectiva
   QPixmap applyPerspectiveCrop(const QPixmap& original, const QPoint& tl, const QPoint& tr, const QPoint& br, const QPoint& bl,
                                std::vector<QPoint>& transformedPoints);
-  void    updatePointInfoLabel();
-
-  // Utilidades
-  QSize parseResolution(const QString& text);
-  int   mapSliderToOpenCV(int sliderValue, const PropertyRange& range);
-  int   mapOpenCVToSlider(double openCVValue, const PropertyRange& range);
+  // Nueva función para transformar un punto del crop al frame original
+  QPoint transformCropPointToOriginal(const cv::Point2f& cropPoint);
 };
 
 #endif // VIDEOPROCESSINGDIALOG_H

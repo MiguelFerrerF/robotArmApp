@@ -23,13 +23,7 @@ public:
   ~VideoProcessingDialog();
 
 private slots:
-  // Botones Start / Reset
-  void on_startButton_clicked();
-
-  // Señales de soporte y cámara
-  void on_cameraOpenFailed(int cameraId, const QString& errorMsg);
-
-  // Checkboxes y sliders
+   // Checkboxes y sliders
   void on_checkBoxSegmentacion_toggled(bool checked);
   void on_ButtonpointBL_clicked();
   void on_ButtonpointBR_clicked();
@@ -43,19 +37,23 @@ private slots:
 private:
   Ui::VideoProcessingDialog* ui;
 
+  cv::Mat m_lastPerspectiveMatrix;
+
   // Imagen actual y puntos de recorte
   QPixmap m_currentPixmap;
   QPoint  m_cropPointTL{175, 83};
   QPoint  m_cropPointTR{423, 81};
-  QPoint  m_cropPointBR{487, 295};
-  QPoint  m_cropPointBL{123, 304};
+  QPoint  m_cropPointBR{484, 285};
+  QPoint  m_cropPointBL{131, 302};
+
+  QPoint m_lastCentroidOriginal;   // Centroide en coordenadas del frame original
+  QPoint m_lastPointRectaOriginal; // Punto de la recta en coordenadas del frame original
 
   // Puntos transformados después de aplicar perspectiva
   std::vector<QPoint> m_transformedCropPoints;
 
   // Configuración
   bool m_applyPerspectiveCorrection = true;
-  bool m_applySegmentacion          = false;
 
   // Selección de punto activo
   enum CornerSelection
@@ -71,13 +69,13 @@ private:
   // Métodos internos
   void applySegmentacion(QPixmap& pixmap);
   void drawCropPointsOnLabel();
-  void updateVideoLabel();
-  void updateStartButtonState();
+  void updatePointInfoLabel();
 
   // Transformación de perspectiva
   QPixmap applyPerspectiveCrop(const QPixmap& original, const QPoint& tl, const QPoint& tr, const QPoint& br, const QPoint& bl,
                                std::vector<QPoint>& transformedPoints);
-  void    updatePointInfoLabel();
+  // Nueva función para transformar un punto del crop al frame original
+  QPoint transformCropPointToOriginal(const cv::Point2f& cropPoint);
 
 };
 

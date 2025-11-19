@@ -10,7 +10,7 @@
 #include <opencv2/opencv.hpp>
 
 VideoProcessingDialog::VideoProcessingDialog(QWidget* parent)
-  : QDialog(parent), ui(new Ui::VideoProcessingDialog), m_selectedCorner(None), m_applySegmentacion(false)
+  : QDialog(parent), ui(new Ui::VideoProcessingDialog), m_selectedCorner(None)
 {
   ui->setupUi(this);
   this->setWindowTitle("Processing Video");
@@ -20,8 +20,6 @@ VideoProcessingDialog::VideoProcessingDialog(QWidget* parent)
 
   // Conexión para recibir nuevos pixmaps capturados
   connect(&handler, &VideoCaptureHandler::newPixmapCaptured, this, &VideoProcessingDialog::handleNewPixmap);
-  connect(&handler, &VideoCaptureHandler::cameraOpenFailed, this, &VideoProcessingDialog::on_cameraOpenFailed);
-
   connect(ui->videoLabel, &ClickableLabel::clickedAt, this, &VideoProcessingDialog::on_videoLabel_clicked);
 
   // Llenar ComboBox de cámaras
@@ -30,11 +28,8 @@ VideoProcessingDialog::VideoProcessingDialog(QWidget* parent)
     cameraNames << camera.description();
   }
   if (cameraNames.isEmpty()) {
-    ui->startButton->setEnabled(false);
     ui->videoLabel->setText("No se han detectado cámaras.");
   }
-
-  updateStartButtonState();
 }
 
 VideoProcessingDialog::~VideoProcessingDialog()
@@ -70,18 +65,7 @@ void VideoProcessingDialog::on_ButtonpointTR_clicked()
 }
 
 
-// Actualiza estado Start/Stop
-void VideoProcessingDialog::updateStartButtonState()
-{
-  bool isRunning = VideoCaptureHandler::instance().isCameraRunning();
-  ui->startButton->setChecked(isRunning);
-  ui->startButton->setText(isRunning ? "Stop" : "Start");
-
-  if (isRunning)
-    ui->videoLabel->setText("");
-}
-
-// Clic sobre la imagen para seleccionar puntos
+// Click sobre la imagen para seleccionar puntos
 void VideoProcessingDialog::on_videoLabel_clicked(const QPoint& pos)
 {
   if (m_currentPixmap.isNull() || m_selectedCorner == None)
@@ -143,6 +127,8 @@ void VideoProcessingDialog::drawCropPointsOnLabel()
   QPainter painter(&annotated);
   painter.setRenderHint(QPainter::Antialiasing);
 
+  // 1. DIBUJAR PUNTOS DE RECORTE (TL, TR, BR, BL) y el POLÍGONO
+
   // Definir colores para cada punto y el orden: TL (1), TR (2), BR (3), BL (4)
   std::vector<QColor> colors = {Qt::red, Qt::green, Qt::blue, Qt::magenta};
   std::vector<QPoint> points = {m_cropPointTL, m_cropPointTR, m_cropPointBR, m_cropPointBL};
@@ -182,8 +168,35 @@ void VideoProcessingDialog::drawCropPointsOnLabel()
     painter.drawText(pt + QPoint(8, -8), QString::number(i + 1)); // número cerca del punto
   }
 
-  painter.end();
+  // 2. DIBUJAR PUNTOS DE SEGMENTACIÓN PERSISTENTES (Centroide en Rojo y Punto de Recta en Azul)
 
+  const int dotSize = 7; // Usaremos un tamaño un poco más grande para destacarlos
+
+  // --- Dibujar el Centroide (ROJO) ---
+  if (m_lastCentroidOriginal != QPoint()) {
+    painter.setPen(QPen(Qt::red, dotSize / 2)); // Borde rojo más fino
+    painter.setBrush(Qt::red);
+    painter.drawEllipse(m_lastCentroidOriginal, dotSize, dotSize);
+
+    // Opcional: etiquetar el punto
+    painter.setPen(Qt::white);
+    painter.setFont(QFont("Arial", 10, QFont::Bold));
+    painter.drawText(m_lastCentroidOriginal + QPoint(8, -8), "C");
+  }
+
+  // --- Dibujar el Punto de la Recta (AZUL) ---
+  if (m_lastPointRectaOriginal != QPoint()) {
+    painter.setPen(QPen(Qt::blue, dotSize / 2)); // Borde azul más fino
+    painter.setBrush(Qt::blue);
+    painter.drawEllipse(m_lastPointRectaOriginal, dotSize, dotSize);
+
+    // Opcional: etiquetar el punto
+    painter.setPen(Qt::white);
+    painter.setFont(QFont("Arial", 10, QFont::Bold));
+    painter.drawText(m_lastPointRectaOriginal + QPoint(8, -8), "R");
+  }
+
+  painter.end();
   ui->videoLabel->setPixmap(annotated.scaled(ui->videoLabel->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
 }
 
@@ -192,7 +205,7 @@ void VideoProcessingDialog::handleNewPixmap(const QPixmap& pixmap)
 {
   m_currentPixmap = pixmap;
 
-  if (m_applySegmentacion && m_cropPointTL != QPoint() && m_cropPointTR != QPoint() && m_cropPointBL != QPoint() && m_cropPointBR != QPoint()) {
+  if (m_cropPointTL != QPoint() && m_cropPointTR != QPoint() && m_cropPointBL != QPoint() && m_cropPointBR != QPoint()) {
     // Recorte con perspectiva
     QPixmap cropped = applyPerspectiveCrop(m_currentPixmap, m_cropPointTL, m_cropPointTR, m_cropPointBR, m_cropPointBL, m_transformedCropPoints);
 
@@ -200,15 +213,15 @@ void VideoProcessingDialog::handleNewPixmap(const QPixmap& pixmap)
     applySegmentacion(cropped);
 
     // Mostrar resultado
-    ui->videoLabel->setPixmap(cropped.scaled(ui->videoLabel->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    ui->labelCrop->setPixmap(cropped.scaled(ui->labelCrop->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
   }
   else {
     // Actualizar info al recibir frame
     updatePointInfoLabel();
-
-    // Mostrar la imagen original + puntos predefinidos
-    drawCropPointsOnLabel();
   }
+   // Mostrar la imagen original + puntos predefinidos
+   drawCropPointsOnLabel();
+  
 }
 
 // --- CORRECCIÓN DE PERSPECTIVA (Versión para Corregir Distorsión) ---
@@ -238,6 +251,9 @@ QPixmap VideoProcessingDialog::applyPerspectiveCrop(const QPixmap& original, con
 
   cv::Mat M = cv::getPerspectiveTransform(srcPts, dstPts);
 
+  // Guardar puntos transformados
+  m_lastPerspectiveMatrix = M.clone();
+
   cv::Mat warped;
   cv::warpPerspective(srcBGR, warped, M, cv::Size(W, H));
 
@@ -246,6 +262,7 @@ QPixmap VideoProcessingDialog::applyPerspectiveCrop(const QPixmap& original, con
 
   QImage out(rgb.data, rgb.cols, rgb.rows, rgb.step, QImage::Format_RGB888);
   return QPixmap::fromImage(out);
+  
 }
 
 // SEGMENTACIÓN
@@ -254,174 +271,172 @@ void VideoProcessingDialog::applySegmentacion(QPixmap& pixmap)
   if (pixmap.isNull())
     return;
 
-  // 1. ---- Convertir QPixmap -> cv::Mat (BGR) ----
+  // --- Convertir QPixmap -> Mat rápido ---
   QImage  img_qt = pixmap.toImage().convertToFormat(QImage::Format_RGB888);
-  cv::Mat src_rgb(img_qt.height(), img_qt.width(), CV_8UC3, const_cast<uchar*>(img_qt.bits()), img_qt.bytesPerLine());
+  cv::Mat src_rgb(img_qt.height(), img_qt.width(), CV_8UC3, (uchar*)img_qt.bits(), img_qt.bytesPerLine());
+
   cv::Mat image_bgr;
-  cv::cvtColor(src_rgb, image_bgr, cv::COLOR_RGB2BGR); // Convertimos a BGR para el estándar de OpenCV
+  cv::cvtColor(src_rgb, image_bgr, cv::COLOR_RGB2BGR);
 
-  // 2. ---- Gris + Canny ----
-  cv::Mat gray, blurred_gray, edges;
-  cv::cvtColor(image_bgr, gray, cv::COLOR_BGR2GRAY);
-  cv::GaussianBlur(gray, blurred_gray, cv::Size(5, 5), 0);
+  cv::Mat small;
+  cv::resize(image_bgr, small, cv::Size(), 0.5, 0.5, cv::INTER_LINEAR);
 
-  QImage gray_qt(blurred_gray.data, blurred_gray.cols, blurred_gray.rows, blurred_gray.step, QImage::Format_Grayscale8);
-  ui->labelGray->setPixmap(QPixmap::fromImage(gray_qt).scaled(ui->labelGray->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
+  float scale = 2.0f;
 
-  cv::Canny(blurred_gray, edges, 20, 50);
+  // --- Gris + blur rápido ---
+  cv::Mat gray, blurred_gray;
+  cv::cvtColor(small, gray, cv::COLOR_BGR2GRAY);
+  cv::blur(gray, blurred_gray, cv::Size(3, 3));
 
-  // =========================================================
-  // 2.A. ---- Cerrar Bordes con Dilatación ----
-  cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3));
-  cv::Mat dilated_edges;
-  cv::dilate(edges, dilated_edges, kernel, cv::Point(-1, -1), 1);
-  // =========================================================
+  // --- Canny rápido ---
+  cv::Mat edges;
+  cv::Canny(blurred_gray, edges, 40, 100);
 
-  // 3. ---- Contornos ----
+  // --- Dilatación (reusa kernel) ---
+  static cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3));
+  cv::Mat        dilated_edges;
+  cv::dilate(edges, dilated_edges, kernel);
+
+  // --- Contornos ---
   std::vector<std::vector<cv::Point>> contours;
-  cv::findContours(dilated_edges.clone(), contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+  cv::findContours(dilated_edges, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
-  cv::Mat output      = image_bgr.clone();
-  double  max_area    = 0;
+  cv::Mat output      = small.clone();
   int     largest_idx = -1;
+  double  max_area    = 0;
 
-  // --- Umbral de área mínima y filtrado ---
-  const double                        MIN_CONTOUR_AREA = 500.0;
-  std::vector<std::vector<cv::Point>> filtered_contours;
-
-  for (const auto& contour : contours) {
-    double area = cv::contourArea(contour);
-    if (area > MIN_CONTOUR_AREA) {
-      filtered_contours.push_back(contour);
+  for (int i = 0; i < (int)contours.size(); i++) {
+    double a = cv::contourArea(contours[i]);
+    if (a > 300.0 && a > max_area) {
+      max_area    = a;
+      largest_idx = i;
     }
   }
 
-  // === 3.A. Identificar el contorno más grande entre los filtrados ===
-  for (size_t i = 0; i < filtered_contours.size(); i++) {
-    double area = cv::contourArea(filtered_contours[i]);
-    if (area > max_area) {
-      max_area    = area;
-      largest_idx = int(i);
-    }
-  }
+  QString centroid_str = "Centroide img recortada: N/A";
+  QString point_str    = "Punto Recta img recortada: N/A";
+  QString angle_str    = "N/A";
 
-  // === 3.B. Crear la imagen filtrada para labelCanny ===
-  cv::Mat filtered_edges_display = cv::Mat::zeros(edges.size(), edges.type());
-
-  // Inicializar strings de salida en caso de que no se encuentre la pieza
-  QString centroid_str = "Centroide: N/A";
-  QString point_str    = "Punto Recta: N/A";
-  QString angle_str    = "Ángulo: N/A";
+cv::Mat filtered_edges_display = cv::Mat::zeros(edges.size(), edges.type());
 
   if (largest_idx != -1) {
-    const auto& main_contour = filtered_contours[largest_idx];
+    const auto& c = contours[largest_idx];
+    cv::drawContours(filtered_edges_display, contours, largest_idx, 255, 1);
 
-    // Dibuja SÓLO el contorno más grande y filtrado
-    cv::drawContours(filtered_edges_display, filtered_contours, largest_idx, cv::Scalar(255), 1);
+    // Mostrar Canny filtrado
+    QImage cimg(filtered_edges_display.data, filtered_edges_display.cols, filtered_edges_display.rows, filtered_edges_display.step,
+                QImage::Format_Grayscale8);
+    ui->labelCanny->setPixmap(QPixmap::fromImage(cimg).scaled(ui->labelCanny->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
 
-    // --- 3.C. MOSTRAR IMAGEN FILTRADA EN labelCanny ---
-    QImage canny_qt(filtered_edges_display.data, filtered_edges_display.cols, filtered_edges_display.rows, filtered_edges_display.step,
-                    QImage::Format_Grayscale8);
-    ui->labelCanny->setPixmap(QPixmap::fromImage(canny_qt).scaled(ui->labelCanny->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    // Bounding box
+    cv::Rect r = cv::boundingRect(c);
+    cv::rectangle(output, r, cv::Scalar(255, 0, 0), 2);
 
-    // 3.4. Rectángulo Delimitador (Bounding Box)
-    cv::Rect bounding_rect = cv::boundingRect(main_contour);
-    cv::rectangle(output, bounding_rect.tl(), bounding_rect.br(), cv::Scalar(255, 0, 0), 2); // Azul (BGR)
+    // Momento
+    cv::Moments M = cv::moments(c);
+    if (M.m00 > 0) {
+      int cx = int(M.m10 / M.m00);
+      int cy = int(M.m01 / M.m00);
 
-    // 3.5. Centroide (Momento de la imagen)
-    cv::Moments M  = cv::moments(main_contour);
-    int         cx = -1, cy = -1;
+      // Puntos en coordenadas del crop REDIMENSIONADO (small)
+      cv::Point centroidSmall(cx, cy);
 
-    if (M.m00 > 0) { // Evitar división por cero
-      cx = static_cast<int>(M.m10 / M.m00);
-      cy = static_cast<int>(M.m01 / M.m00);
+      cv::circle(output, centroidSmall, 4, {0, 0, 255}, -1);
+      centroid_str = QString("Centroide img recortada: (%1, %2)").arg(cx * scale).arg(cy * scale);
 
-      // Dibujar el Centroide en la imagen final (output)
-      cv::circle(output, cv::Point(cx, cy), 5, cv::Scalar(0, 0, 255), -1); // Rojo (BGR)
+      if (c.size() >= 5) {
+        cv::RotatedRect rr    = cv::minAreaRect(c);
+        double          angle = rr.angle;
+        if (rr.size.width < rr.size.height)
+          angle += 90;
+        if (angle < 0)
+          angle += 180;
 
-      // Preparar string del Centroide
-      centroid_str = QString("Centroide: (%1, %2)").arg(cx).arg(cy);
-    }
+        angle_str = QString::number(angle, 'f', 2) + "°";
 
-    // 3.6. Orientación y Línea Principal
-    if (main_contour.size() >= 5) {
-      cv::RotatedRect min_rect = cv::minAreaRect(main_contour);
-      double          angle    = min_rect.angle;
+        double rad = angle * CV_PI / 180;
 
-      if (min_rect.size.width < min_rect.size.height) {
-        angle = angle + 90.0;
+        // --- Longitudes proporcionales al tamaño del rectángulo ---
+        double L_line  = 1.2 * std::sqrt(r.width * r.width + r.height * r.height);
+        double L_point = 0.5 * L_line;
+
+        // --- Línea amarilla completa (en imagen *small*) ---
+        cv::Point p1(cx + L_line * cos(rad), cy + L_line * sin(rad));
+        cv::Point p2(cx - L_line * cos(rad), cy - L_line * sin(rad));
+        cv::line(output, p1, p2, {0, 255, 255}, 2);
+
+        // --- Punto azul-cielo (en imagen *small*) ---
+        cv::Point p_point_small(cx + L_point * cos(rad), cy + L_point * sin(rad));
+        cv::circle(output, p_point_small, 4, {255, 255, 0}, -1);
+
+        // --- Transformación de Coordenadas Inversa (Crop -> Original) ---
+
+        // Puntos en coordenadas del crop *sin escalar* (escala 1.0)
+        cv::Point2f centroidCrop(centroidSmall.x * scale, centroidSmall.y * scale);
+        cv::Point2f pointRectaCrop(p_point_small.x * scale, p_point_small.y * scale);
+
+        // Obtener puntos en la imagen original
+        QPoint centroidOriginal   = transformCropPointToOriginal(centroidCrop);
+        QPoint pointRectaOriginal = transformCropPointToOriginal(pointRectaCrop);
+
+        // *** AÑADIDO: ALMACENAR PUNTOS PARA QUE PERSISTAN ***
+        m_lastCentroidOriginal   = centroidOriginal;
+        m_lastPointRectaOriginal = pointRectaOriginal;
+        // **************************************************
+
+        point_str = QString("Punto Recta img recortada: (%1, %2)").arg(int(pointRectaCrop.x)).arg(int(pointRectaCrop.y));
+
+        QString centroidOriginalStr = QString("Centroide img original: (%1, %2)").arg(centroidOriginal.x()).arg(centroidOriginal.y());
+        QString pointOriginalStr    = QString("Punto Recta img original: (%1, %2)").arg(pointRectaOriginal.x()).arg(pointRectaOriginal.y());
+
+        ui->labelPoints->setText(centroid_str + "\n" + point_str + "\n" + centroidOriginalStr + "\n" + pointOriginalStr);
       }
-      if (angle < 0)
-        angle += 180.0;
-
-      // Preparar string del Ángulo
-      angle_str = QString::number(angle, 'f', 2) + "°";
-
-      // Dibujar el eje principal (línea de orientación)
-      if (cx != -1 && cy != -1) {
-        double rad = angle * CV_PI / 180.0;
-        // Usamos una longitud suficiente para que la línea intercepte la pieza
-        int line_length = 200;
-
-        // Calcular el punto final P1 (el punto que intercepta el rectangulo)
-        int x1 = cx + static_cast<int>(line_length * cos(rad));
-        int y1 = cy + static_cast<int>(line_length * sin(rad));
-
-        // Calcular el punto final P2 (el punto opuesto)
-        int x2 = cx - static_cast<int>(line_length * cos(rad));
-        int y2 = cy - static_cast<int>(line_length * sin(rad));
-
-        // Dibujar la línea de orientación
-        cv::line(output, cv::Point(x1, y1), cv::Point(x2, y2), cv::Scalar(0, 255, 255), 2); // Amarillo (BGR)
-
-        // Preparar string del Punto de la Recta (usando P1)
-        point_str = QString("Punto Recta: (%1, %2)").arg(x1).arg(y1);
-
-        // Dibujar el punto de la recta en la imagen para confirmación (Opcional)
-        cv::circle(output, cv::Point(x1, y1), 5, cv::Scalar(255, 255, 0), -1); // Cian (BGR)
-      }
     }
   }
-  // --- ACTUALIZACIÓN DE LABELS DE SALIDA (Fuera o dentro del if/else según prefieras el N/A) ---
 
-  // Actualizar labelPuntos con el Centroide y el Punto de la Recta
-  if (ui->labelPoints) {
-    ui->labelPoints->setText(centroid_str + "\n" + point_str);
-  }
+  ui->labelAngle->setText(angle_str);
 
-  // Actualizar labelAngle con el ángulo
-  if (ui->labelAngle) {
-    ui->labelAngle->setText(angle_str);
-  }
+  // --- Convert back (redimensionar output al tamaño original del crop) ---
+  cv::resize(output, output, cv::Size(), scale, scale);
 
-  if (largest_idx == -1) {
-    // Si no se encuentra un contorno grande, muestra la imagen negra vacía en Canny
-    QImage canny_qt(filtered_edges_display.data, filtered_edges_display.cols, filtered_edges_display.rows, filtered_edges_display.step,
-                    QImage::Format_Grayscale8);
-    ui->labelCanny->setPixmap(QPixmap::fromImage(canny_qt).scaled(ui->labelCanny->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
-  }
-
-  // 4. ---- Convertir cv::Mat (BGR) -> QPixmap ----
   cv::Mat output_rgb;
   cv::cvtColor(output, output_rgb, cv::COLOR_BGR2RGB);
 
-  QImage outImg(output_rgb.data, output_rgb.cols, output_rgb.rows, output_rgb.step, QImage::Format_RGB888);
-  pixmap = QPixmap::fromImage(outImg.copy());
+  QImage out(output_rgb.data, output_rgb.cols, output_rgb.rows, output_rgb.step, QImage::Format_RGB888);
+
+  pixmap = QPixmap::fromImage(out.copy());
 }
 
-// Actualizar label (Sin cambios)
-void VideoProcessingDialog::updateVideoLabel()
+// Transforma una coordenada (en cv::Point2f) del frame recortado
+// a una coordenada (en QPoint) del frame original
+QPoint VideoProcessingDialog::transformCropPointToOriginal(const cv::Point2f& cropPoint)
 {
-  if (m_currentPixmap.isNull())
-    return;
-  ui->videoLabel->setPixmap(m_currentPixmap.scaled(ui->videoLabel->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
+  if (m_lastPerspectiveMatrix.empty()) {
+    // Devolver un punto no válido si no hay matriz
+    return QPoint();
+  }
+
+  // El punto de entrada está en coordenadas de imagen (no escaladas)
+  std::vector<cv::Point2f> ptsInCrop = {cropPoint};
+  std::vector<cv::Point2f> ptsInOriginal;
+
+  // 1. Invertir la matriz de perspectiva (la inversa mapea el destino al origen)
+  cv::Mat M_inv = m_lastPerspectiveMatrix.inv();
+
+  // 2. Aplicar la transformación inversa
+  cv::perspectiveTransform(ptsInCrop, ptsInOriginal, M_inv);
+
+  // 3. Devolver el punto transformado como QPoint (redondeando a entero)
+  if (!ptsInOriginal.empty()) {
+    return QPoint(qRound(ptsInOriginal[0].x), qRound(ptsInOriginal[0].y));
+  }
+
+  return QPoint();
 }
 
 // --- Slots y funciones de cámara ---
 void VideoProcessingDialog::on_checkBoxSegmentacion_toggled(bool checked)
 {
-  m_applySegmentacion = checked;
-
   // Si la cámara está corriendo, forzamos una actualización inmediata
   // de la visualización llamando a handleNewPixmap con la imagen actual.
   // Esto asegura que la imagen de la etiqueta cambie inmediatamente al estado correcto.
@@ -431,28 +446,4 @@ void VideoProcessingDialog::on_checkBoxSegmentacion_toggled(bool checked)
     // Si 'checked' es false, se muestra la imagen original con los puntos.
     handleNewPixmap(m_currentPixmap);
   }
-}
-
-void VideoProcessingDialog::on_startButton_clicked()
-{
-  VideoCaptureHandler& handler = VideoCaptureHandler::instance();
-  if (ui->startButton->isChecked()) {
-    ui->startButton->setText("Stop");
-  }
-  else {
-    handler.requestCameraChange(-1, QSize());
-    ui->startButton->setText("Start");
-    m_currentPixmap = QPixmap();
-    ui->videoLabel->clear();
-    ui->videoLabel->setText("Cámara detenida.");
-  }
-}
-
-
-void VideoProcessingDialog::on_cameraOpenFailed(int cameraId, const QString& errorMsg)
-{
-  Q_UNUSED(cameraId);
-  QMessageBox::critical(this, "Error de Cámara", tr("No se pudo iniciar la cámara seleccionada. Detalle: %1").arg(errorMsg));
-  ui->startButton->setChecked(false);
-  ui->startButton->setText("Start OpenCV");
 }

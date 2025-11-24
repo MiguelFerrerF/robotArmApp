@@ -512,3 +512,83 @@ void VideoCalibrationDialog::on_calibrationFinished(const VideoCalibrationResult
   // 3. Re-habilitar el botón
   ui->startButton->setEnabled(true);
 }
+
+Ray generateRayFromPixel(const cv::Point2f& pixel, const cv::Mat& K)
+{
+  cv::Mat pixel_hom = (cv::Mat_<double>(3, 1) << pixel.x, pixel.y, 1.0);
+
+  cv::Mat K_inv = K.inv();
+  cv::Mat dir   = K_inv * pixel_hom;
+
+  // Normalizar
+  cv::normalize(dir, dir);
+
+  Ray ray;
+  ray.origin    = cv::Point3f(0, 0, 0);
+  ray.direction = cv::Point3f(dir.at<double>(0, 0), dir.at<double>(1, 0), dir.at<double>(2, 0));
+
+  return ray;
+}
+
+Plane definePlaneFromPoints(const cv::Point3f& p1, const cv::Point3f& p2, const cv::Point3f& p3)
+{
+  Plane plane;
+  // Vectores del plano
+  cv::Point3f v1 = p2 - p1;
+  cv::Point3f v2 = p3 - p1;
+
+  // Normal del plano
+  plane.normal = v1.cross(v2);
+  float norm   = std::sqrt(plane.normal.dot(plane.normal));
+  plane.normal /= norm;
+
+  // Distancia al origen
+  plane.d = -plane.normal.dot(p1);
+
+  return plane;
+}
+
+cv::Point3f intersectRayWithPlane(const Ray& ray, const Plane& plane)
+{
+  float denom = plane.normal.dot(ray.direction);
+  if (std::fabs(denom) < 1e-6) {
+    // Rayo paralelo al plano
+    return cv::Point3f(NAN, NAN, NAN);
+  }
+
+  float t = -(plane.normal.dot(ray.origin) + plane.d) / denom;
+  return ray.origin + t * ray.direction;
+}
+
+void VideoCalibrationDialog::on_pushButtonGetPoint_clicked()
+{
+  // Ruta al archivo de calibración
+  QString camMatrixPath = "C:/Qt Proyectos/RobotArmApp/out/build/Visual Studio Community 2022 Release - amd64/calibration/camera/camera_matrix.yml";
+
+  // Cargar la matriz K
+
+  cv::Mat         K;
+  cv::FileStorage fs(camMatrixPath.toStdString(), cv::FileStorage::READ);
+  if (!fs.isOpened()) {
+    qDebug() << "No se pudo abrir el archivo" << camMatrixPath;
+    return;
+  }
+  fs["m_newCameraMatrix"] >> K;
+  fs.release();
+
+  // Coordenadas del pixel
+  cv::Point2f pixel(250, 300);
+
+  // Generar rayo
+  Ray ray = generateRayFromPixel(pixel, K);
+  qDebug() << "Ray Origin:" << ray.origin.x << ray.origin.y << ray.origin.z;
+  qDebug() << "Ray Direction:" << ray.direction.x << ray.direction.y << ray.direction.z;
+
+  // Definir un plano con 3 puntos
+  cv::Point3f p1(0, 0, 0), p2(1, 0, 0), p3(0, 1, 0);
+  Plane       plane = definePlaneFromPoints(p1, p2, p3);
+
+  // Intersección rayo-plano
+  cv::Point3f intersection = intersectRayWithPlane(ray, plane);
+  qDebug() << "Intersection:" << intersection.x << intersection.y << intersection.z;
+}

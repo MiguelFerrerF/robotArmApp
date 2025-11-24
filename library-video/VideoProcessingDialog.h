@@ -70,7 +70,7 @@ private:
   void applySegmentacion(QPixmap& pixmap);
   void drawCropPointsOnLabel();
   void updatePointInfoLabel();
-
+ 
   // Transformación de perspectiva
   QPixmap applyPerspectiveCrop(const QPixmap& original, const QPoint& tl, const QPoint& tr, const QPoint& br, const QPoint& bl,
                                std::vector<QPoint>& transformedPoints);

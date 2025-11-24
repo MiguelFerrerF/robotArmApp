@@ -26,6 +26,22 @@ struct VideoCalibrationResult
 };
 Q_DECLARE_METATYPE(VideoCalibrationResult)
 
+struct Ray
+{
+  cv::Point3f origin;
+  cv::Point3f direction;
+};
+
+struct Plane
+{
+  cv::Point3f normal;
+  float       d; // distancia al origen
+};
+
+Ray generateRayFromPixel(const cv::Point2f& pixel, const cv::Mat& K);
+
+cv::Point3f pixelToPlaneIntersection(const cv::Point2f& pixel, const cv::Mat& K, const cv::Point3f& planeNormal, float d);
+
 // Esta clase contiene la lógica de calibración que se ejecutará en segundo plano
 class VideoCalibrationWorker : public QObject
 {
@@ -73,6 +89,7 @@ private slots:
   void on_calibrationFinished(const VideoCalibrationResult& result);
   void on_calibrationError(const QString& message);
   void on_progressUpdate(const QString& message);
+  void on_pushButtonGetPoint_clicked();
 
 private:
   Ui::VideoCalibrationDialog* ui;
@@ -86,6 +103,8 @@ private:
   cv::Mat m_cameraMatrix;    // Matriz de cámara
   cv::Mat m_distCoeffs;      // Coeficientes de distorsión
   cv::Mat m_newCameraMatrix; // Matriz de cámara óptima cargada
+
+  cv::Mat k;
 
   // Miembros para gestionar el hilo de trabajo
   QThread*                m_workerThread = nullptr;

@@ -37,11 +37,10 @@ std::vector<cv::Point3f> VideoCalibrationWorker::createObjectPoints(cv::Size boa
   return obj;
 }
 
-bool VideoCalibrationWorker::processImageForCorners(const cv::Mat& image, cv::Size boardSize, float squareSize,
-                                               std::vector<cv::Point2f>& corners)
+bool VideoCalibrationWorker::processImageForCorners(const cv::Mat& image, cv::Size boardSize, float squareSize, std::vector<cv::Point2f>& corners)
 {
-  
-  bool                     found = cv::findChessboardCorners(image, boardSize, corners, cv::CALIB_CB_ADAPTIVE_THRESH | cv::CALIB_CB_NORMALIZE_IMAGE);
+
+  bool found = cv::findChessboardCorners(image, boardSize, corners, cv::CALIB_CB_ADAPTIVE_THRESH | cv::CALIB_CB_NORMALIZE_IMAGE);
 
   if (found) {
     cv::Mat gray;
@@ -150,7 +149,7 @@ void VideoCalibrationWorker::doCalibration(const QString& directoryPath, cv::Siz
       imageSize = image.size();
       qDebug() << "Tamaño de imagen detectado para calibración:" << imageSize.width << "x" << imageSize.height;
     }
-    std::vector < cv::Point2f> cornersImg;
+    std::vector<cv::Point2f> cornersImg;
     std::vector<cv::Point3f> cornersObj = createObjectPoints(boardSize, squareSize);
     if (processImageForCorners(image, boardSize, squareSize, cornersImg)) {
       processedCount++;
@@ -513,82 +512,210 @@ void VideoCalibrationDialog::on_calibrationFinished(const VideoCalibrationResult
   ui->startButton->setEnabled(true);
 }
 
+// =========================================================
+// 1. ESTRUCTURAS Y FUNCIONES AUXILIARES
+// (Copia esto antes de las funciones de tu clase o en un namespace)
+// =========================================================
+
+struct Ray
+{
+  cv::Point3f origin;
+  cv::Point3f direction;
+};
+
+struct Plane
+{
+  cv::Point3f normal;
+  cv::Point3f point;
+};
+
+// Transforma un punto de coordenadas del Objeto (Tablero) a coordenadas de la Cámara
+cv::Point3f transformPoint(const cv::Point3f& point, const cv::Mat& R_mat, const cv::Mat& T_vec)
+{
+  // Convertir punto a Matriz 3x1
+  cv::Mat pointMat = (cv::Mat_<double>(3, 1) << point.x, point.y, point.z);
+
+  // Fórmula: P_cam = R * P_obj + T
+  cv::Mat resultMat = R_mat * pointMat + T_vec;
+
+  return cv::Point3f(resultMat.at<double>(0), resultMat.at<double>(1), resultMat.at<double>(2));
+}
+
+// Genera un rayo desde un píxel de la imagen proyectado al espacio 3D
 Ray generateRayFromPixel(const cv::Point2f& pixel, const cv::Mat& K)
 {
-  cv::Mat pixel_hom = (cv::Mat_<double>(3, 1) << pixel.x, pixel.y, 1.0);
-
-  cv::Mat K_inv = K.inv();
-  cv::Mat dir   = K_inv * pixel_hom;
-
-  // Normalizar
-  cv::normalize(dir, dir);
-
   Ray ray;
-  ray.origin    = cv::Point3f(0, 0, 0);
-  ray.direction = cv::Point3f(dir.at<double>(0, 0), dir.at<double>(1, 0), dir.at<double>(2, 0));
+  ray.origin = cv::Point3f(0, 0, 0); // El origen es el centro óptico de la cámara
+
+  double fx = K.at<double>(0, 0);
+  double fy = K.at<double>(1, 1);
+  double cx = K.at<double>(0, 2);
+  double cy = K.at<double>(1, 2);
+
+  // Desproyectar el píxel a coordenadas normalizadas
+  float x = (pixel.x - cx) / fx;
+  float y = (pixel.y - cy) / fy;
+  float z = 1.0f;
+
+  // Normalizar el vector de dirección
+  float norm    = std::sqrt(x * x + y * y + z * z);
+  ray.direction = cv::Point3f(x / norm, y / norm, z / norm);
 
   return ray;
 }
 
+// Define un plano matemático a partir de 3 puntos en el espacio
 Plane definePlaneFromPoints(const cv::Point3f& p1, const cv::Point3f& p2, const cv::Point3f& p3)
 {
   Plane plane;
-  // Vectores del plano
+  plane.point = p1;
+
+  // Vectores sobre el plano
   cv::Point3f v1 = p2 - p1;
   cv::Point3f v2 = p3 - p1;
 
-  // Normal del plano
+  // Producto cruz para hallar la normal
   plane.normal = v1.cross(v2);
-  float norm   = std::sqrt(plane.normal.dot(plane.normal));
-  plane.normal /= norm;
 
-  // Distancia al origen
-  plane.d = -plane.normal.dot(p1);
+  // Normalizar la normal
+  float norm = std::sqrt(plane.normal.x * plane.normal.x + plane.normal.y * plane.normal.y + plane.normal.z * plane.normal.z);
+  if (norm > 0)
+    plane.normal /= norm;
 
   return plane;
 }
 
+// Calcula la intersección entre un Rayo y un Plano
 cv::Point3f intersectRayWithPlane(const Ray& ray, const Plane& plane)
 {
-  float denom = plane.normal.dot(ray.direction);
-  if (std::fabs(denom) < 1e-6) {
-    // Rayo paralelo al plano
-    return cv::Point3f(NAN, NAN, NAN);
+  cv::Point3f diff  = plane.point - ray.origin;
+  float       prod1 = diff.dot(plane.normal);
+  float       prod2 = ray.direction.dot(plane.normal);
+
+  // Evitar división por cero (rayo paralelo al plano)
+  if (std::abs(prod2) < 1e-6) {
+    qDebug() << "Advertencia: El rayo es paralelo al plano.";
+    return cv::Point3f(0, 0, 0);
   }
 
-  float t = -(plane.normal.dot(ray.origin) + plane.d) / denom;
-  return ray.origin + t * ray.direction;
+  float t = prod1 / prod2;
+  // P = O + t*D
+  return ray.origin + ray.direction * t;
 }
+
+// =========================================================
+// 2. TU FUNCIÓN PRINCIPAL 
+// =========================================================
 
 void VideoCalibrationDialog::on_pushButtonGetPoint_clicked()
 {
-  // Ruta al archivo de calibración
-  QString camMatrixPath = "C:/Qt Proyectos/RobotArmApp/out/build/Visual Studio Community 2022 Release - amd64/calibration/camera/camera_matrix.yml";
+  // --- Configuración Inicial ---
+  QString dirPath           = "calibration/camera";
+  QString camMatrixPath     = QDir(dirPath).filePath("camera_matrix.yml");
+  QString distCoeffsPath    = QDir(dirPath).filePath("dist_coeffs.yml");
+  QString camPlaneImagePath = QDir(dirPath).filePath("camera_plane_image.tiff");
 
-  // Cargar la matriz K
+  cv::Size boardSize(9, 6);
+  float    squareSize = 10.0f; // Metros (si usas mm, cambia a 10.0f)
 
-  cv::Mat         K;
-  cv::FileStorage fs(camMatrixPath.toStdString(), cv::FileStorage::READ);
-  if (!fs.isOpened()) {
-    qDebug() << "No se pudo abrir el archivo" << camMatrixPath;
+  // --- Generar Puntos del Objeto (Tablero Ideal en Z=0) ---
+  std::vector<cv::Point3f> objectPoints;
+  for (int i = 0; i < boardSize.height; ++i) {
+    for (int j = 0; j < boardSize.width; ++j) {
+      objectPoints.emplace_back(j * squareSize, i * squareSize, 0);
+    }
+  }
+
+  // --- Cargar Calibración (Intrínsecos) ---
+  cv::FileStorage fsCam(camMatrixPath.toStdString(), cv::FileStorage::READ);
+  cv::FileStorage fsDist(distCoeffsPath.toStdString(), cv::FileStorage::READ);
+  cv::Mat         K, D;
+
+  if (fsCam.isOpened()) {
+    fsCam["m_newCameraMatrix"] >> K;
+    fsCam.release();
+  }
+  else {
+    qDebug() << "Error: No se cargó camera_matrix.yml";
     return;
   }
-  fs["m_newCameraMatrix"] >> K;
-  fs.release();
 
-  // Coordenadas del pixel
+  if (fsDist.isOpened()) {
+    fsDist["m_distCoeffs"] >> D;
+    fsDist.release();
+  }
+  else {
+    qDebug() << "Error: No se cargó dist_coeffs.yml";
+    return;
+  }
+
+  // --- Detectar Esquinas en la Imagen del Plano ---
+  std::vector<cv::Point2f> imagePoints;
+  cv::Mat                  planeImage = cv::imread(camPlaneImagePath.toStdString());
+
+  if (planeImage.empty()) {
+    qDebug() << "Error: No se pudo cargar la imagen del plano.";
+    return;
+  }
+
+  bool found = cv::findChessboardCorners(planeImage, boardSize, imagePoints, cv::CALIB_CB_ADAPTIVE_THRESH | cv::CALIB_CB_NORMALIZE_IMAGE);
+
+  if (found) {
+    cv::Mat gray;
+    cv::cvtColor(planeImage, gray, cv::COLOR_BGR2GRAY);
+    cv::cornerSubPix(gray, imagePoints, cv::Size(11, 11), cv::Size(-1, -1),
+                     cv::TermCriteria(cv::TermCriteria::EPS + cv::TermCriteria::MAX_ITER, 30, 0.001));
+  }
+  else {
+    qDebug() << "Error: No se encontraron las esquinas del tablero.";
+    return;
+  }
+
+  // --- Calcular Pose del Tablero (Extrínsecos) ---
+  cv::Mat rvec, T;
+  cv::solvePnP(objectPoints, imagePoints, K, D, rvec, T);
+
+  // Convertir vector de rotación (Rodrigues) a matriz de rotación 3x3
+  cv::Mat R_mat;
+  cv::Rodrigues(rvec, R_mat);
+
+  // Asegurar tipo de datos double (CV_64F) para operaciones matemáticas
+  T.convertTo(T, CV_64F);
+  R_mat.convertTo(R_mat, CV_64F);
+
+  qDebug() << "Pose detectada. T:" << T.at<double>(0) << T.at<double>(1) << T.at<double>(2);
+
+  // --- LÓGICA DE INTERSECCIÓN 3D ---
+
+  // 1. Definir Puntos del Plano en Coordenadas del OBJETO (local al tablero)
+  //    Z es 0 en el tablero.
+  cv::Point3f p1_obj(0, 0, 0);
+  cv::Point3f p2_obj(squareSize * 5, 0, 0); // Un punto en el eje X del tablero
+  cv::Point3f p3_obj(0, squareSize * 5, 0); // Un punto en el eje Y del tablero
+
+  // 2. Transformar esos puntos a Coordenadas de CÁMARA
+  //    Aquí es donde usamos la R y T encontradas por solvePnP.
+  cv::Point3f p1_cam = transformPoint(p1_obj, R_mat, T);
+  cv::Point3f p2_cam = transformPoint(p2_obj, R_mat, T);
+  cv::Point3f p3_cam = transformPoint(p3_obj, R_mat, T);
+
+  // 3. Definir el Plano Matemático en el espacio de la Cámara
+  Plane plane = definePlaneFromPoints(p1_cam, p2_cam, p3_cam);
+
+  // 4. Definir el Pixel de interés y generar el Rayo
+  //    (Aquí puedes reemplazar con las coordenadas del clic del mouse)
   cv::Point2f pixel(250, 300);
+  Ray         ray = generateRayFromPixel(pixel, K);
 
-  // Generar rayo
-  Ray ray = generateRayFromPixel(pixel, K);
-  qDebug() << "Ray Origin:" << ray.origin.x << ray.origin.y << ray.origin.z;
-  qDebug() << "Ray Direction:" << ray.direction.x << ray.direction.y << ray.direction.z;
+  qDebug() << "Rayo Dir:" << ray.direction.x << ray.direction.y << ray.direction.z;
 
-  // Definir un plano con 3 puntos
-  cv::Point3f p1(0, 0, 0), p2(1, 0, 0), p3(0, 1, 0);
-  Plane       plane = definePlaneFromPoints(p1, p2, p3);
+  // 5. Calcular la intersección
+  cv::Point3f result3D = intersectRayWithPlane(ray, plane);
 
-  // Intersección rayo-plano
-  cv::Point3f intersection = intersectRayWithPlane(ray, plane);
-  qDebug() << "Intersection:" << intersection.x << intersection.y << intersection.z;
+  qDebug() << "------------------------------------------";
+  qDebug() << "RESULTADO FINAL (Coordenadas de Cámara):";
+  qDebug() << "X:" << result3D.x;
+  qDebug() << "Y:" << result3D.y;
+  qDebug() << "Z:" << result3D.z;
+  qDebug() << "------------------------------------------";
 }

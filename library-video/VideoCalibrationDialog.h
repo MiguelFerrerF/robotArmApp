@@ -26,22 +26,6 @@ struct VideoCalibrationResult
 };
 Q_DECLARE_METATYPE(VideoCalibrationResult)
 
-struct Ray
-{
-  cv::Point3f origin;
-  cv::Point3f direction;
-};
-
-struct Plane
-{
-  cv::Point3f normal;
-  float       d; // distancia al origen
-};
-
-Ray generateRayFromPixel(const cv::Point2f& pixel, const cv::Mat& K);
-
-cv::Point3f pixelToPlaneIntersection(const cv::Point2f& pixel, const cv::Mat& K, const cv::Point3f& planeNormal, float d);
-
 // Esta clase contiene la lógica de calibración que se ejecutará en segundo plano
 class VideoCalibrationWorker : public QObject
 {

@@ -10,7 +10,7 @@
 #include <QSettings>
 #include <QVideoFrameFormat>
 
-MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWindow), m_RobotHandler(new RobotHandler(this))
+MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWindow), m_RobotHandler(new RobotHandler(this, &m_robotSettings))
 {
   ui->setupUi(this);
   this->setWindowTitle("Robot Arm Controller");

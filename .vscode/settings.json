@@ -90,6 +90,8 @@
         "qfileinfo": "cpp",
         "qlabel": "cpp",
         "qjsondocument": "cpp",
-        "qmessagebox": "cpp"
+        "qmessagebox": "cpp",
+        "qsettings": "cpp",
+        "qdebug": "cpp"
     }
 }

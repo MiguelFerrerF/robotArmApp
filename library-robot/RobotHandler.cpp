@@ -1,15 +1,12 @@
 #include "RobotHandler.h"
 #include "../library-serial/SerialPortHandler.h"
-#include "RobotConfig.h"
 #include <QDebug>
 #include <QSettings>
 #include <cmath>
 #include <opencv2/core.hpp>
 #include <opencv2/opencv.hpp>
 
-RobotConfig::RobotSettings robotSettings; // instancia global
-
-RobotHandler::RobotHandler(QObject* parent) : QObject(parent)
+RobotHandler::RobotHandler(QObject* parent, RobotConfig::RobotSettings* settings) : QObject(parent), m_robotSettings(settings)
 {
   // Inicializa matrices como identidad 4x4
   RTb1 = cv::Mat::eye(4, 4, CV_64F);
@@ -60,7 +57,7 @@ void RobotHandler::onDataReceived(const QByteArray& data)
     actualizarMatrices(q);
 
     // Update fixed angle in settings
-    robotSettings.motors[servoNum - 1].fixedAngle = valor;
+    m_robotSettings->motors[servoNum - 1].fixedAngle = valor;
 
     // Emitir serial informando cambio de angulo
     emit motorAngleChanged(servoNum, valor);
@@ -72,7 +69,7 @@ void RobotHandler::onDataReceived(const QByteArray& data)
       return;
     }
     // Actualizar el offset en la configuracion del robot
-    robotSettings.motors[servoNum - 1].defaultAngle = valor;
+    m_robotSettings->motors[servoNum - 1].defaultAngle = valor;
 
     // Puedes ajustar el rango de offset si lo necesitas
     emit motorOffsetsChanged(servoNum, valor);
@@ -87,7 +84,7 @@ void RobotHandler::onDataReceived(const QByteArray& data)
       emit errorOccurred(QString("Invalid angle: %1").arg(valor));
       return;
     }
-    robotSettings.motors[servoNum - 1].currentAngle = valor;
+    m_robotSettings->motors[servoNum - 1].currentAngle = valor;
   }
   else {
     qDebug() << "[RobotHandler] Mensaje no reconocido:" << msg;

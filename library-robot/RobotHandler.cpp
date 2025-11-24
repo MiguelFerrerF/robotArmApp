@@ -9,7 +9,8 @@
 
 RobotConfig::RobotSettings robotSettings; // instancia global
 
-RobotHandler::RobotHandler(QObject *parent) : QObject(parent) {
+RobotHandler::RobotHandler(QObject* parent) : QObject(parent)
+{
   // Inicializa matrices como identidad 4x4
   RTb1 = cv::Mat::eye(4, 4, CV_64F);
   RT12 = cv::Mat::eye(4, 4, CV_64F);
@@ -21,26 +22,24 @@ RobotHandler::RobotHandler(QObject *parent) : QObject(parent) {
   q = (cv::Mat_<int>(1, 6) << 0, 0, 0, 0, 0, 0);
 
   // Conexi�n de se�ales del puerto serie
-  SerialPortHandler &serial = SerialPortHandler::instance();
-  connect(&serial, &SerialPortHandler::dataReceived, this,
-          &RobotHandler::onDataReceived);
-  connect(&serial, &SerialPortHandler::dataSent, this,
-          &RobotHandler::onDataSent);
+  SerialPortHandler& serial = SerialPortHandler::instance();
+  connect(&serial, &SerialPortHandler::dataReceived, this, &RobotHandler::onDataReceived);
+  connect(&serial, &SerialPortHandler::dataSent, this, &RobotHandler::onDataSent);
 
   m_serialConnected = serial.isConnected();
 }
 
-void RobotHandler::onDataReceived(const QByteArray &data) {
+void RobotHandler::onDataReceived(const QByteArray& data)
+{
   const QString msg = QString::fromUtf8(data).trimmed();
 
   int servoNum = 0, valor = 0;
 
   // Extraer servo y valor con sscanf
-  if (sscanf(msg.toUtf8().constData(), "ANGLE_WITH_OFFSET:SERVO%d:%d", &servoNum, &valor) ==
-      2) {
+  if (sscanf(msg.toUtf8().constData(), "ANGLE_WITH_OFFSET:SERVO%d:%d", &servoNum, &valor) == 2) {
     // Validar rangos
     if (servoNum < 1 || servoNum > 6) {
-      qDebug() << "[RobotHandler] Servo inv�lido:" << servoNum;
+      qDebug() << "[RobotHandler] Servo invalido:" << servoNum;
       emit errorOccurred(QString("Invalid servo index: %1").arg(servoNum));
       return;
     }
@@ -53,34 +52,50 @@ void RobotHandler::onDataReceived(const QByteArray &data) {
     // Actualizar el valor correspondiente en la matriz q
     q.at<int>(0, servoNum - 1) = valor;
 
-    qDebug()
-        << QString("[RobotHandler] Servo %1 -> %2").arg(servoNum).arg(valor);
-    qDebug() << "Estado actual de los servos: [" << q.at<int>(0, 0) << ", "
-             << q.at<int>(0, 1) << ", " << q.at<int>(0, 2) << ", "
-             << q.at<int>(0, 3) << ", " << q.at<int>(0, 4) << ", "
-             << q.at<int>(0, 5) << "]";
+    qDebug() << QString("[RobotHandler] Servo %1 -> %2").arg(servoNum).arg(valor);
+    qDebug() << "Estado actual de los servos: [" << q.at<int>(0, 0) << ", " << q.at<int>(0, 1) << ", " << q.at<int>(0, 2) << ", " << q.at<int>(0, 3)
+             << ", " << q.at<int>(0, 4) << ", " << q.at<int>(0, 5) << "]";
 
-    // Actualizar matrices cinem�ticas
+    // Actualizar matrices cinematicas
     actualizarMatrices(q);
 
-    // Emitir se�al informando cambio de �ngulo
+    // Update fixed angle in settings
+    robotSettings.motors[servoNum - 1].fixedAngle = valor;
+
+    // Emitir serial informando cambio de angulo
     emit motorAngleChanged(servoNum, valor);
-  } 
+  }
   else if (sscanf(msg.toUtf8().constData(), "OFFSET:SERVO%d:%d", &servoNum, &valor) == 2) {
     if (servoNum < 1 || servoNum > 6) {
       qDebug() << "[RobotHandler] Servo inválido:" << servoNum;
       emit errorOccurred(QString("Invalid servo index: %1").arg(servoNum));
       return;
     }
+    // Actualizar el offset en la configuracion del robot
+    robotSettings.motors[servoNum - 1].defaultAngle = valor;
+
     // Puedes ajustar el rango de offset si lo necesitas
     emit motorOffsetsChanged(servoNum, valor);
+  }
+  else if (sscanf(msg.toUtf8().constData(), "ANGLE:SERVO%d:%d", &servoNum, &valor) == 2) {
+    // Validar rangos
+    if (servoNum < 1 || servoNum > 6) {
+      emit errorOccurred(QString("Invalid servo index: %1").arg(servoNum));
+      return;
+    }
+    if (valor < -180 || valor > 180) {
+      emit errorOccurred(QString("Invalid angle: %1").arg(valor));
+      return;
+    }
+    robotSettings.motors[servoNum - 1].currentAngle = valor;
   }
   else {
     qDebug() << "[RobotHandler] Mensaje no reconocido:" << msg;
   }
 }
 
-void RobotHandler::actualizarMatrices(const cv::Mat &q) {
+void RobotHandler::actualizarMatrices(const cv::Mat& q)
+{
   if (q.cols < 4) {
     qDebug() << "La matriz q no tiene suficientes columnas.";
     return;
@@ -93,7 +108,7 @@ void RobotHandler::actualizarMatrices(const cv::Mat &q) {
   double q5_rad = -q.at<int>(0, 4) * M_PI / 180.0;
 
   // RTb1 � Base al primer eslab�n
-  RTb1 = cv::Mat::eye(4, 4, CV_64F);
+  RTb1                  = cv::Mat::eye(4, 4, CV_64F);
   RTb1.at<double>(0, 0) = cos(q1_rad);
   RTb1.at<double>(0, 1) = -sin(q1_rad);
   RTb1.at<double>(1, 0) = sin(q1_rad);
@@ -101,7 +116,7 @@ void RobotHandler::actualizarMatrices(const cv::Mat &q) {
   RTb1.at<double>(2, 3) = -a1; // traslaci�n en z
 
   // RT12 � Primer eslab�n al segundo
-  RT12 = cv::Mat::eye(4, 4, CV_64F);
+  RT12                  = cv::Mat::eye(4, 4, CV_64F);
   RT12.at<double>(0, 0) = cos(q2_rad);
   RT12.at<double>(0, 2) = sin(q2_rad);
   RT12.at<double>(2, 3) = -a2;
@@ -109,7 +124,7 @@ void RobotHandler::actualizarMatrices(const cv::Mat &q) {
   RT12.at<double>(2, 2) = cos(q2_rad);
 
   // RT23 � Segundo al tercero
-  RT23 = cv::Mat::eye(4, 4, CV_64F);
+  RT23                  = cv::Mat::eye(4, 4, CV_64F);
   RT23.at<double>(0, 0) = cos(q3_rad);
   RT23.at<double>(0, 2) = sin(q3_rad);
   RT23.at<double>(2, 3) = -a3;
@@ -146,29 +161,27 @@ void RobotHandler::actualizarMatrices(const cv::Mat &q) {
   cv::Point3d efectorLocal(0, 0, 0);
   cv::Point3d efectorGlobal = transformarPunto(efectorLocal);
 
-  emit efectorPositionChanged(efectorGlobal.x, efectorGlobal.y,
-                              efectorGlobal.z);
+  emit efectorPositionChanged(efectorGlobal.x, efectorGlobal.y, efectorGlobal.z);
 
   qDebug() << "Posicion de la pinza (respecto a la base del robot):"
-           << "(" << efectorGlobal.x << ", " << efectorGlobal.y << ", "
-           << efectorGlobal.z << ")";
+           << "(" << efectorGlobal.x << ", " << efectorGlobal.y << ", " << efectorGlobal.z << ")";
 
   inverseCinematic(efectorGlobal);
 }
 
-void RobotHandler::inverseCinematic(const cv::Point3d &efectorGlobal) {
+void RobotHandler::inverseCinematic(const cv::Point3d& efectorGlobal)
+{
   // Implementaci�n pendiente
-  int R = sqrt(efectorGlobal.x * efectorGlobal.x +
-               efectorGlobal.y * efectorGlobal.y);
+  int R = sqrt(efectorGlobal.x * efectorGlobal.x + efectorGlobal.y * efectorGlobal.y);
   int Z = efectorGlobal.z;
 
   qDebug("Valores R y Z calculados: R = %d, Z = %d", R, Z);
 
   double B_rad = acos((R * R + (Z - a1 + a5) * (Z - a1 + a5) - a2 * a2 - a3 * a3) / (2 * a2 * a3));
-  int B = B_rad * 180 / M_PI;
+  int    B     = B_rad * 180 / M_PI;
 
   double A_rad = asin((R * (a2 + a3 * cos(B_rad)) - a3 * sin(B_rad) * (Z - a1 + a5)) / (a2 * a2 + a3 * a3 + 2 * a2 * a3 * cos(B_rad)));
-  int A = A_rad * 180 / M_PI;
+  int    A     = A_rad * 180 / M_PI;
 
   int C = 180 - A - B;
 
@@ -176,23 +189,25 @@ void RobotHandler::inverseCinematic(const cv::Point3d &efectorGlobal) {
 }
 
 // Transforma un punto del efector en coordenadas de la base
-cv::Point3d RobotHandler::transformarPunto(const cv::Point3d &puntoLocal) {
+cv::Point3d RobotHandler::transformarPunto(const cv::Point3d& puntoLocal)
+{
   // Crear punto homog�neo [x, y, z, 1]
-  cv::Mat puntoHom =
-      (cv::Mat_<double>(4, 1) << puntoLocal.x, puntoLocal.y, puntoLocal.z, 1);
+  cv::Mat puntoHom = (cv::Mat_<double>(4, 1) << puntoLocal.x, puntoLocal.y, puntoLocal.z, 1);
 
   // Aplicar transformaci�n total RTbt
   cv::Mat puntoGlobal = RTbt.inv() * puntoHom;
 
   // Devolver el punto transformado (coordenadas en la base del robot)
-  return cv::Point3d(puntoGlobal.at<double>(0, 0), puntoGlobal.at<double>(1, 0),
-                     puntoGlobal.at<double>(2, 0));
+  return cv::Point3d(puntoGlobal.at<double>(0, 0), puntoGlobal.at<double>(1, 0), puntoGlobal.at<double>(2, 0));
 }
 
-void RobotHandler::onDataSent(const QByteArray &data) {
+void RobotHandler::onDataSent(const QByteArray& data)
+{
   if (m_serialConnected) {
     qDebug() << "[Serial] Data sent:" << QString::fromUtf8(data);
   }
 }
 
-RobotHandler::~RobotHandler() {}
+RobotHandler::~RobotHandler()
+{
+}

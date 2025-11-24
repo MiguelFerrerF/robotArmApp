@@ -439,15 +439,10 @@ bool RobotCalibrationDialog::saveMotorAnglesToJson(const RobotConfig::RobotSetti
   // Asumiendo que el array motors tiene 6 elementos
   for (int i = 0; i < 6; ++i) {
     QJsonObject motorObject;
-    // Utilizamos desiredAngle o currentAngle, ajusta según el campo que
-    // contenga el ángulo actual. He elegido `currentAngle` ya que parece ser el
-    // más representativo del estado actual.
-    motorObject["motorIndex"] = i + 1;
-    motorObject["angle"]      = settings.motors[i].currentAngle;
-
-    // Si necesitas otros valores (por ejemplo, el default o el fijo), añádelos:
-    motorObject["defaultAngle"] = settings.motors[i].defaultAngle;
-    motorObject["fixedAngle"]   = settings.motors[i].fixedAngle;
+    motorObject["motorIndex"]   = i + 1;
+    motorObject["currentAngle"] = settings.motors[i].currentAngle; // Ángulo actual del motor
+    motorObject["defaultAngle"] = settings.motors[i].defaultAngle; // Angulo por defecto (offset)
+    motorObject["fixedAngle"]   = settings.motors[i].fixedAngle;   // ángulo con el offset aplicado
 
     motorsArray.append(motorObject);
   }
@@ -459,8 +454,6 @@ bool RobotCalibrationDialog::saveMotorAnglesToJson(const RobotConfig::RobotSetti
   QFile         file(filePath);
 
   if (file.open(QIODevice::WriteOnly)) {
-    // Usamos el formato JSON legible con indentación (Compact para archivos
-    // pequeños)
     file.write(doc.toJson(QJsonDocument::Indented));
     file.close();
     return true;

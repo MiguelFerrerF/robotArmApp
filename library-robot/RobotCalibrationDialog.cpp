@@ -75,13 +75,6 @@ void RobotCalibrationWorker::saveCalibration(const std::string& RTcameraBase, co
 
 void RobotCalibrationWorker::getRTbaseToolFromFile(const std::string& jsonFilePath, cv::Mat& Rbt, cv::Mat& Tbt)
 {
-  // Matrices de transformación
-  cv::Mat RTb1;
-  cv::Mat RT12;
-  cv::Mat RT23;
-  cv::Mat RT35;
-  cv::Mat RTbt;
-
   // Constantes de la geometría del robot
   double a1 = 130;
   double a2 = 125;
@@ -132,7 +125,7 @@ void RobotCalibrationWorker::getRTbaseToolFromFile(const std::string& jsonFilePa
   double q5_rad = -q5 * M_PI / 180.0;
 
   // RTb1 – Base al primer eslabón
-  RTb1                  = cv::Mat::eye(4, 4, CV_64F);
+  cv::Mat RTb1           = cv::Mat::eye(4, 4, CV_64F);
   RTb1.at<double>(0, 0) = cos(q1_rad);
   RTb1.at<double>(0, 1) = -sin(q1_rad);
   RTb1.at<double>(1, 0) = sin(q1_rad);
@@ -140,7 +133,7 @@ void RobotCalibrationWorker::getRTbaseToolFromFile(const std::string& jsonFilePa
   RTb1.at<double>(2, 3) = -a1;
 
   // RT12 – Primer eslabón al segundo
-  RT12                  = cv::Mat::eye(4, 4, CV_64F);
+  cv::Mat RT12           = cv::Mat::eye(4, 4, CV_64F);
   RT12.at<double>(0, 0) = cos(q2_rad);
   RT12.at<double>(0, 2) = sin(q2_rad);
   RT12.at<double>(2, 3) = -a2;
@@ -148,7 +141,7 @@ void RobotCalibrationWorker::getRTbaseToolFromFile(const std::string& jsonFilePa
   RT12.at<double>(2, 2) = cos(q2_rad);
 
   // RT23 – Segundo al tercero
-  RT23                  = cv::Mat::eye(4, 4, CV_64F);
+  cv::Mat RT23           = cv::Mat::eye(4, 4, CV_64F);
   RT23.at<double>(0, 0) = cos(q3_rad);
   RT23.at<double>(0, 2) = sin(q3_rad);
   RT23.at<double>(2, 3) = -a3;
@@ -156,7 +149,7 @@ void RobotCalibrationWorker::getRTbaseToolFromFile(const std::string& jsonFilePa
   RT23.at<double>(2, 2) = cos(q3_rad);
 
   // RT35 – Tercer eslabón al efector final
-  cv::Mat RT35          = cv::Mat::eye(4, 4, CV_64F);
+  cv::Mat RT35           = cv::Mat::eye(4, 4, CV_64F);
   RT35.at<double>(0, 0) = cos(q5_rad);
   RT35.at<double>(0, 2) = sin(q5_rad);
   RT35.at<double>(2, 3) = -a5;
@@ -164,7 +157,7 @@ void RobotCalibrationWorker::getRTbaseToolFromFile(const std::string& jsonFilePa
   RT35.at<double>(2, 2) = cos(q5_rad);
 
   // Transformación total
-  RTbt = RT35 * RT23 * RT12 * RTb1;
+  cv::Mat RTbt = RT35 * RT23 * RT12 * RTb1;
 
   // Print de la matriz completa para debug
   for (int i = 0; i < RTbt.rows; ++i) {
@@ -295,17 +288,15 @@ bool RobotCalibrationWorker::loadCalibration(RobotCalibrationResult& result)
   cv::FileStorage fsDist(distCoeffsPath.toStdString(), cv::FileStorage::READ);
 
   if (fsCam.isOpened() && fsDist.isOpened()) {
-    fsCam["m_cameraMatrix"] >> result.cameraMatrix;
-    fsCam["m_newCameraMatrix"] >> result.newCameraMatrix; 
+    fsCam["m_newCameraMatrix"] >> result.cameraMatrix; 
     fsDist["m_distCoeffs"] >> result.distCoeffs;
 
     // Imprimir en consola (como tenías antes)
-    std::cout << "Matriz de Cámara (Original):\\n" << result.cameraMatrix << std::endl;
-    std::cout << "Matriz de Cámara (Óptima):\\n" << result.newCameraMatrix << std::endl;
+    std::cout << "Matriz de Cámara (Óptima):\\n" << result.cameraMatrix << std::endl;
     std::cout << "Coeficientes de Distorsión:\\n" << result.distCoeffs << std::endl;
 
     // Comprobar que se cargaron las TRES matrices
-    if (!result.cameraMatrix.empty() && !result.distCoeffs.empty() && !result.newCameraMatrix.empty()) {
+    if (!result.cameraMatrix.empty() && !result.distCoeffs.empty()) {
       qDebug() << "Calibración cargada exitosamente.";
     }
     else {

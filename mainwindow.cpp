@@ -26,6 +26,7 @@ MainWindow::~MainWindow()
   delete m_SerialMonitorDialog;
   delete m_RobotControl;
   delete m_VideoManagerDialog;
+  delete m_VideoCalibrationDialog;
   delete ui;
 }
 

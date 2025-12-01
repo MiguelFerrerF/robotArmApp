@@ -182,11 +182,14 @@ void RobotHandler::inverseCinematic(const cv::Point3d& efectorGlobal)
 
   int C = 180 - A - B;
 
-  qDebug("Angulos calculados: A[q2] = %d, B[q3] = %d, C[q5] = %d", A, B, C);
+  double q1_rad = atan2(efectorGlobal.y, efectorGlobal.x);
+  int    q1     = q1_rad * 180 / M_PI;
+
+  qDebug("Ángulos calculados: q1 = %dº, A[q2] = %dº, B[q3] = %dº, C[q5] = %dº", q1, A, B, C);
 }
 
 // Transforma un punto del efector en coordenadas de la base
-cv::Point3d RobotHandler::transformarPunto(const cv::Point3d& puntoLocal)
+cv::Point3d RobotHandler::transformarPunto(const cv::Point3d& puntoLocal) 
 {
   // Crear punto homog�neo [x, y, z, 1]
   cv::Mat puntoHom = (cv::Mat_<double>(4, 1) << puntoLocal.x, puntoLocal.y, puntoLocal.z, 1);

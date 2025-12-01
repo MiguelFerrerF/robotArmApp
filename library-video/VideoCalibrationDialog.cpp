@@ -1,5 +1,6 @@
 #include "VideoCalibrationDialog.h"
 #include "./ui_VideoCalibrationDialog.h"
+
 // Headers de Qt
 #include <QDateTime>
 #include <QDebug>
@@ -179,8 +180,8 @@ void VideoCalibrationWorker::doCalibration(const QString& directoryPath, cv::Siz
     emit calibrationError(tr("Falló la calibración. Se necesitan al menos 5 conjuntos de puntos válidos."));
 }
 
-VideoCalibrationDialog::VideoCalibrationDialog(QWidget* parent, VideoProcessingDialog* sharedInstance)
-  : QDialog(parent), ui(new Ui::VideoCalibrationDialog), m_sharedInstance(sharedInstance)
+VideoCalibrationDialog::VideoCalibrationDialog(QWidget* parent, VideoProcessingDialog* sharedInstance, RobotHandler* robotHandlerInstance)
+  : QDialog(parent), ui(new Ui::VideoCalibrationDialog), m_sharedInstance(sharedInstance), m_robotHandlerInstance(robotHandlerInstance)
 {
   ui->setupUi(this);
   this->setWindowTitle("Camera Calibration");
@@ -686,8 +687,8 @@ void VideoCalibrationDialog::on_pushButtonGetPoint_clicked()
   cv::Rodrigues(rvec, R_mat);
 
   //// Asegurar tipo de datos double (CV_64F) para operaciones matemáticas
-  //T.convertTo(T, CV_64F);
-  //R_mat.convertTo(R_mat, CV_64F);
+  // T.convertTo(T, CV_64F);
+  // R_mat.convertTo(R_mat, CV_64F);
 
   qDebug() << "Pose detectada. T:" << T.at<double>(0) << T.at<double>(1) << T.at<double>(2);
 
@@ -715,7 +716,7 @@ void VideoCalibrationDialog::on_pushButtonGetPoint_clicked()
   Ray         ray = generateRayFromPixel(pixelCv, K);
 
   qDebug() << "Rayo Dir:" << ray.direction.x << ray.direction.y << ray.direction.z;
-  
+
   // 5. Calcular la intersección
   cv::Point3f result3D = intersectRayWithPlane(ray, plane);
 
@@ -726,17 +727,17 @@ void VideoCalibrationDialog::on_pushButtonGetPoint_clicked()
   qDebug() << "Z:" << result3D.z;
   qDebug() << "------------------------------------------";
 
-  QString RTcameraBasePath = QDir(DEFAULT_CALIB_DIR).filePath("RT_camera_base.yml");
+  QString RTcameraBasePath = "calibration/robot/RT_camera_base.yml";
 
-cv::FileStorage fs(RTcameraBasePath, cv::FileStorage::READ);
-if (!fs.isOpened()) {
-  qDebug() << "Error: No se pudo cargar RT_camera_base.yml";
-  return false;
-}
+  cv::FileStorage fs(RTcameraBasePath.toStdString(), cv::FileStorage::READ);
+  if (!fs.isOpened()) {
+    qDebug() << "Error: No se pudo cargar RT_camera_base.yml";
+    return;
+  }
 
-cv::Mat RTcb;
-fs["RTcameraBase"] >> RTcb;
-fs.release();
+  cv::Mat RTcb;
+  fs["RTcameraBase"] >> RTcb;
+  fs.release();
 
   getPiecePositionInBaseCoordinates(result3D, RTcb);
 }
@@ -745,12 +746,20 @@ fs.release();
 
 void VideoCalibrationDialog::getPiecePositionInBaseCoordinates(const cv::Point3d& result3D, const cv::Mat& RTcb)
 {
-  cv::Point3d piecePosition(0, 0, 0);
-  piecePosition.x = RTcb * result3D.x;
-  piecePosition.y = RTcb * result3D.y;
-  piecePosition.z = RTcb * result3D.z;
+  cv::Mat pointCam = (cv::Mat_<double>(4, 1) << result3D.x, result3D.y, result3D.z, 1.0);
+
+  cv::Mat     pointBase = RTcb * pointCam;
+  cv::Point3d piecePosition;
+  piecePosition.x = pointBase.at<double>(0);
+  piecePosition.y = pointBase.at<double>(1);
+  piecePosition.z = pointBase.at<double>(2);
+
+  // offset
+  piecePosition.z -= 65.0; // Ajuste de altura (en mm) según sea necesario
+  piecePosition.x += 50.0; // Ajuste de posición X (en mm) según sea necesario
 
   qDebug() << "Posición de la pieza en coordenadas de la base del robot:"
            << "(" << piecePosition.x << ", " << piecePosition.y << ", " << piecePosition.z << ")";
-  inverseCinematic(const cv::Point3d& piecePosition);
+
+  m_robotHandlerInstance->inverseCinematic(piecePosition);
 }

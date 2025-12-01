@@ -124,7 +124,7 @@ void MainWindow::on_actionDisconnectVideo_triggered()
 void MainWindow::on_actionCalibrationVideo_triggered()
 {
   if (!m_VideoCalibrationDialog) {
-    m_VideoCalibrationDialog = new VideoCalibrationDialog(this);
+    m_VideoCalibrationDialog = new VideoCalibrationDialog(this, m_VideoProcessingDialog);
   }
 
   m_VideoCalibrationDialog->show();

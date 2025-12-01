@@ -179,7 +179,8 @@ void VideoCalibrationWorker::doCalibration(const QString& directoryPath, cv::Siz
     emit calibrationError(tr("Falló la calibración. Se necesitan al menos 5 conjuntos de puntos válidos."));
 }
 
-VideoCalibrationDialog::VideoCalibrationDialog(QWidget* parent) : QDialog(parent), ui(new Ui::VideoCalibrationDialog)
+VideoCalibrationDialog::VideoCalibrationDialog(QWidget* parent, VideoProcessingDialog* sharedInstance)
+  : QDialog(parent), ui(new Ui::VideoCalibrationDialog), m_sharedInstance(sharedInstance)
 {
   ui->setupUi(this);
   this->setWindowTitle("Camera Calibration");
@@ -604,11 +605,16 @@ cv::Point3f intersectRayWithPlane(const Ray& ray, const Plane& plane)
 }
 
 // =========================================================
-// 2. TU FUNCIÓN PRINCIPAL 
+// 2. TU FUNCIÓN PRINCIPAL
 // =========================================================
 
 void VideoCalibrationDialog::on_pushButtonGetPoint_clicked()
 {
+  if (m_sharedInstance == nullptr) {
+    qDebug() << "Error: No hay instancia compartida de VideoCalibrationDialog.";
+    return;
+  }
+
   // --- Configuración Inicial ---
   QString dirPath           = "calibration/camera";
   QString camMatrixPath     = QDir(dirPath).filePath("camera_matrix.yml");
@@ -704,8 +710,9 @@ void VideoCalibrationDialog::on_pushButtonGetPoint_clicked()
 
   // 4. Definir el Pixel de interés y generar el Rayo
   //    (Aquí puedes reemplazar con las coordenadas del clic del mouse)
-  cv::Point2f pixel(250, 300);
-  Ray         ray = generateRayFromPixel(pixel, K);
+  QPoint      pixel = m_sharedInstance->getCentroid();
+  cv::Point2f pixelCv(pixel.x(), pixel.y());
+  Ray         ray = generateRayFromPixel(pixelCv, K);
 
   qDebug() << "Rayo Dir:" << ray.direction.x << ray.direction.y << ray.direction.z;
 

@@ -22,6 +22,11 @@ public:
   explicit VideoProcessingDialog(QWidget* parent = nullptr);
   ~VideoProcessingDialog();
 
+  QPoint getCentroid() const
+  {
+    return m_lastCentroidOriginal;
+  }
+
 private slots:
   // Checkboxes y sliders
   void on_checkBoxSegmentacion_toggled(bool checked);
@@ -46,7 +51,7 @@ private:
   QPoint  m_cropPointBR{484, 285};
   QPoint  m_cropPointBL{131, 302};
 
-  QPoint m_lastCentroidOriginal;   // Centroide en coordenadas del frame original
+  QPoint m_lastCentroidOriginal;
   QPoint m_lastPointRectaOriginal; // Punto de la recta en coordenadas del frame original
 
   // Puntos transformados después de aplicar perspectiva
@@ -70,7 +75,7 @@ private:
   void applySegmentacion(QPixmap& pixmap);
   void drawCropPointsOnLabel();
   void updatePointInfoLabel();
- 
+
   // Transformación de perspectiva
   QPixmap applyPerspectiveCrop(const QPixmap& original, const QPoint& tl, const QPoint& tr, const QPoint& br, const QPoint& bl,
                                std::vector<QPoint>& transformedPoints);

@@ -2,6 +2,7 @@
 #define VIDEOCALIBRATIONDIALOG_H
 
 #include "VideoCaptureHandler.h"
+#include "VideoProcessingDialog.h"
 #include <QDialog>
 #include <QPixmap>
 #include <QResizeEvent>
@@ -61,7 +62,7 @@ class VideoCalibrationDialog : public QDialog
   Q_OBJECT
 
 public:
-  VideoCalibrationDialog(QWidget* parent = nullptr);
+  VideoCalibrationDialog(QWidget* parent = nullptr, VideoProcessingDialog* sharedInstance = nullptr);
   ~VideoCalibrationDialog();
 
 private slots:
@@ -77,6 +78,7 @@ private slots:
 
 private:
   Ui::VideoCalibrationDialog* ui;
+  VideoProcessingDialog*      m_sharedInstance = nullptr;
 
   QPixmap m_currentPixmap;
   QString m_selectedDirectoryPath;

@@ -92,6 +92,7 @@
         "qjsondocument": "cpp",
         "qmessagebox": "cpp",
         "qsettings": "cpp",
-        "qdebug": "cpp"
+        "qdebug": "cpp",
+        "qresizeevent": "cpp"
     }
 }

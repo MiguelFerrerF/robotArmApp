@@ -712,13 +712,17 @@ void VideoCalibrationDialog::on_pushButtonGetPoint_clicked()
   // 4. Definir el Pixel de interés y generar el Rayo
   //    (Aquí puedes reemplazar con las coordenadas del clic del mouse)
   QPoint      pixel = m_sharedInstance->getCentroid();
+  QPoint      pixel_point = m_sharedInstance->getPointRecta();
   cv::Point2f pixelCv(pixel.x(), pixel.y());
+  cv::Point2f pixel_pointCv(pixel_point.x(), pixel_point.y());
   Ray         ray = generateRayFromPixel(pixelCv, K);
+  Ray         ray_point = generateRayFromPixel(pixel_pointCv, K);
 
   qDebug() << "Rayo Dir:" << ray.direction.x << ray.direction.y << ray.direction.z;
 
   // 5. Calcular la intersección
   cv::Point3f result3D = intersectRayWithPlane(ray, plane);
+  cv::Point3f result3D_point = intersectRayWithPlane(ray_point, plane);
 
   qDebug() << "------------------------------------------";
   qDebug() << "RESULTADO FINAL (Coordenadas de Cámara):";
@@ -739,12 +743,28 @@ void VideoCalibrationDialog::on_pushButtonGetPoint_clicked()
   fs["RTcameraBase"] >> RTcb;
   fs.release();
 
-  getPiecePositionInBaseCoordinates(result3D, RTcb);
+  cv::Point3d centroid_inbase = getPiecePositionInBaseCoordinates(result3D, RTcb);
+  cv::Point3d point_inbase     = getPiecePositionInBaseCoordinates(result3D_point, RTcb);
+
+  cv::Point3d direction = point_inbase - centroid_inbase;
+
+  cv::Point3d dir_norm = direction / cv::norm(direction);
+
+  cv::Point3d x_axis(1.0, 0.0, 0.0);
+
+  double dot = dir_norm.x * x_axis.x + dir_norm.y * x_axis.y + dir_norm.z * x_axis.z;
+
+  double angle_rad = acos(dot);
+  double angle_deg = angle_rad * 180.0 / CV_PI;
+
+  std::cout << "Angle respect X-axis: " << angle_deg << " degrees" << std::endl;
+
+
 }
 
 // =========================================================
 
-void VideoCalibrationDialog::getPiecePositionInBaseCoordinates(const cv::Point3d& result3D, const cv::Mat& RTcb)
+cv::Point3d VideoCalibrationDialog::getPiecePositionInBaseCoordinates(const cv::Point3d& result3D, const cv::Mat& RTcb)
 {
   cv::Mat pointCam = (cv::Mat_<double>(4, 1) << result3D.x, result3D.y, result3D.z, 1.0);
 
@@ -762,4 +782,6 @@ void VideoCalibrationDialog::getPiecePositionInBaseCoordinates(const cv::Point3d
            << "(" << piecePosition.x << ", " << piecePosition.y << ", " << piecePosition.z << ")";
 
   m_robotHandlerInstance->inverseCinematic(piecePosition);
+
+  return piecePosition;
 }

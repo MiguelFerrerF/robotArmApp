@@ -27,6 +27,11 @@ public:
     return m_lastCentroidOriginal;
   }
 
+    QPoint getPointRecta() const
+  {
+      return m_lastPointRectaOriginal;
+  }
+
 private slots:
    // Checkboxes y sliders
   void on_checkBoxSegmentacion_toggled(bool checked);

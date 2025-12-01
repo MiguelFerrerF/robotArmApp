@@ -62,13 +62,15 @@ void RobotCalibrationWorker::saveCalibration(const std::string& RTcameraBase, co
 
   std::string RTcameraBasePath = QDir(DEFAULT_CALIB_DIR).filePath(RTcameraBase.c_str()).toStdString();
 
+  qDebug() << "Guardando RT cámara-base en:" << RTcameraBasePath.c_str();
+
   // Guardar RT cámara-base
   cv::FileStorage fsCam(RTcameraBasePath, cv::FileStorage::WRITE);
   if (!fsCam.isOpened()) {
     qWarning() << "Error al abrir archivo para RTcameraBase:" << RTcameraBasePath.c_str();
     return;
   }
-  fsCam << "RTcameraBase" << RTcameraBase;
+  fsCam << "RTcameraBase" << RTcb;
   fsCam.release();
 }
 
@@ -268,12 +270,24 @@ void RobotCalibrationWorker::doCalibration(const QString& directoryPath, cv::Siz
                          "imágenes.\nEjecutando calibración...")
                         .arg(processedCount));
 
+  qDebug() << "Iniciando calibración hand-eye";
+
   // Calculamos la RT cámara-base usando calibración hand-eye
   cv::Mat Rcam2base, Tcam2base;
   cv::calibrateHandEye(Rbt, Tbt, Rpc, Tpc, Rcam2base, Tcam2base, cv::CALIB_HAND_EYE_TSAI);
   result.RTcb = cv::Mat::eye(4, 4, CV_64F);
   Rcam2base.copyTo(result.RTcb(cv::Rect(0, 0, 3, 3)));
   Tcam2base.copyTo(result.RTcb(cv::Rect(3, 0, 1, 3)));
+
+  qDebug() << "Calibración hand-eye completada.";
+  qDebug() << "Matriz RT cámara-base:";
+  for (int i = 0; i < result.RTcb.rows; ++i) {
+    QString rowStr;
+    for (int j = 0; j < result.RTcb.cols; ++j) {
+      rowStr += QString::number(result.RTcb.at<double>(i, j), 'f', 6) + '\t';
+    }
+    qDebug() << rowStr;
+  }
 
   // Pasamos la RT cámara-base a saveCalibration
   saveCalibration("RT_camera_base.yml", result.RTcb);

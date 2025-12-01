@@ -1,6 +1,7 @@
 #ifndef VIDEOCALIBRATIONDIALOG_H
 #define VIDEOCALIBRATIONDIALOG_H
 
+#include "../library-robot/RobotHandler.h"
 #include "VideoCaptureHandler.h"
 #include "VideoProcessingDialog.h"
 #include <QDialog>
@@ -62,7 +63,7 @@ class VideoCalibrationDialog : public QDialog
   Q_OBJECT
 
 public:
-  VideoCalibrationDialog(QWidget* parent = nullptr, VideoProcessingDialog* sharedInstance = nullptr);
+  VideoCalibrationDialog(QWidget* parent = nullptr, VideoProcessingDialog* sharedInstance = nullptr, RobotHandler* robotHandlerInstance = nullptr);
   ~VideoCalibrationDialog();
 
 private slots:
@@ -78,7 +79,8 @@ private slots:
 
 private:
   Ui::VideoCalibrationDialog* ui;
-  VideoProcessingDialog*      m_sharedInstance = nullptr;
+  VideoProcessingDialog*      m_sharedInstance       = nullptr;
+  RobotHandler*               m_robotHandlerInstance = nullptr;
 
   QPixmap m_currentPixmap;
   QString m_selectedDirectoryPath;
@@ -104,6 +106,5 @@ private:
   void loadExistingCalibration();
 
   void getPiecePositionInBaseCoordinates(const cv::Point3d& result3D, const cv::Mat& RTcb);
-
 };
 #endif // VIDEOCALIBRATIONDIALOG_H

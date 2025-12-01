@@ -685,9 +685,9 @@ void VideoCalibrationDialog::on_pushButtonGetPoint_clicked()
   cv::Mat R_mat;
   cv::Rodrigues(rvec, R_mat);
 
-  // Asegurar tipo de datos double (CV_64F) para operaciones matemáticas
-  T.convertTo(T, CV_64F);
-  R_mat.convertTo(R_mat, CV_64F);
+  //// Asegurar tipo de datos double (CV_64F) para operaciones matemáticas
+  //T.convertTo(T, CV_64F);
+  //R_mat.convertTo(R_mat, CV_64F);
 
   qDebug() << "Pose detectada. T:" << T.at<double>(0) << T.at<double>(1) << T.at<double>(2);
 
@@ -715,7 +715,7 @@ void VideoCalibrationDialog::on_pushButtonGetPoint_clicked()
   Ray         ray = generateRayFromPixel(pixelCv, K);
 
   qDebug() << "Rayo Dir:" << ray.direction.x << ray.direction.y << ray.direction.z;
-
+  
   // 5. Calcular la intersección
   cv::Point3f result3D = intersectRayWithPlane(ray, plane);
 
@@ -725,4 +725,32 @@ void VideoCalibrationDialog::on_pushButtonGetPoint_clicked()
   qDebug() << "Y:" << result3D.y;
   qDebug() << "Z:" << result3D.z;
   qDebug() << "------------------------------------------";
+
+  QString RTcameraBasePath = QDir(DEFAULT_CALIB_DIR).filePath("RT_camera_base.yml");
+
+cv::FileStorage fs(RTcameraBasePath, cv::FileStorage::READ);
+if (!fs.isOpened()) {
+  qDebug() << "Error: No se pudo cargar RT_camera_base.yml";
+  return false;
+}
+
+cv::Mat RTcb;
+fs["RTcameraBase"] >> RTcb;
+fs.release();
+
+  getPiecePositionInBaseCoordinates(result3D, RTcb);
+}
+
+// =========================================================
+
+void VideoCalibrationDialog::getPiecePositionInBaseCoordinates(const cv::Point3d& result3D, const cv::Mat& RTcb)
+{
+  cv::Point3d piecePosition(0, 0, 0);
+  piecePosition.x = RTcb * result3D.x;
+  piecePosition.y = RTcb * result3D.y;
+  piecePosition.z = RTcb * result3D.z;
+
+  qDebug() << "Posición de la pieza en coordenadas de la base del robot:"
+           << "(" << piecePosition.x << ", " << piecePosition.y << ", " << piecePosition.z << ")";
+  inverseCinematic(const cv::Point3d& piecePosition);
 }

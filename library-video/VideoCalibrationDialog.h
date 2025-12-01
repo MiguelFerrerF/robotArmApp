@@ -102,5 +102,8 @@ private:
 
   bool loadCalibration(const std::string& filename);
   void loadExistingCalibration();
+
+  void getPiecePositionInBaseCoordinates(const cv::Point3d& result3D, const cv::Mat& RTcb);
+
 };
 #endif // VIDEOCALIBRATIONDIALOG_H

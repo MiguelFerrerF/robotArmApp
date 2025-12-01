@@ -360,6 +360,8 @@ void VideoProcessingDialog::applySegmentacion(QPixmap& pixmap)
         QString centroidOriginalStr = QString("Centroide img original: (%1, %2)").arg(centroidOriginal.x()).arg(centroidOriginal.y());
         QString pointOriginalStr    = QString("Punto Recta img original: (%1, %2)").arg(pointRectaOriginal.x()).arg(pointRectaOriginal.y());
 
+        emit PointChanged(m_lastCentroidOriginal);
+
         ui->labelPoints->setText(centroid_str + "\n" + point_str + "\n" + centroidOriginalStr + "\n" + pointOriginalStr);
       }
     }

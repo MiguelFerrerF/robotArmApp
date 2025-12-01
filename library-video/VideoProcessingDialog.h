@@ -28,7 +28,7 @@ public:
   }
 
 private slots:
-  // Checkboxes y sliders
+   // Checkboxes y sliders
   void on_checkBoxSegmentacion_toggled(bool checked);
   void on_ButtonpointBL_clicked();
   void on_ButtonpointBR_clicked();
@@ -38,6 +38,9 @@ private slots:
   // Captura de video
   void handleNewPixmap(const QPixmap& pixmap);
   void on_videoLabel_clicked(const QPoint& pos);
+
+signals:
+  void PointChanged(QPoint point);
 
 private:
   Ui::VideoProcessingDialog* ui;

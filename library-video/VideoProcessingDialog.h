@@ -39,9 +39,6 @@ private slots:
   void handleNewPixmap(const QPixmap& pixmap);
   void on_videoLabel_clicked(const QPoint& pos);
 
-signals:
-  void PointChanged(QPoint point);
-
 private:
   Ui::VideoProcessingDialog* ui;
 

@@ -197,8 +197,7 @@ VideoCalibrationDialog::VideoCalibrationDialog(QWidget* parent, VideoProcessingD
   connect(m_worker, &VideoCalibrationWorker::calibrationFinished, this, &VideoCalibrationDialog::on_calibrationFinished);
   connect(m_worker, &VideoCalibrationWorker::calibrationError, this, &VideoCalibrationDialog::on_calibrationError);
   connect(m_worker, &VideoCalibrationWorker::progressUpdate, this, &VideoCalibrationDialog::on_progressUpdate);
-  connect(m_worker, &VideoCalibrationWorker::onPointChanged, this, &VideoCalibrationDialog::on_pushButtonGetPoint_clicked);
-  
+
   m_workerThread->start(); // Iniciar el hilo
 
   // Conexión para recibir nuevos pixmaps capturados (Temporal mientras el
@@ -726,9 +725,4 @@ void VideoCalibrationDialog::on_pushButtonGetPoint_clicked()
   qDebug() << "Y:" << result3D.y;
   qDebug() << "Z:" << result3D.z;
   qDebug() << "------------------------------------------";
-}
-
-void VideoCalibrationDialog::onPointChanged(const QPoint& point)
-{
-
 }

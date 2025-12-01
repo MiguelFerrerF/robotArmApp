@@ -40,7 +40,6 @@ public:
 public slots:
   // Slot que será llamado por el hilo principal para iniciar la tarea
   void doCalibration(const QString& directoryPath, cv::Size boardSize, float squareSize);
-  void onPointChanged(QPoint point);
 
 signals:
   // Señales para enviar resultados al hilo principal (VideoCalibrationDialog)

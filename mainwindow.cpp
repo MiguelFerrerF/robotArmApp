@@ -139,6 +139,17 @@ void MainWindow::on_actionProcessingVideo_triggered()
     m_VideoProcessingDialog = new VideoProcessingDialog(this);
   }
 
+  // Disconnect previous connections if any to avoid duplicates
+  disconnect(m_VideoProcessingDialog, &VideoProcessingDialog::angleUpdated, this, nullptr);
+  disconnect(m_VideoProcessingDialog, &VideoProcessingDialog::centroidUpdated, this, nullptr);
+  // Connect signals from VideoProcessingDialog
+  connect(m_VideoProcessingDialog, &VideoProcessingDialog::angleUpdated, this,
+          [this](double angle) { ui->lineEditAngle->setText(QString::number(angle, 'f', 2)); });
+  connect(m_VideoProcessingDialog, &VideoProcessingDialog::centroidUpdated, this, [this](const QPoint& centroid) {
+    ui->lineEditCentroidX->setText(QString::number(centroid.x()));
+    ui->lineEditCentroidY->setText(QString::number(centroid.y()));
+  });
+
   // Si la cámara ya está corriendo, el diálogo mostrará el stream actual.
   m_VideoProcessingDialog->show();
   m_VideoProcessingDialog->raise();

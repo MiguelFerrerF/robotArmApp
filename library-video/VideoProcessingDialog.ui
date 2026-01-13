@@ -89,16 +89,6 @@
       <string>Información segmentación</string>
      </property>
      <layout class="QGridLayout" name="gridLayout">
-      <item row="0" column="0">
-       <widget class="QCheckBox" name="checkBoxSegmentacion">
-        <property name="text">
-         <string>Segmentación</string>
-        </property>
-        <property name="checked">
-         <bool>false</bool>
-        </property>
-       </widget>
-      </item>
       <item row="0" column="2" rowspan="3">
        <widget class="Line" name="line_4">
         <property name="orientation">

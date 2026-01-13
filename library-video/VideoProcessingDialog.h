@@ -6,6 +6,7 @@
 #include <QPixmap>
 #include <QPoint>
 #include <QResizeEvent>
+#include <QSettings>
 #include <QSize>
 #include <vector>
 
@@ -27,14 +28,13 @@ public:
     return m_lastCentroidOriginal;
   }
 
-    QPoint getPointRecta() const
+  QPoint getPointRecta() const
   {
-      return m_lastPointRectaOriginal;
+    return m_lastPointRectaOriginal;
   }
 
 private slots:
-   // Checkboxes y sliders
-  void on_checkBoxSegmentacion_toggled(bool checked);
+  // Checkboxes y sliders
   void on_ButtonpointBL_clicked();
   void on_ButtonpointBR_clicked();
   void on_ButtonpointTL_clicked();
@@ -43,6 +43,10 @@ private slots:
   // Captura de video
   void handleNewPixmap(const QPixmap& pixmap);
   void on_videoLabel_clicked(const QPoint& pos);
+
+signals:
+  void angleUpdated(double angle);
+  void centroidUpdated(const QPoint& centroid);
 
 private:
   Ui::VideoProcessingDialog* ui;

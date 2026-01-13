@@ -15,6 +15,19 @@ VideoProcessingDialog::VideoProcessingDialog(QWidget* parent) : QDialog(parent),
   this->setWindowTitle("Processing Video");
   this->setWindowFlags(this->windowFlags() | Qt::WindowMinimizeButtonHint | Qt::WindowMaximizeButtonHint);
 
+  // --- INICIO: CARGAR PUNTOS GUARDADOS ---
+  QSettings settings("Empresa", "VideoProcessingApp"); // Puedes cambiar los nombres
+
+  // Intentamos cargar los puntos. Si no existen (primera vez), usa tus valores por defecto.
+  m_cropPointTL = settings.value("crop/TL", QPoint(175, 83)).toPoint();
+  m_cropPointTR = settings.value("crop/TR", QPoint(423, 81)).toPoint();
+  m_cropPointBR = settings.value("crop/BR", QPoint(484, 285)).toPoint();
+  m_cropPointBL = settings.value("crop/BL", QPoint(131, 302)).toPoint();
+
+  // Actualizamos la etiqueta de texto para que refleje los puntos cargados
+  updatePointInfoLabel();
+  // --- FIN CARGA ---
+
   VideoCaptureHandler& handler = VideoCaptureHandler::instance();
 
   // Conexión para recibir nuevos pixmaps capturados
@@ -33,6 +46,14 @@ VideoProcessingDialog::VideoProcessingDialog(QWidget* parent) : QDialog(parent),
 
 VideoProcessingDialog::~VideoProcessingDialog()
 {
+  // --- INICIO: GUARDAR PUNTOS ---
+  QSettings settings("Empresa", "VideoProcessingApp");
+  settings.setValue("crop/TL", m_cropPointTL);
+  settings.setValue("crop/TR", m_cropPointTR);
+  settings.setValue("crop/BR", m_cropPointBR);
+  settings.setValue("crop/BL", m_cropPointBL);
+  // --- FIN GUARDADO ---
+
   disconnect(&VideoCaptureHandler::instance(), SIGNAL(newPixmapCaptured(QPixmap)), this, nullptr);
   disconnect(&VideoCaptureHandler::instance(), SIGNAL(cameraOpenFailed(int, QString)), this, nullptr);
   disconnect(ui->videoLabel, SIGNAL(clickedAt(QPoint)), this, nullptr);
@@ -57,18 +78,23 @@ void VideoProcessingDialog::on_videoLabel_clicked(const QPoint& pos)
   scaled.setX(qBound(0.0, scaled.x(), double(pixSize.width() - 1)));
   scaled.setY(qBound(0.0, scaled.y(), double(pixSize.height() - 1)));
 
+  QSettings settings("Empresa", "VideoProcessingApp");
   switch (m_selectedCorner) {
     case TL:
       m_cropPointTL = scaled.toPoint();
+      settings.setValue("crop/TL", m_cropPointTL);
       break;
     case TR:
       m_cropPointTR = scaled.toPoint();
+      settings.setValue("crop/TR", m_cropPointTR);
       break;
     case BR:
       m_cropPointBR = scaled.toPoint();
+      settings.setValue("crop/BR", m_cropPointBR);
       break;
     case BL:
       m_cropPointBL = scaled.toPoint();
+      settings.setValue("crop/BL", m_cropPointBL);
       break;
     default:
       break;
@@ -324,6 +350,7 @@ void VideoProcessingDialog::applySegmentacion(QPixmap& pixmap)
           angle += 180;
 
         angle_str = QString::number(angle, 'f', 2) + "°";
+        emit angleUpdated(angle);
 
         double rad = angle * CV_PI / 180;
 
@@ -361,6 +388,7 @@ void VideoProcessingDialog::applySegmentacion(QPixmap& pixmap)
         QString pointOriginalStr    = QString("Punto Recta img original: (%1, %2)").arg(pointRectaOriginal.x()).arg(pointRectaOriginal.y());
 
         ui->labelPoints->setText(centroid_str + "\n" + point_str + "\n" + centroidOriginalStr + "\n" + pointOriginalStr);
+        emit centroidUpdated(centroidOriginal);
       }
     }
   }
@@ -402,20 +430,6 @@ QPoint VideoProcessingDialog::transformCropPointToOriginal(const cv::Point2f& cr
   }
 
   return QPoint();
-}
-
-// --- Slots y funciones de cámara ---
-void VideoProcessingDialog::on_checkBoxSegmentacion_toggled(bool checked)
-{
-  // Si la cámara está corriendo, forzamos una actualización inmediata
-  // de la visualización llamando a handleNewPixmap con la imagen actual.
-  // Esto asegura que la imagen de la etiqueta cambie inmediatamente al estado correcto.
-  if (VideoCaptureHandler::instance().isCameraRunning() && !m_currentPixmap.isNull()) {
-    // Al llamar a handleNewPixmap, se procesa la m_currentPixmap.
-    // Si 'checked' es true, se aplica crop+segmentación.
-    // Si 'checked' es false, se muestra la imagen original con los puntos.
-    handleNewPixmap(m_currentPixmap);
-  }
 }
 
 void VideoProcessingDialog::on_ButtonpointBL_clicked()

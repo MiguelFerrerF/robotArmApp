@@ -180,8 +180,8 @@ void VideoCalibrationWorker::doCalibration(const QString& directoryPath, cv::Siz
     emit calibrationError(tr("Falló la calibración. Se necesitan al menos 5 conjuntos de puntos válidos."));
 }
 
-VideoCalibrationDialog::VideoCalibrationDialog(QWidget* parent, VideoProcessingDialog* sharedInstance, RobotHandler* robotHandlerInstance)
-  : QDialog(parent), ui(new Ui::VideoCalibrationDialog), m_sharedInstance(sharedInstance), m_robotHandlerInstance(robotHandlerInstance)
+VideoCalibrationDialog::VideoCalibrationDialog(QWidget* parent, RobotHandler* robotHandlerInstance)
+  : QDialog(parent), ui(new Ui::VideoCalibrationDialog), m_robotHandlerInstance(robotHandlerInstance)
 {
   ui->setupUi(this);
   this->setWindowTitle("Camera Calibration");
@@ -516,7 +516,6 @@ void VideoCalibrationDialog::on_calibrationFinished(const VideoCalibrationResult
 
 // =========================================================
 // 1. ESTRUCTURAS Y FUNCIONES AUXILIARES
-// (Copia esto antes de las funciones de tu clase o en un namespace)
 // =========================================================
 
 struct Ray
@@ -609,157 +608,175 @@ cv::Point3f intersectRayWithPlane(const Ray& ray, const Plane& plane)
 // 2. TU FUNCIÓN PRINCIPAL
 // =========================================================
 
-void VideoCalibrationDialog::on_pushButtonGetPoint_clicked()
+// Nueva función para gestionar la carga "pesada" y persistencia
+bool VideoCalibrationDialog::ensurePlaneCalibrationLoaded()
 {
-  if (m_sharedInstance == nullptr) {
-    qDebug() << "Error: No hay instancia compartida de VideoCalibrationDialog.";
-    return;
-  }
+  if (m_isPlaneCalibrated)
+    return true; // Ya está en RAM
 
-  // --- Configuración Inicial ---
-  QString dirPath           = "calibration/camera";
-  QString camMatrixPath     = QDir(dirPath).filePath("camera_matrix.yml");
-  QString distCoeffsPath    = QDir(dirPath).filePath("dist_coeffs.yml");
-  QString camPlaneImagePath = QDir(dirPath).filePath("camera_plane_image.tiff");
+  QSettings settings("TuEmpresa", "RobotApp");
+  QString   dirPath = "calibration/camera";
 
-  cv::Size boardSize(9, 6);
-  float    squareSize = 10.0f; // Metros (si usas mm, cambia a 10.0f)
+  // --- A. CARGAR INTRÍNSECOS (Siempre necesario leer archivos YML) ---
+  // Esto es rápido, no hace falta cachear en QSettings, pero sí en variables miembro
+  if (m_intrinsicK.empty()) {
+    QString camMatrixPath  = QDir(dirPath).filePath("camera_matrix.yml");
+    QString distCoeffsPath = QDir(dirPath).filePath("dist_coeffs.yml");
 
-  // --- Generar Puntos del Objeto (Tablero Ideal en Z=0) ---
-  std::vector<cv::Point3f> objectPoints;
-  for (int i = 0; i < boardSize.height; ++i) {
-    for (int j = 0; j < boardSize.width; ++j) {
-      objectPoints.emplace_back(j * squareSize, i * squareSize, 0);
+    cv::FileStorage fsCam(camMatrixPath.toStdString(), cv::FileStorage::READ);
+    if (fsCam.isOpened()) {
+      fsCam["m_newCameraMatrix"] >> m_intrinsicK;
+      fsCam.release();
     }
+    else
+      return false;
+
+    cv::FileStorage fsDist(distCoeffsPath.toStdString(), cv::FileStorage::READ);
+    if (fsDist.isOpened()) {
+      fsDist["m_distCoeffs"] >> m_distCoeffsD;
+      fsDist.release();
+    }
+    else
+      return false;
   }
 
-  // --- Cargar Calibración (Intrínsecos) ---
-  cv::FileStorage fsCam(camMatrixPath.toStdString(), cv::FileStorage::READ);
-  cv::FileStorage fsDist(distCoeffsPath.toStdString(), cv::FileStorage::READ);
-  cv::Mat         K, D;
+  // --- B. CARGAR EXTRÍNSECOS (PLANO) DESDE QSETTINGS ---
+  // Verificamos si ya calculamos la pose del plano anteriormente
+  if (settings.contains("Calibration/PlaneRvec_0") && settings.contains("Calibration/PlaneTvec_0")) {
+    // Cargar desde QSettings (rápido)
+    cv::Mat rvec = cv::Mat::zeros(3, 1, CV_64F);
+    m_planeT     = cv::Mat::zeros(3, 1, CV_64F);
 
-  if (fsCam.isOpened()) {
-    fsCam["m_newCameraMatrix"] >> K;
-    fsCam.release();
+    for (int i = 0; i < 3; i++) {
+      rvec.at<double>(i)     = settings.value(QString("Calibration/PlaneRvec_%1").arg(i)).toDouble();
+      m_planeT.at<double>(i) = settings.value(QString("Calibration/PlaneTvec_%1").arg(i)).toDouble();
+    }
+    cv::Rodrigues(rvec, m_planeR);
+    qDebug() << "Calibración del plano cargada desde QSettings.";
   }
   else {
-    qDebug() << "Error: No se cargó camera_matrix.yml";
-    return;
-  }
+    // --- C. CALCULAR EXTRÍNSECOS (Lento: Procesar Imagen TIFF) ---
+    qDebug() << "Calculando calibración del plano desde imagen (Proceso pesado)...";
 
-  if (fsDist.isOpened()) {
-    fsDist["m_distCoeffs"] >> D;
-    fsDist.release();
-  }
-  else {
-    qDebug() << "Error: No se cargó dist_coeffs.yml";
-    return;
-  }
+    QString camPlaneImagePath = QDir(dirPath).filePath("camera_plane_image.tiff");
+    cv::Mat planeImage        = cv::imread(camPlaneImagePath.toStdString());
+    if (planeImage.empty())
+      return false;
 
-  // --- Detectar Esquinas en la Imagen del Plano ---
-  std::vector<cv::Point2f> imagePoints;
-  cv::Mat                  planeImage = cv::imread(camPlaneImagePath.toStdString());
+    cv::Size                 boardSize(9, 6);
+    float                    squareSize = 10.0f;
+    std::vector<cv::Point2f> imagePoints;
 
-  if (planeImage.empty()) {
-    qDebug() << "Error: No se pudo cargar la imagen del plano.";
-    return;
-  }
+    // Detectar esquinas
+    bool found = cv::findChessboardCorners(planeImage, boardSize, imagePoints, cv::CALIB_CB_ADAPTIVE_THRESH | cv::CALIB_CB_NORMALIZE_IMAGE);
+    if (!found)
+      return false;
 
-  bool found = cv::findChessboardCorners(planeImage, boardSize, imagePoints, cv::CALIB_CB_ADAPTIVE_THRESH | cv::CALIB_CB_NORMALIZE_IMAGE);
-
-  if (found) {
+    // Subpix
     cv::Mat gray;
     cv::cvtColor(planeImage, gray, cv::COLOR_BGR2GRAY);
     cv::cornerSubPix(gray, imagePoints, cv::Size(11, 11), cv::Size(-1, -1),
                      cv::TermCriteria(cv::TermCriteria::EPS + cv::TermCriteria::MAX_ITER, 30, 0.001));
+
+    // Puntos Objeto
+    std::vector<cv::Point3f> objectPoints;
+    for (int i = 0; i < boardSize.height; ++i) {
+      for (int j = 0; j < boardSize.width; ++j) {
+        objectPoints.emplace_back(j * squareSize, i * squareSize, 0);
+      }
+    }
+
+    // SolvePnP
+    cv::Mat rvec;
+    cv::solvePnP(objectPoints, imagePoints, m_intrinsicK, m_distCoeffsD, rvec, m_planeT);
+    cv::Rodrigues(rvec, m_planeR);
+
+    // --- GUARDAR EN QSETTINGS ---
+    for (int i = 0; i < 3; i++) {
+      settings.setValue(QString("Calibration/PlaneRvec_%1").arg(i), rvec.at<double>(i));
+      settings.setValue(QString("Calibration/PlaneTvec_%1").arg(i), m_planeT.at<double>(i));
+    }
+    qDebug() << "Nueva calibración de plano guardada en QSettings.";
   }
-  else {
-    qDebug() << "Error: No se encontraron las esquinas del tablero.";
+
+  // --- D. CARGAR MATRIZ ROBOT-CAMARA ---
+  if (m_RTcb.empty()) {
+    QString         RTcameraBasePath = "calibration/robot/RT_camera_base.yml";
+    cv::FileStorage fsRT(RTcameraBasePath.toStdString(), cv::FileStorage::READ);
+    if (fsRT.isOpened()) {
+      fsRT["RTcameraBase"] >> m_RTcb;
+      fsRT.release();
+    }
+    else {
+      qDebug() << "Error: No se pudo cargar RT_camera_base.yml";
+      return false;
+    }
+  }
+
+  m_isPlaneCalibrated = true;
+  return true;
+}
+
+// La función ligera que llama el Main (Refactorizada)
+void VideoCalibrationDialog::calculateObjectPosition(QPoint centroid, QPoint pointRecta)
+{
+  // 1. Asegurar que tenemos los datos matemáticos cargados
+  if (!ensurePlaneCalibrationLoaded()) {
+    qDebug() << "Error: No se pudo cargar la calibración del plano.";
     return;
   }
 
-  // --- Calcular Pose del Tablero (Extrínsecos) ---
-  cv::Mat rvec, T;
-  cv::solvePnP(objectPoints, imagePoints, K, D, rvec, T);
+  // A partir de aquí, todo es cálculo matemático puro (muy rápido)
 
-  // Convertir vector de rotación (Rodrigues) a matriz de rotación 3x3
-  cv::Mat R_mat;
-  cv::Rodrigues(rvec, R_mat);
+  // --- LÓGICA DE INTERSECCIÓN 3D (Reutilizando m_planeR, m_planeT, m_intrinsicK) ---
+  float squareSize = 10.0f;
 
-  //// Asegurar tipo de datos double (CV_64F) para operaciones matemáticas
-  // T.convertTo(T, CV_64F);
-  // R_mat.convertTo(R_mat, CV_64F);
-
-  qDebug() << "Pose detectada. T:" << T.at<double>(0) << T.at<double>(1) << T.at<double>(2);
-
-  // --- LÓGICA DE INTERSECCIÓN 3D ---
-
-  // 1. Definir Puntos del Plano en Coordenadas del OBJETO (local al tablero)
-  //    Z es 0 en el tablero.
+  // Puntos del plano Z=0 en espacio objeto
   cv::Point3f p1_obj(0, 0, 0);
-  cv::Point3f p2_obj(squareSize * 5, 0, 0); // Un punto en el eje X del tablero
-  cv::Point3f p3_obj(0, squareSize * 5, 0); // Un punto en el eje Y del tablero
+  cv::Point3f p2_obj(squareSize * 5, 0, 0);
+  cv::Point3f p3_obj(0, squareSize * 5, 0);
 
-  // 2. Transformar esos puntos a Coordenadas de CÁMARA
-  //    Aquí es donde usamos la R y T encontradas por solvePnP.
-  cv::Point3f p1_cam = transformPoint(p1_obj, R_mat, T);
-  cv::Point3f p2_cam = transformPoint(p2_obj, R_mat, T);
-  cv::Point3f p3_cam = transformPoint(p3_obj, R_mat, T);
+  // Transformar a cámara usando caché
+  cv::Point3f p1_cam = transformPoint(p1_obj, m_planeR, m_planeT);
+  cv::Point3f p2_cam = transformPoint(p2_obj, m_planeR, m_planeT);
+  cv::Point3f p3_cam = transformPoint(p3_obj, m_planeR, m_planeT);
 
-  // 3. Definir el Plano Matemático en el espacio de la Cámara
+  // Definir plano
   Plane plane = definePlaneFromPoints(p1_cam, p2_cam, p3_cam);
 
-  // 4. Definir el Pixel de interés y generar el Rayo
-  //    (Aquí puedes reemplazar con las coordenadas del clic del mouse)
-  QPoint      pixel = m_sharedInstance->getCentroid();
-  QPoint      pixel_point = m_sharedInstance->getPointRecta();
-  cv::Point2f pixelCv(pixel.x(), pixel.y());
-  cv::Point2f pixel_pointCv(pixel_point.x(), pixel_point.y());
-  Ray         ray = generateRayFromPixel(pixelCv, K);
-  Ray         ray_point = generateRayFromPixel(pixel_pointCv, K);
+  // Ray casting con los puntos pasados por argumento
+  cv::Point2f centroidCv(centroid.x(), centroid.y());
+  cv::Point2f pointRectaCv(pointRecta.x(), pointRecta.y());
 
-  qDebug() << "Rayo Dir:" << ray.direction.x << ray.direction.y << ray.direction.z;
+  Ray rayCentroid = generateRayFromPixel(centroidCv, m_intrinsicK);
+  Ray rayPoint    = generateRayFromPixel(pointRectaCv, m_intrinsicK);
 
-  // 5. Calcular la intersección
-  cv::Point3f result3D = intersectRayWithPlane(ray, plane);
-  cv::Point3f result3D_point = intersectRayWithPlane(ray_point, plane);
+  // Intersección
+  cv::Point3f result3D_centroid = intersectRayWithPlane(rayCentroid, plane);
+  cv::Point3f result3D_point    = intersectRayWithPlane(rayPoint, plane);
 
-  qDebug() << "------------------------------------------";
-  qDebug() << "RESULTADO FINAL (Coordenadas de Cámara):";
-  qDebug() << "X:" << result3D.x;
-  qDebug() << "Y:" << result3D.y;
-  qDebug() << "Z:" << result3D.z;
-  qDebug() << "------------------------------------------";
+  // Cinemática Inversa y Ángulo
+  cv::Point3d centroid_inbase = getPiecePositionInBaseCoordinates(result3D_centroid, m_RTcb);
+  cv::Point3d point_inbase    = getPiecePositionInBaseCoordinates(result3D_point, m_RTcb);
 
-  QString RTcameraBasePath = "calibration/robot/RT_camera_base.yml";
+  // Emitir señal con la posición de la pieza
+  emit piecePositionCalculated(centroid_inbase);
 
-  cv::FileStorage fs(RTcameraBasePath.toStdString(), cv::FileStorage::READ);
-  if (!fs.isOpened()) {
-    qDebug() << "Error: No se pudo cargar RT_camera_base.yml";
-    return;
+  // Calcular cinemática inversa
+  if (m_robotHandlerInstance) {
+    m_robotHandlerInstance->inverseCinematic(centroid_inbase);
   }
 
-  cv::Mat RTcb;
-  fs["RTcameraBase"] >> RTcb;
-  fs.release();
-
-  cv::Point3d centroid_inbase = getPiecePositionInBaseCoordinates(result3D, RTcb);
-  cv::Point3d point_inbase     = getPiecePositionInBaseCoordinates(result3D_point, RTcb);
-
+  // Calculo de ángulo
   cv::Point3d direction = point_inbase - centroid_inbase;
-
-  cv::Point3d dir_norm = direction / cv::norm(direction);
-
+  cv::Point3d dir_norm  = direction / cv::norm(direction);
   cv::Point3d x_axis(1.0, 0.0, 0.0);
 
-  double dot = dir_norm.x * x_axis.x + dir_norm.y * x_axis.y + dir_norm.z * x_axis.z;
-
+  double dot       = dir_norm.x * x_axis.x + dir_norm.y * x_axis.y + dir_norm.z * x_axis.z;
   double angle_rad = acos(dot);
   double angle_deg = angle_rad * 180.0 / CV_PI;
 
-  std::cout << "Angle respect X-axis: " << angle_deg << " degrees" << std::endl;
-
-
+  // std::cout << "Angle respect X-axis calculated via external trigger: " << angle_deg << " degrees" << std::endl;
 }
 
 // =========================================================
@@ -777,11 +794,18 @@ cv::Point3d VideoCalibrationDialog::getPiecePositionInBaseCoordinates(const cv::
   // offset
   piecePosition.z -= 65.0; // Ajuste de altura (en mm) según sea necesario
   piecePosition.x += 50.0; // Ajuste de posición X (en mm) según sea necesario
+  piecePosition.y -= 10.0; // Ajuste de posición Y (en mm) según sea necesario
 
-  qDebug() << "Posición de la pieza en coordenadas de la base del robot:"
-           << "(" << piecePosition.x << ", " << piecePosition.y << ", " << piecePosition.z << ")";
+  // Evitar valores de Z negativos
+  if (piecePosition.z < -3.0) {
+    piecePosition.z = -3.0;
+  }
+  // Evitar valores de Z mayores a 6mm
+  if (piecePosition.z > 6.0) {
+    piecePosition.z = 6.0;
+  }
 
-  m_robotHandlerInstance->inverseCinematic(piecePosition);
-
+  // qDebug() << "Posición de la pieza en coordenadas de la base del robot:"
+  //          << "(" << piecePosition.x << ", " << piecePosition.y << ", " << piecePosition.z << ")";
   return piecePosition;
 }

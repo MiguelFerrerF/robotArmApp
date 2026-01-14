@@ -99,6 +99,10 @@ add_custom_command(TARGET robotArmApp POST_BUILD
     "${CMAKE_SOURCE_DIR}/images/robot.png"
     "$<TARGET_FILE_DIR:robotArmApp>/images/robot.png"
     COMMENT "Copiando robot.png a la carpeta de imágenes del build"
+
+    # Copiar la carpeta de calibración
+    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:robotArmApp>/calibration"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_SOURCE_DIR}/calibration" "$<TARGET_FILE_DIR:robotArmApp>/calibration"
 )
 
 # --- Propiedades específicas para macOS / Windows ---

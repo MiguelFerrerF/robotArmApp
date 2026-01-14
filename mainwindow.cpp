@@ -6,6 +6,7 @@
 #include <QDir>
 #include <QFile>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QProcess>
 #include <QSettings>
 #include <QVideoFrameFormat>
@@ -40,6 +41,7 @@ void MainWindow::setupConnections()
   connect(m_RobotHandler, &RobotHandler::motorOffsetsChanged, this, &MainWindow::onRobotMotorOffsetsReadFromMemory);
   connect(m_RobotHandler, &RobotHandler::errorOccurred, this, &MainWindow::onSerialError);
   connect(m_RobotHandler, &RobotHandler::efectorPositionChanged, this, &MainWindow::onEfectorPositionChanged);
+  connect(m_RobotHandler, &RobotHandler::anglesCalculated, this, &MainWindow::onRobotAnglesCalculated);
 }
 
 void MainWindow::on_actionSerial_triggered()
@@ -125,7 +127,7 @@ void MainWindow::on_actionDisconnectVideo_triggered()
 void MainWindow::on_actionCalibrationVideo_triggered()
 {
   if (!m_VideoCalibrationDialog) {
-    m_VideoCalibrationDialog = new VideoCalibrationDialog(this, m_VideoProcessingDialog, m_RobotHandler);
+    m_VideoCalibrationDialog = new VideoCalibrationDialog(this, m_RobotHandler);
   }
 
   m_VideoCalibrationDialog->show();
@@ -137,23 +139,46 @@ void MainWindow::on_actionProcessingVideo_triggered()
 {
   if (!m_VideoProcessingDialog) {
     m_VideoProcessingDialog = new VideoProcessingDialog(this);
+    // Desconecar señales anteriores
+    disconnect(&VideoCaptureHandler::instance(), &VideoCaptureHandler::newPixmapCaptured, this, nullptr);
+    disconnect(m_VideoProcessingDialog, &VideoProcessingDialog::angleUpdated, this, nullptr);
+    disconnect(m_VideoProcessingDialog, &VideoProcessingDialog::processedImageReady, this, nullptr);
+    disconnect(m_VideoProcessingDialog, &VideoProcessingDialog::piecePointsUpdated, this, nullptr);
+    // Conectar la señal de nuevo frame capturado al procesamiento de vídeo
+    connect(m_VideoProcessingDialog, &VideoProcessingDialog::processedImageReady, this, &MainWindow::onVideoCapture);
+    // Connect signals from VideoProcessingDialog
+    connect(m_VideoProcessingDialog, &VideoProcessingDialog::angleUpdated, this,
+            [this](double angle) { ui->lineEditAngle->setText(QString::number((180 - angle), 'f', 2)); });
+    connect(m_VideoProcessingDialog, &VideoProcessingDialog::piecePointsUpdated, this, [this](const QPoint& centroid, const QPoint& pointRecta) {
+      ui->lineEditCentroidX->setText(QString::number(centroid.x()));
+      ui->lineEditCentroidY->setText(QString::number(centroid.y()));
+
+      // 2. Instanciar Calibración si no existe
+      if (!m_VideoCalibrationDialog) {
+        // Nota: Ya no pasamos m_VideoProcessingDialog
+        m_VideoCalibrationDialog = new VideoCalibrationDialog(this, m_RobotHandler);
+        // Desconectar señales previas para evitar duplicados
+        disconnect(m_VideoCalibrationDialog, &VideoCalibrationDialog::piecePositionCalculated, this, nullptr);
+        // Conectar señal para recibir la posición calculada
+        connect(m_VideoCalibrationDialog, &VideoCalibrationDialog::piecePositionCalculated, this, [this](const cv::Point3d& positionInBase) {
+          ui->lineEditDesiredX->setText(QString::number(positionInBase.x, 'f', 2));
+          ui->lineEditDesiredY->setText(QString::number(positionInBase.y, 'f', 2));
+          ui->lineEditDesiredZ->setText(QString::number(positionInBase.z, 'f', 2));
+        });
+      }
+
+      // 3. Llamar a la función de cálculo optimizada pasándole los
+      // valores Esta función revisará internamente si la calibración ya
+      // está cargada en RAM/Settings
+      m_VideoCalibrationDialog->calculateObjectPosition(centroid, pointRecta);
+    });
   }
-
-  // Disconnect previous connections if any to avoid duplicates
-  disconnect(m_VideoProcessingDialog, &VideoProcessingDialog::angleUpdated, this, nullptr);
-  disconnect(m_VideoProcessingDialog, &VideoProcessingDialog::centroidUpdated, this, nullptr);
-  // Connect signals from VideoProcessingDialog
-  connect(m_VideoProcessingDialog, &VideoProcessingDialog::angleUpdated, this,
-          [this](double angle) { ui->lineEditAngle->setText(QString::number(angle, 'f', 2)); });
-  connect(m_VideoProcessingDialog, &VideoProcessingDialog::centroidUpdated, this, [this](const QPoint& centroid) {
-    ui->lineEditCentroidX->setText(QString::number(centroid.x()));
-    ui->lineEditCentroidY->setText(QString::number(centroid.y()));
-  });
-
-  // Si la cámara ya está corriendo, el diálogo mostrará el stream actual.
-  m_VideoProcessingDialog->show();
-  m_VideoProcessingDialog->raise();
-  m_VideoProcessingDialog->activateWindow();
+  else {
+    // Si ya existe, solo asegurarse de que está visible
+    m_VideoProcessingDialog->show();
+    m_VideoProcessingDialog->raise();
+    m_VideoProcessingDialog->activateWindow();
+  }
 }
 
 void MainWindow::connectVideoSignals()
@@ -162,15 +187,7 @@ void MainWindow::connectVideoSignals()
 
   // Conexión principal para mostrar el vídeo en la GUI
   connect(&handler, &VideoCaptureHandler::newPixmapCaptured, this, [this](const QPixmap& pixmap) { this->onVideoCapture(pixmap.toImage()); });
-
-  // Conexiones de info de la cámara (para actualizar la GUI principal)
-  // connect(&handler, &VideoCaptureHandler::propertiesSupported, this,
-  //         &MainWindow::onPropertiesSupported); // Asumiendo que existe un
-  //         slot
-  //                                              // para esto
-
   connect(&handler, &VideoCaptureHandler::cameraInfoChanged, this, &MainWindow::onCameraInfoChanged);
-
   // Conectamos las señales de error para el log principal
   connect(&handler, &VideoCaptureHandler::cameraOpenFailed, this,
           [this](int, const QString& err) { LogHandler::error(ui->textEditLog, "Camera Error: " + err); });
@@ -197,12 +214,14 @@ void MainWindow::on_actionControlRobot_triggered()
   disconnect(m_RobotControl, &RobotControlDialog::motorAngleChanged, this, &MainWindow::onRobotMotorAngleChanged);
   disconnect(m_RobotControl, &RobotControlDialog::allMotorsReset, this, &MainWindow::onAllMotorsReset);
   disconnect(m_RobotControl, &RobotControlDialog::motorOffsetChanged, this, &MainWindow::onRobotMotorOffsetChanged);
+  disconnect(m_RobotControl, &RobotControlDialog::placePositionChanged, this, &MainWindow::onRobotPlacePositionChanged);
 
   // Connect signals from RobotControlDialog
   connect(m_RobotControl, &RobotControlDialog::errorOccurred, this, &MainWindow::onRobotControlError);
   connect(m_RobotControl, &RobotControlDialog::motorAngleChanged, this, &MainWindow::onRobotMotorAngleChanged);
   connect(m_RobotControl, &RobotControlDialog::allMotorsReset, this, &MainWindow::onAllMotorsReset);
   connect(m_RobotControl, &RobotControlDialog::motorOffsetChanged, this, &MainWindow::onRobotMotorOffsetChanged);
+  connect(m_RobotControl, &RobotControlDialog::placePositionChanged, this, &MainWindow::onRobotPlacePositionChanged);
 
   // Enviar comando al Arduino para leer los offsets
   if (SerialPortHandler::instance().isConnected()) {
@@ -283,6 +302,19 @@ void MainWindow::onRobotMotorOffsetChanged(int motorIndex, int newOffset)
   }
 }
 
+void MainWindow::onRobotPlacePositionChanged(int motorIndex, int position)
+{
+  // send command to robot via serial
+  if (SerialPortHandler::instance().isConnected()) {
+    QString command = QString("SETUP:PLACE%1:%2").arg(motorIndex).arg(position);
+    SerialPortHandler::instance().sendData(command.toUtf8());
+    LogHandler::info(ui->textEditLog, QString("Sent command to motor %1: %2").arg(motorIndex).arg(command.trimmed()));
+  }
+  else {
+    LogHandler::warning(ui->textEditLog, "Cannot send command: Serial port not connected");
+  }
+}
+
 void MainWindow::onRobotMotorAngleUpdatedFromSerial(int motorIndex, int angle)
 {
   qDebug() << "[MainWindow] onRobotMotorAngleUpdatedFromSerial called for" << motorIndex << "angle" << angle;
@@ -335,9 +367,22 @@ void MainWindow::onRobotMotorOffsetsReadFromMemory(int motorIndex, int offset)
 
 void MainWindow::onEfectorPositionChanged(double x, double y, double z)
 {
-  ui->lineEditX->setText(QString::number(x, 'f', 2) + " mm");
-  ui->lineEditY->setText(QString::number(y, 'f', 2) + " mm");
-  ui->lineEditZ->setText(QString::number(z, 'f', 2) + " mm");
+  ui->lineEditX->setText(QString::number(x, 'f', 2));
+  ui->lineEditY->setText(QString::number(y, 'f', 2));
+  ui->lineEditZ->setText(QString::number(z, 'f', 2));
+}
+
+void MainWindow::onRobotAnglesCalculated(int q1, int q2, int q3, int q5)
+{
+  // Si no esta el objeto de m_VideoProcessingDialog abierto, no actualizar, no hay pieza detectada
+  if (!m_VideoProcessingDialog) {
+    return;
+  }
+
+  ui->lineEditQ1->setText(QString::number(q1));
+  ui->lineEditQ2->setText(QString::number(q2));
+  ui->lineEditQ3->setText(QString::number(q3));
+  ui->lineEditQ5->setText(QString::number(q5));
 }
 
 void MainWindow::onAllMotorsReset()
@@ -440,5 +485,87 @@ void MainWindow::on_pushButtonCaptureImage_clicked()
   }
   else {
     qDebug() << "No se pudo guardar la imagen";
+  }
+}
+
+void MainWindow::on_pushButtonStartProcessing_toggled(bool checked)
+{
+  // Llamar a la función on_actionProcessingVideo_triggered si se activa
+  if (checked) {
+    // Cambiar el texto y color del botón
+    ui->pushButtonStartProcessing->setText("Stop Processing");
+    ui->pushButtonStartProcessing->setStyleSheet("background-color: red; color: white;");
+
+    if (!m_VideoProcessingDialog) {
+      m_VideoProcessingDialog = new VideoProcessingDialog(this);
+    }
+    // Desconecar señales anteriores
+    disconnect(&VideoCaptureHandler::instance(), &VideoCaptureHandler::newPixmapCaptured, this, nullptr);
+    disconnect(m_VideoProcessingDialog, &VideoProcessingDialog::angleUpdated, this, nullptr);
+    disconnect(m_VideoProcessingDialog, &VideoProcessingDialog::processedImageReady, this, nullptr);
+    disconnect(m_VideoProcessingDialog, &VideoProcessingDialog::piecePointsUpdated, this, nullptr);
+    // Conectar la señal de nuevo frame capturado al procesamiento de vídeo
+    connect(m_VideoProcessingDialog, &VideoProcessingDialog::processedImageReady, this, &MainWindow::onVideoCapture);
+    // Connect signals from VideoProcessingDialog
+    connect(m_VideoProcessingDialog, &VideoProcessingDialog::angleUpdated, this,
+            [this](double angle) { ui->lineEditAngle->setText(QString::number((180 - angle), 'f', 2)); });
+    connect(m_VideoProcessingDialog, &VideoProcessingDialog::piecePointsUpdated, this, [this](const QPoint& centroid, const QPoint& pointRecta) {
+      ui->lineEditCentroidX->setText(QString::number(centroid.x()));
+      ui->lineEditCentroidY->setText(QString::number(centroid.y()));
+
+      // 2. Instanciar Calibración si no existe
+      if (!m_VideoCalibrationDialog) {
+        // Nota: Ya no pasamos m_VideoProcessingDialog
+        m_VideoCalibrationDialog = new VideoCalibrationDialog(this, m_RobotHandler);
+        // Desconectar señales previas para evitar duplicados
+        disconnect(m_VideoCalibrationDialog, &VideoCalibrationDialog::piecePositionCalculated, this, nullptr);
+        // Conectar señal para recibir la posición calculada
+        connect(m_VideoCalibrationDialog, &VideoCalibrationDialog::piecePositionCalculated, this, [this](const cv::Point3d& positionInBase) {
+          ui->lineEditDesiredX->setText(QString::number(positionInBase.x, 'f', 2));
+          ui->lineEditDesiredY->setText(QString::number(positionInBase.y, 'f', 2));
+          ui->lineEditDesiredZ->setText(QString::number(positionInBase.z, 'f', 2));
+        });
+      }
+
+      // 3. Llamar a la función de cálculo optimizada pasándole los
+      // valores Esta función revisará internamente si la calibración ya
+      // está cargada en RAM/Settings
+      m_VideoCalibrationDialog->calculateObjectPosition(centroid, pointRecta);
+    });
+  }
+  else {
+    // Cambiar el texto y color del botón
+    ui->pushButtonStartProcessing->setText("Start Processing");
+    ui->pushButtonStartProcessing->setStyleSheet("");
+    // Desconectar captura de imagen procesada
+    disconnect(&VideoCaptureHandler::instance(), &VideoCaptureHandler::newPixmapCaptured, this, nullptr);
+    // Reconectar la señal original para mostrar el vídeo en la GUI
+    connectVideoSignals();
+  }
+}
+
+void MainWindow::on_pushButtonPickAndPlace_clicked()
+{
+  // Evaluar el valor del angulo de la pieza, si es menor a 30 grados o mayor a 150 grados, mostrar una ventana de error y no enviar el comando
+  bool   ok;
+  double angle = ui->lineEditAngle->text().toDouble(&ok);
+  if (!ok || angle < 30.0 || angle > 150.0) {
+    QMessageBox::warning(this, "Invalid Angle", "The angle must be between 30 and 150 degrees.");
+    return;
+  }
+
+  if (SerialPortHandler::instance().isConnected()) {
+    QString command = QString("PLACE:%1:%2:%3:%4:%5:%6")
+                        .arg(m_robotSettings.motors[0].defaultAngle + ui->lineEditQ1->text().toInt())
+                        .arg(m_robotSettings.motors[1].defaultAngle + ui->lineEditQ2->text().toInt())
+                        .arg(m_robotSettings.motors[2].defaultAngle + ui->lineEditQ3->text().toInt())
+                        .arg(m_robotSettings.motors[3].defaultAngle) // Q4 fijo en offset
+                        .arg(m_robotSettings.motors[4].defaultAngle + ui->lineEditQ5->text().toInt())
+                        .arg("0"); // Claw position fijo en 0 (cerrado)
+    SerialPortHandler::instance().sendData(command.toUtf8());
+    LogHandler::info(ui->textEditLog, QString("Sent pick and place command: %1").arg(command.trimmed()));
+  }
+  else {
+    LogHandler::warning(ui->textEditLog, "Cannot send command: Serial port not connected");
   }
 }

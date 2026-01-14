@@ -53,7 +53,7 @@
            <x>0</x>
            <y>0</y>
            <width>298</width>
-           <height>405</height>
+           <height>411</height>
           </rect>
          </property>
         </widget>
@@ -217,13 +217,6 @@
      </property>
      <property name="alignment">
       <set>Qt::AlignmentFlag::AlignCenter</set>
-     </property>
-    </widget>
-   </item>
-   <item row="2" column="2" colspan="2">
-    <widget class="QPushButton" name="pushButtonGetPoint">
-     <property name="text">
-      <string>3D Point</string>
      </property>
     </widget>
    </item>

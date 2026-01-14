@@ -197,6 +197,7 @@ void VideoProcessingDialog::drawCropPointsOnLabel()
 
   painter.end();
   ui->videoLabel->setPixmap(annotated.scaled(ui->videoLabel->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
+  emit processedImageReady(annotated.toImage());
 }
 
 // Recibe nuevo pixmap de la cámara
@@ -388,7 +389,7 @@ void VideoProcessingDialog::applySegmentacion(QPixmap& pixmap)
         QString pointOriginalStr    = QString("Punto Recta img original: (%1, %2)").arg(pointRectaOriginal.x()).arg(pointRectaOriginal.y());
 
         ui->labelPoints->setText(centroid_str + "\n" + point_str + "\n" + centroidOriginalStr + "\n" + pointOriginalStr);
-        emit centroidUpdated(centroidOriginal);
+        emit piecePointsUpdated(m_lastCentroidOriginal, m_lastPointRectaOriginal);
       }
     }
   }

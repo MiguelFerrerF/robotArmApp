@@ -86,6 +86,16 @@ void RobotHandler::onDataReceived(const QByteArray& data)
     }
     m_robotSettings->motors[servoNum - 1].currentAngle = valor;
   }
+  else if (sscanf(msg.toUtf8().constData(), "PLACE:SERVO%d:%d", &servoNum, &valor) == 2) {
+    // Validar rangos
+    if (servoNum < 1 || servoNum > 6) {
+      emit errorOccurred(QString("Invalid servo index: %1").arg(servoNum));
+      return;
+    }
+    // Puedes ajustar el rango de posición si lo necesitas
+    m_robotSettings->motors[servoNum - 1].placePosition = valor;
+    emit messageOccurred(QString("Place position for servo %1 set to %2").arg(servoNum).arg(valor));
+  }
   else {
     qDebug() << "[RobotHandler] Mensaje no reconocido:" << msg;
   }
@@ -172,7 +182,7 @@ void RobotHandler::inverseCinematic(const cv::Point3d& efectorGlobal)
   int R = sqrt(efectorGlobal.x * efectorGlobal.x + efectorGlobal.y * efectorGlobal.y);
   int Z = efectorGlobal.z;
 
-  qDebug("Valores R y Z calculados: R = %d, Z = %d", R, Z);
+  // qDebug("Valores R y Z calculados: R = %d, Z = %d", R, Z);
 
   double B_rad = acos((R * R + (Z - a1 + a5) * (Z - a1 + a5) - a2 * a2 - a3 * a3) / (2 * a2 * a3));
   int    B     = B_rad * 180 / M_PI;
@@ -185,11 +195,13 @@ void RobotHandler::inverseCinematic(const cv::Point3d& efectorGlobal)
   double q1_rad = atan2(efectorGlobal.y, efectorGlobal.x);
   int    q1     = q1_rad * 180 / M_PI;
 
-  qDebug("Ángulos calculados: q1 = %dº, A[q2] = %dº, B[q3] = %dº, C[q5] = %dº", q1, A, B, C);
+  // qDebug("Ángulos calculados: q1 = %dº, A[q2] = %dº, B[q3] = %dº, C[q5] = %dº", q1, A, B, C);
+  // Emitir señal con los ángulos calculados
+  emit anglesCalculated(q1, A, B, C);
 }
 
 // Transforma un punto del efector en coordenadas de la base
-cv::Point3d RobotHandler::transformarPunto(const cv::Point3d& puntoLocal) 
+cv::Point3d RobotHandler::transformarPunto(const cv::Point3d& puntoLocal)
 {
   // Crear punto homog�neo [x, y, z, 1]
   cv::Mat puntoHom = (cv::Mat_<double>(4, 1) << puntoLocal.x, puntoLocal.y, puntoLocal.z, 1);

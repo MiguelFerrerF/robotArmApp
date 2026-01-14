@@ -3,10 +3,10 @@
 
 #include "../library-robot/RobotHandler.h"
 #include "VideoCaptureHandler.h"
-#include "VideoProcessingDialog.h"
 #include <QDialog>
 #include <QPixmap>
 #include <QResizeEvent>
+#include <QSettings>
 #include <QSize>
 #include <QString>
 #include <QThread>
@@ -63,8 +63,10 @@ class VideoCalibrationDialog : public QDialog
   Q_OBJECT
 
 public:
-  VideoCalibrationDialog(QWidget* parent = nullptr, VideoProcessingDialog* sharedInstance = nullptr, RobotHandler* robotHandlerInstance = nullptr);
+  VideoCalibrationDialog(QWidget* parent = nullptr, RobotHandler* robotHandlerInstance = nullptr);
   ~VideoCalibrationDialog();
+
+  void calculateObjectPosition(QPoint centroid, QPoint pointRecta);
 
 private slots:
   void on_startButton_clicked();
@@ -75,11 +77,13 @@ private slots:
   void on_calibrationFinished(const VideoCalibrationResult& result);
   void on_calibrationError(const QString& message);
   void on_progressUpdate(const QString& message);
-  void on_pushButtonGetPoint_clicked();
+  // void on_pushButtonGetPoint_clicked();
+
+signals:
+  void piecePositionCalculated(const cv::Point3d& positionInBase); // Señal para la posición calculada
 
 private:
   Ui::VideoCalibrationDialog* ui;
-  VideoProcessingDialog*      m_sharedInstance       = nullptr;
   RobotHandler*               m_robotHandlerInstance = nullptr;
 
   QPixmap m_currentPixmap;
@@ -97,6 +101,17 @@ private:
   // Miembros para gestionar el hilo de trabajo
   QThread*                m_workerThread = nullptr;
   VideoCalibrationWorker* m_worker       = nullptr;
+
+  // VARIABLES DE CACHÉ (Para no recalcular todo el tiempo)
+  bool    m_isPlaneCalibrated = false;
+  cv::Mat m_intrinsicK;  // Matriz intrínseca
+  cv::Mat m_distCoeffsD; // Coeficientes distorsión
+  cv::Mat m_planeR;      // Matriz de Rotación del plano
+  cv::Mat m_planeT;      // Vector de Traslación del plano
+  cv::Mat m_RTcb;        // Matriz RT Camera-Base
+
+  // FUNCIÓN AUXILIAR DE CARGA
+  bool ensurePlaneCalibrationLoaded();
 
   void updateVideoLabel();
   void updateFilesList();

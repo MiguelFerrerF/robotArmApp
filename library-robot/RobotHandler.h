@@ -45,6 +45,7 @@ signals:
   void motorOffsetsChanged(int motorIndex, int offset);
   void allMotorsReset();
   void efectorPositionChanged(double x, double y, double z);
+  void anglesCalculated(int q1, int q2, int q3, int q5);
 
 private:
   // Matriz de �ngulos de los servomotores

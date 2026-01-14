@@ -46,7 +46,8 @@ private slots:
 
 signals:
   void angleUpdated(double angle);
-  void centroidUpdated(const QPoint& centroid);
+  void piecePointsUpdated(const QPoint& centroid, const QPoint& pointRecta);
+  void processedImageReady(const QImage& image);
 
 private:
   Ui::VideoProcessingDialog* ui;

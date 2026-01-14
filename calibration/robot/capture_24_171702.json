@@ -1,0 +1,41 @@
+{
+    "motorAngles": [
+        {
+            "currentAngle": 62,
+            "defaultAngle": 55,
+            "fixedAngle": 7,
+            "motorIndex": 1
+        },
+        {
+            "currentAngle": 73,
+            "defaultAngle": 30,
+            "fixedAngle": 43,
+            "motorIndex": 2
+        },
+        {
+            "currentAngle": 141,
+            "defaultAngle": 20,
+            "fixedAngle": 121,
+            "motorIndex": 3
+        },
+        {
+            "currentAngle": 144,
+            "defaultAngle": 146,
+            "fixedAngle": -2,
+            "motorIndex": 4
+        },
+        {
+            "currentAngle": 40,
+            "defaultAngle": 80,
+            "fixedAngle": -40,
+            "motorIndex": 5
+        },
+        {
+            "currentAngle": 77,
+            "defaultAngle": 78,
+            "fixedAngle": -1,
+            "motorIndex": 6
+        }
+    ],
+    "timestamp": "2025-11-24T17:17:02"
+}

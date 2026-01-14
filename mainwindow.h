@@ -16,7 +16,6 @@
 #include <QVideoFrame>
 #include <QVideoSink>
 
-
 QT_BEGIN_NAMESPACE
 namespace Ui
 {
@@ -44,7 +43,11 @@ private slots:
   void on_actionProcessingVideo_triggered();
   void on_actionControlRobot_triggered();
   void on_actionCalibrateRobot_triggered();
+  void on_pushButtonStartProcessing_toggled(bool checked);
+  void on_pushButtonPickAndPlace_clicked();
+
   void onEfectorPositionChanged(double x, double y, double z);
+  void onRobotAnglesCalculated(int q1, int q2, int q3, int q5);
 
   // Serial Monitor
   void onSerialError(const QString& error);
@@ -60,6 +63,7 @@ private slots:
   void onRobotMotorAngleUpdatedFromSerial(int motorIndex, int angle);
   void onRobotMotorOffsetsReadFromMemory(int motorIndex, int offset);
   void onRobotMotorOffsetChanged(int motorIndex, int newOffset);
+  void onRobotPlacePositionChanged(int motorIndex, int position);
 
   // Video Capture
   void onVideoCapture(const QImage& image);

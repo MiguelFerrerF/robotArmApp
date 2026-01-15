@@ -793,12 +793,12 @@ cv::Point3d VideoCalibrationDialog::getPiecePositionInBaseCoordinates(const cv::
 
   // offset
   piecePosition.z -= 65.0; // Ajuste de altura (en mm) según sea necesario
-  piecePosition.x += 50.0; // Ajuste de posición X (en mm) según sea necesario
-  piecePosition.y -= 10.0; // Ajuste de posición Y (en mm) según sea necesario
+  piecePosition.x += 40.0; // Ajuste de posición X (en mm) según sea necesario
+  piecePosition.y -= 0.0;  // Ajuste de posición Y (en mm) según sea necesario
 
   // Evitar valores de Z negativos
-  if (piecePosition.z < -3.0) {
-    piecePosition.z = -3.0;
+  if (piecePosition.z < -0.0) {
+    piecePosition.z = 0.0;
   }
   // Evitar valores de Z mayores a 6mm
   if (piecePosition.z > 6.0) {

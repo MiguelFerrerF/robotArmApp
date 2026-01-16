@@ -6,32 +6,67 @@
 #include <QDialog>
 #include <QTextEdit>
 
-namespace Ui {
+namespace Ui
+{
 class SerialMonitorDialog;
 }
 
-class SerialMonitorDialog : public QDialog {
+/**
+ * @brief A real-time debugging console for Serial Port communication.
+ *
+ * This dialog acts as a terminal window. It subscribes to the SerialPortHandler
+ * signals to display incoming and outgoing data streams. It also provides
+ * a manual input field to send raw ASCII commands to the connected device.
+ */
+class SerialMonitorDialog : public QDialog
+{
   Q_OBJECT
 
 public:
-  explicit SerialMonitorDialog(QWidget *parent = nullptr);
+  explicit SerialMonitorDialog(QWidget* parent = nullptr);
   ~SerialMonitorDialog();
 
-  QTextEdit *getLogView() const { return ui->textEditSerial; }
+  /**
+   * @brief Accessor for the main log display widget.
+   * Useful if external classes need to export logs or adjust visibility.
+   * @return Pointer to the QTextEdit used for the console output.
+   */
+  QTextEdit* getLogView() const
+  {
+    return ui->textEditSerial;
+  }
 
 signals:
-  void warningOccurred(const QString &message);
+  /**
+   * @brief Emitted when a user action fails (e.g., sending without connection).
+   * @param message The warning description.
+   */
+  void warningOccurred(const QString& message);
 
 private slots:
+  /**
+   * @brief UI Slot: Handles the "Send" button click.
+   * Reads text from the line edit and transmits it via the SerialPortHandler.
+   */
   void on_sendSerialButton_clicked();
 
-  void onDataReceived(const QByteArray &data);
-  void onDataSent(const QByteArray &data);
-  void onCloseEvent(QCloseEvent *event);
+  /**
+   * @brief Slot: Handles incoming data from the physical serial port.
+   * @param data The raw bytes received.
+   */
+  void onDataReceived(const QByteArray& data);
+
+  /**
+   * @brief Slot: Handles confirmation of data sent to the physical serial port.
+   * @param data The raw bytes that were just transmitted.
+   */
+  void onDataSent(const QByteArray& data);
+
+  void onCloseEvent(QCloseEvent* event);
 
 private:
-  Ui::SerialMonitorDialog *ui;
-  bool m_serialConnected = false;
+  Ui::SerialMonitorDialog* ui;
+  bool                     m_serialConnected = false;
 };
 
 #endif // SERIALMONITORDIALOG_H

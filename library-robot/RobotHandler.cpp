@@ -8,17 +8,15 @@
 
 RobotHandler::RobotHandler(QObject* parent, RobotConfig::RobotSettings* settings) : QObject(parent), m_robotSettings(settings)
 {
-  // Inicializa matrices como identidad 4x4
+
   RTb1 = cv::Mat::eye(4, 4, CV_64F);
   RT12 = cv::Mat::eye(4, 4, CV_64F);
   RT23 = cv::Mat::eye(4, 4, CV_64F);
   RT35 = cv::Mat::eye(4, 4, CV_64F);
   RTbt = cv::Mat::eye(4, 4, CV_64F);
 
-  // Inicializa matriz de �ngulos (q1...q6)
   q = (cv::Mat_<int>(1, 6) << 0, 0, 0, 0, 0, 0);
 
-  // Conexi�n de se�ales del puerto serie
   SerialPortHandler& serial = SerialPortHandler::instance();
   connect(&serial, &SerialPortHandler::dataReceived, this, &RobotHandler::onDataReceived);
   connect(&serial, &SerialPortHandler::dataSent, this, &RobotHandler::onDataSent);
@@ -26,40 +24,41 @@ RobotHandler::RobotHandler(QObject* parent, RobotConfig::RobotSettings* settings
   m_serialConnected = serial.isConnected();
 }
 
+RobotHandler::~RobotHandler()
+{
+}
+
+/**
+ * @brief Processes ASCII protocol messages received from the microcontroller.
+ *
+ * Supported Commands:
+ * - `ANGLE_WITH_OFFSET:SERVOx:y`: Updates the logical angle for servo X.
+ * - `OFFSET:SERVOx:y`: Updates the calibration offset for servo X.
+ * - `ANGLE:SERVOx:y`: Updates the raw current physical angle.
+ * - `PLACE:SERVOx:y`: Updates the target "Place" position configuration.
+ *
+ * @param[in] data The raw bytes received via UART.
+ */
 void RobotHandler::onDataReceived(const QByteArray& data)
 {
   const QString msg = QString::fromUtf8(data).trimmed();
 
   int servoNum = 0, valor = 0;
 
-  // Extraer servo y valor con sscanf
   if (sscanf(msg.toUtf8().constData(), "ANGLE_WITH_OFFSET:SERVO%d:%d", &servoNum, &valor) == 2) {
-    // Validar rangos
     if (servoNum < 1 || servoNum > 6) {
-      qDebug() << "[RobotHandler] Servo invalido:" << servoNum;
       emit errorOccurred(QString("Invalid servo index: %1").arg(servoNum));
       return;
     }
     if (valor < -180 || valor > 180) {
-      qDebug() << "[RobotHandler] Valor fuera de rango:" << valor;
       emit errorOccurred(QString("Invalid angle: %1").arg(valor));
       return;
     }
 
-    // Actualizar el valor correspondiente en la matriz q
     q.at<int>(0, servoNum - 1) = valor;
-
-    qDebug() << QString("[RobotHandler] Servo %1 -> %2").arg(servoNum).arg(valor);
-    qDebug() << "Estado actual de los servos: [" << q.at<int>(0, 0) << ", " << q.at<int>(0, 1) << ", " << q.at<int>(0, 2) << ", " << q.at<int>(0, 3)
-             << ", " << q.at<int>(0, 4) << ", " << q.at<int>(0, 5) << "]";
-
-    // Actualizar matrices cinematicas
     actualizarMatrices(q);
-
-    // Update fixed angle in settings
     m_robotSettings->motors[servoNum - 1].fixedAngle = valor;
 
-    // Emitir serial informando cambio de angulo
     emit motorAngleChanged(servoNum, valor);
   }
   else if (sscanf(msg.toUtf8().constData(), "OFFSET:SERVO%d:%d", &servoNum, &valor) == 2) {
@@ -68,14 +67,10 @@ void RobotHandler::onDataReceived(const QByteArray& data)
       emit errorOccurred(QString("Invalid servo index: %1").arg(servoNum));
       return;
     }
-    // Actualizar el offset en la configuracion del robot
     m_robotSettings->motors[servoNum - 1].defaultAngle = valor;
-
-    // Puedes ajustar el rango de offset si lo necesitas
     emit motorOffsetsChanged(servoNum, valor);
   }
   else if (sscanf(msg.toUtf8().constData(), "ANGLE:SERVO%d:%d", &servoNum, &valor) == 2) {
-    // Validar rangos
     if (servoNum < 1 || servoNum > 6) {
       emit errorOccurred(QString("Invalid servo index: %1").arg(servoNum));
       return;
@@ -87,12 +82,10 @@ void RobotHandler::onDataReceived(const QByteArray& data)
     m_robotSettings->motors[servoNum - 1].currentAngle = valor;
   }
   else if (sscanf(msg.toUtf8().constData(), "PLACE:SERVO%d:%d", &servoNum, &valor) == 2) {
-    // Validar rangos
     if (servoNum < 1 || servoNum > 6) {
       emit errorOccurred(QString("Invalid servo index: %1").arg(servoNum));
       return;
     }
-    // Puedes ajustar el rango de posición si lo necesitas
     m_robotSettings->motors[servoNum - 1].placePosition = valor;
     emit messageOccurred(QString("Place position for servo %1 set to %2").arg(servoNum).arg(valor));
   }
@@ -101,6 +94,19 @@ void RobotHandler::onDataReceived(const QByteArray& data)
   }
 }
 
+/**
+ * @brief Updates the kinematic chain matrices based on the provided joint angles.
+ *
+ * This function performs the Forward Kinematics calculation .
+ * It constructs the transformation matrix for each link using the robot's physical dimensions (a1, a2, a3, a5)
+ * and the current rotation angles ($q$).
+ *
+ * The total transformation is calculated by multiplying the link matrices.
+ * Finally, it computes the global position of the end-effector (Forward Kinematics)
+ * and triggers an inverse kinematics check.
+ *
+ * @param[in] q Input matrix containing joint angles in degrees.
+ */
 void RobotHandler::actualizarMatrices(const cv::Mat& q)
 {
   if (q.cols < 4) {
@@ -108,21 +114,21 @@ void RobotHandler::actualizarMatrices(const cv::Mat& q)
     return;
   }
 
-  // Convertir �ngulos de grados a radianes
+  // Convert angles from degrees to radians for trigonometric functions
   double q1_rad = -q.at<int>(0, 0) * M_PI / 180.0;
   double q2_rad = -q.at<int>(0, 1) * M_PI / 180.0;
   double q3_rad = -q.at<int>(0, 2) * M_PI / 180.0;
   double q5_rad = -q.at<int>(0, 4) * M_PI / 180.0;
 
-  // RTb1 � Base al primer eslab�n
+  // RTb1 – Base to Link 1
   RTb1                  = cv::Mat::eye(4, 4, CV_64F);
   RTb1.at<double>(0, 0) = cos(q1_rad);
   RTb1.at<double>(0, 1) = -sin(q1_rad);
   RTb1.at<double>(1, 0) = sin(q1_rad);
   RTb1.at<double>(1, 1) = cos(q1_rad);
-  RTb1.at<double>(2, 3) = -a1; // traslaci�n en z
+  RTb1.at<double>(2, 3) = -a1; // Z translation
 
-  // RT12 � Primer eslab�n al segundo
+  //  RT12 – Link 1 to Link 2
   RT12                  = cv::Mat::eye(4, 4, CV_64F);
   RT12.at<double>(0, 0) = cos(q2_rad);
   RT12.at<double>(0, 2) = sin(q2_rad);
@@ -130,7 +136,7 @@ void RobotHandler::actualizarMatrices(const cv::Mat& q)
   RT12.at<double>(2, 0) = -sin(q2_rad);
   RT12.at<double>(2, 2) = cos(q2_rad);
 
-  // RT23 � Segundo al tercero
+  // RT23 – Link 2 to Link 3
   RT23                  = cv::Mat::eye(4, 4, CV_64F);
   RT23.at<double>(0, 0) = cos(q3_rad);
   RT23.at<double>(0, 2) = sin(q3_rad);
@@ -138,7 +144,7 @@ void RobotHandler::actualizarMatrices(const cv::Mat& q)
   RT23.at<double>(2, 0) = -sin(q3_rad);
   RT23.at<double>(2, 2) = cos(q3_rad);
 
-  // RT35 � Tercer eslab�n al efector final
+  // RT35 – Link 3 to End Effector
   cv::Mat RT35          = cv::Mat::eye(4, 4, CV_64F);
   RT35.at<double>(0, 0) = cos(q5_rad);
   RT35.at<double>(0, 2) = sin(q5_rad);
@@ -146,12 +152,9 @@ void RobotHandler::actualizarMatrices(const cv::Mat& q)
   RT35.at<double>(2, 0) = -sin(q5_rad);
   RT35.at<double>(2, 2) = cos(q5_rad);
 
-  // Transformaci�n total
-  /*RTbt = RTb1 * RT12 * RT23 * RT35;*/
+  // Compute Total Transformation
+  // Note: The multiplication order here dictates the kinematic chain hierarchy
   RTbt = RT35 * RT23 * RT12 * RTb1;
-  /*cv::Mat RTbt2 = RT35.inv() * RT23.inv() * RT12.inv() * RTb1.inv();
-  cv::Mat mult = RTbt * RTbt2;
-  double* f     = &(mult.at<double>(0, 0));*/
 
   emit messageOccurred("Matrices updated successfully.");
   emit matrixsUpdated(RTbt);
@@ -165,36 +168,49 @@ void RobotHandler::actualizarMatrices(const cv::Mat& q)
     qDebug() << row;
   }
 
+  // Calculate Forward Kinematics: Where is the gripper now?
   cv::Point3d efectorLocal(0, 0, 0);
   cv::Point3d efectorGlobal = transformarPunto(efectorLocal);
 
   emit efectorPositionChanged(efectorGlobal.x, efectorGlobal.y, efectorGlobal.z);
 
-  qDebug() << "Posicion de la pinza (respecto a la base del robot):"
-           << "(" << efectorGlobal.x << ", " << efectorGlobal.y << ", " << efectorGlobal.z << ")";
-
+  // Recalculate inverse kinematics for validation/update
   inverseCinematic(efectorGlobal);
 }
 
+/**
+ * @brief Calculates the Inverse Kinematics using a geometric approach.
+ *
+ * This method solves the "Reaching" problem :
+ * Given a target (X, Y, Z), it determines the required angles for the Base ($q1$),
+ * Shoulder ($q2$), and Elbow ($q3$) and the Wrist angle ($q5$) to reach that point.
+ *
+ * **Algorithm Steps:**
+ * 1. **Cylindrical Conversion:** Converts (X, Y) to radial distance $R$ and base angle $q1$.
+ * 2. **Height Adjustment:** Adjusts Z relative to the shoulder axis.
+ * 3. **Triangle Inequality:** Checks if the target is physically reachable.
+ * If $Dist > (L1 + L2)$, the point is unreachable.
+ * 4. **Law of Cosines:** Solves the triangle formed by the upper arm ($a2$) and forearm ($a3$)
+ * to find the internal elbow angle ($B$) and shoulder elevation ($A$).
+ *
+ * @param[in] efectorGlobal Target coordinates in the robot's base frame.
+ */
 void RobotHandler::inverseCinematic(const cv::Point3d& efectorGlobal)
 {
-  // 1. Cálculo de coordenadas básicas
+  // Calculate basic coordinates
   double R_val = sqrt(efectorGlobal.x * efectorGlobal.x + efectorGlobal.y * efectorGlobal.y);
   double Z_val = efectorGlobal.z;
 
-  // 2. Definir la altura relativa respecto al hombro (eje 2)
-  // Según tu fórmula original: (Z - a1 + a5)
+  // Define relative height wrt shoulder (Axis 2)
   double z_rel = Z_val - a1 + a5;
 
-  // 3. CALCULAR LA DISTANCIA REAL (Hipotenusa del triángulo formado por a2 y a3)
+  // Calculate Target Distance (Hypotenuse)
   double distancia_objetivo = sqrt(R_val * R_val + z_rel * z_rel);
 
-  // 4. Validar geométricamente (Desigualdad Triangular)
+  // Geometric Validation (Triangle Inequality)
   double alcance_max = a2 + a3;
-  double alcance_min = fabs(a2 - a3); // Por si a2 y a3 son muy diferentes
-
-  // Margen de seguridad pequeño (epsilon) para errores de punto flotante
-  double epsilon = 0.1;
+  double alcance_min = fabs(a2 - a3);
+  double epsilon     = 0.1;
 
   if (distancia_objetivo > (alcance_max + epsilon) || distancia_objetivo < (alcance_min - epsilon)) {
     qDebug() << "[RobotHandler] CRITICAL: Punto fuera del alcance físico.";
@@ -204,11 +220,10 @@ void RobotHandler::inverseCinematic(const cv::Point3d& efectorGlobal)
     return;
   }
 
-  // 5. Clamp del valor para acos (Protección final contra NaN por error de redondeo)
-  // Aunque la distancia sea válida, un 1.00000001 podría romper acos.
+  // Law of Cosines for Elbow Angle
   double cos_angle_B = (distancia_objetivo * distancia_objetivo - a2 * a2 - a3 * a3) / (2 * a2 * a3);
 
-  // Aseguramos que esté entre -1 y 1
+  // Clamp cos_angle_B to [-1, 1] to avoid NaN from acos due to floating-point errors
   if (cos_angle_B > 1.0)
     cos_angle_B = 1.0;
   if (cos_angle_B < -1.0)
@@ -217,42 +232,50 @@ void RobotHandler::inverseCinematic(const cv::Point3d& efectorGlobal)
   double B_rad = acos(cos_angle_B);
   int    B     = round(B_rad * 180.0 / M_PI); // Usar round para mejor precisión que el truncamiento implícito
 
-  // Cálculo de A (Ángulo del hombro)
-  // Nota: También es buena práctica proteger los denominadores, aunque aquí es constante.
+  // Law of Cosines for Shoulder Angle
   double numerador_A   = R_val * (a2 + a3 * cos(B_rad)) - a3 * sin(B_rad) * z_rel;
   double denominador_A = a2 * a2 + a3 * a3 + 2 * a2 * a3 * cos(B_rad);
+  double A_rad         = asin(numerador_A / denominador_A);
+  int    A             = round(A_rad * 180.0 / M_PI);
 
-  double A_rad = asin(numerador_A / denominador_A);
-  int    A     = round(A_rad * 180.0 / M_PI);
-
+  // Calculate Wrist Angle to maintain end-effector orientation
   int C = 180 - A - B;
 
+  // Base Rotation Angle
   double q1_rad = atan2(efectorGlobal.y, efectorGlobal.x);
   int    q1     = round(q1_rad * 180.0 / M_PI);
 
   emit anglesCalculated(q1, A, B, C);
 }
 
-// Transforma un punto del efector en coordenadas de la base
+/**
+ * @brief Applies the inverse kinematic chain to map a local point to global space.
+ *
+ * @note This function applies `RTbt.inv()`. Depending on the matrix definition,
+ * this transforms from Tool Frame to Base Frame (or vice versa).
+ *
+ * @param[in] puntoLocal Point in the local (effector) frame.
+ * @return cv::Point3d Point in the global (base) frame.
+ */
 cv::Point3d RobotHandler::transformarPunto(const cv::Point3d& puntoLocal)
 {
-  // Crear punto homog�neo [x, y, z, 1]
+  // Create homogeneous point [x, y, z, 1]
   cv::Mat puntoHom = (cv::Mat_<double>(4, 1) << puntoLocal.x, puntoLocal.y, puntoLocal.z, 1);
 
-  // Aplicar transformaci�n total RTbt
+  // Apply transformation
   cv::Mat puntoGlobal = RTbt.inv() * puntoHom;
 
-  // Devolver el punto transformado (coordenadas en la base del robot)
   return cv::Point3d(puntoGlobal.at<double>(0, 0), puntoGlobal.at<double>(1, 0), puntoGlobal.at<double>(2, 0));
 }
 
+/**
+ * @brief Logs data sent over the serial port for debugging.
+ *
+ * @param[in] data The raw bytes that were sent.
+ */
 void RobotHandler::onDataSent(const QByteArray& data)
 {
   if (m_serialConnected) {
     qDebug() << "[Serial] Data sent:" << QString::fromUtf8(data);
   }
-}
-
-RobotHandler::~RobotHandler()
-{
 }

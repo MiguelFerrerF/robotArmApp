@@ -1,6 +1,6 @@
 #include "RobotCalibrationDialog.h"
 #include "./ui_RobotCalibrationDialog.h"
-// Headers de Qt
+
 #include <QDateTime>
 #include <QDebug>
 #include <QDir>
@@ -13,21 +13,34 @@
 #include <QMessageBox>
 #include <QVBoxLayout>
 
-// Headers de OpenCV y Standard
 #include <filesystem>
 #include <iostream>
-#include <opencv2/calib3d.hpp>          // cv::findChessboardCorners, cv::calibrateCamera
-#include <opencv2/core/mat.hpp>         // cv::Mat
-#include <opencv2/core/persistence.hpp> // cv::FileStorage
-#include <opencv2/core/types.hpp>       // cv::Size, cv::TermCriteria
-#include <opencv2/imgcodecs.hpp>        // cv::imread
-#include <opencv2/imgproc.hpp>          // cv::cvtColor, cv::cornerSubPix, getOptimalNewCameraMatrix
+#include <opencv2/calib3d.hpp>
+#include <opencv2/core/mat.hpp>
+#include <opencv2/core/persistence.hpp>
+#include <opencv2/core/types.hpp>
+#include <opencv2/imgcodecs.hpp>
+#include <opencv2/imgproc.hpp>
 
 namespace fs = std::filesystem;
 
-const QString DEFAULT_CALIB_DIR = "calibration/robot"; // Mantenemos el nombre de carpeta que usa la lógica de
-                                                       // guardado
+const QString DEFAULT_CALIB_DIR = "calibration/robot";
 
+// ################################################################################################
+//                             ROBOTCALIBRATIONWORKER
+// ################################################################################################
+
+/**
+ * @brief Generates the 3D world coordinates for the chessboard corners.
+ *
+ * Creates a vector of 3D points assuming the board is located at Z=0 in the
+ * calibration pattern's coordinate system. The points follow the sequence:
+ * (0,0,0), (s,0,0), (2s,0,0)... where 's' is the square size.
+ *
+ * @param[in] boardSize Number of internal corners (width x height).
+ * @param[in] squareSize Physical size of the square edge.
+ * @return std::vector<cv::Point3f> Vector of 3D coordinates.
+ */
 std::vector<cv::Point3f> RobotCalibrationWorker::createObjectPoints(cv::Size boardSize, float squareSize) const
 {
   std::vector<cv::Point3f> obj;
@@ -39,6 +52,19 @@ std::vector<cv::Point3f> RobotCalibrationWorker::createObjectPoints(cv::Size boa
   return obj;
 }
 
+/**
+ * @brief Detects and refines chessboard corners in the provided image.
+ *
+ * This function attempts to locate the internal corners of a chessboard pattern.
+ * If the coarse corners are found, the function converts the image to grayscale
+ * and refines the corner locations to sub-pixel accuracy for high-precision calibration.
+ *
+ * @param[in] image The source image to process (expected to be a BGR matrix).
+ * @param[in] boardSize The dimensions of the board (number of internal corners per row and column).
+ * @param[in] squareSize The physical size of a square side.
+ * @param[out] corners A vector where the calculated floating-point coordinates of the corners will be stored.
+ * @return true if the corners were successfully detected and refined; false otherwise.
+ */
 bool RobotCalibrationWorker::processImageForCorners(const cv::Mat& image, cv::Size boardSize, float squareSize, std::vector<cv::Point2f>& corners)
 {
   bool found = cv::findChessboardCorners(image, boardSize, corners, cv::CALIB_CB_ADAPTIVE_THRESH | cv::CALIB_CB_NORMALIZE_IMAGE);
@@ -54,7 +80,14 @@ bool RobotCalibrationWorker::processImageForCorners(const cv::Mat& image, cv::Si
 }
 
 /**
- * @brief Guarda la RT cámara-base.
+ * @brief Saves the camera-to-base transformation matrix to a file.
+ *
+ * This function creates the calibration directory if it does not exist,
+ * then saves the provided transformation matrix (RTcameraBase) to a
+ * specified file using OpenCV's FileStorage.
+ *
+ * @param[in] RTcameraBase The 4x4 transformation matrix from camera to base.
+ * @param[in] RTcb The output file name where the matrix will be saved.
  */
 void RobotCalibrationWorker::saveCalibration(const std::string& RTcameraBase, const cv::Mat& RTcb) const
 {
@@ -64,7 +97,6 @@ void RobotCalibrationWorker::saveCalibration(const std::string& RTcameraBase, co
 
   qDebug() << "Guardando RT cámara-base en:" << RTcameraBasePath.c_str();
 
-  // Guardar RT cámara-base
   cv::FileStorage fsCam(RTcameraBasePath, cv::FileStorage::WRITE);
   if (!fsCam.isOpened()) {
     qWarning() << "Error al abrir archivo para RTcameraBase:" << RTcameraBasePath.c_str();
@@ -74,9 +106,22 @@ void RobotCalibrationWorker::saveCalibration(const std::string& RTcameraBase, co
   fsCam.release();
 }
 
+/**
+ * @brief Computes the Base-to-Tool transformation matrix ($T_{base}^{tool}$) from a JSON log file.
+ *
+ * This function performs Forward Kinematics calculation. It reads the robot's motor angles
+ * from the JSON file, converts them to radians, and applies the Denavit-Hartenberg (DH)
+ * parameters specific to this robot geometry (a1, a2, a3, a5).
+ *
+ * The final transformation is computed as:
+ * $RT_{bt} = RT_{35} \cdot RT_{23} \cdot RT_{12} \cdot RT_{b1}$
+ *
+ * @param[in] jsonFilePath Path to the JSON file containing 'motorAngles'.
+ * @param[out] Rbt Output 3x3 rotation matrix (Base to Tool).
+ * @param[out] Tbt Output 3x1 translation vector (Base to Tool).
+ */
 void RobotCalibrationWorker::getRTbaseToolFromFile(const std::string& jsonFilePath, cv::Mat& Rbt, cv::Mat& Tbt)
 {
-  // Constantes de la geometría del robot
   double a1 = 130;
   double a2 = 125;
   double a3 = 125;
@@ -195,7 +240,22 @@ void RobotCalibrationWorker::getRTbaseToolFromFile(const std::string& jsonFilePa
 }
 
 /**
- * @brief Slot principal del worker: realiza la calibración.
+ * @brief Main execution slot for the calibration process.
+ *
+ * This function orchestrates the Hand-Eye calibration workflow:
+ * 1. Scans the directory for matching pairs of Image (.tiff) and Data (.json) files.
+ * 2. Loads existing camera intrinsics (Camera Matrix, Distortion) to ensure accurate PnP solving.
+ * 3. Iterates through valid file pairs:
+ * - Detects chessboard corners in the image.
+ * - Solves the PnP problem to find the Pattern-to-Camera transform ($T_{pc}$).
+ * - Calculates the Base-to-Tool transform ($T_{bt}$) from the JSON motor data.
+ * 4. Accumulates these transforms into rotation/translation vectors.
+ * 5. Uses `cv::calibrateHandEye` (TSAI method) to solve for the Camera-to-Base transform ($T_{cb}$).
+ * 6. Saves the result and emits the finish signal.
+ *
+ * @param[in] directoryPath Directory containing the dataset.
+ * @param[in] boardSize Chessboard dimensions.
+ * @param[in] squareSize Square physical size.
  */
 void RobotCalibrationWorker::doCalibration(const QString& directoryPath, cv::Size boardSize, float squareSize)
 {
@@ -218,8 +278,6 @@ void RobotCalibrationWorker::doCalibration(const QString& directoryPath, cv::Siz
   std::vector<cv::Point3f> objectPoints = createObjectPoints(boardSize, squareSize);
   RobotCalibrationResult   result;
 
-  // Read camera matrix and distortion coefficients from previous
-  // calibration
   if (!loadCalibration(result)) {
     emit calibrationError(tr("Error al cargar la calibración de la cámara. Asegúrese de que "
                              "los archivos existen y son válidos."));
@@ -228,7 +286,6 @@ void RobotCalibrationWorker::doCalibration(const QString& directoryPath, cv::Siz
 
   int processedCount = 0;
   for (int index = 0; index < fileList.size(); ++index) {
-    // Comprobar si el hilo debe detenerse
     if (QThread::currentThread()->isInterruptionRequested())
       return;
 
@@ -241,14 +298,12 @@ void RobotCalibrationWorker::doCalibration(const QString& directoryPath, cv::Siz
     if (processImageForCorners(image, boardSize, squareSize, imagePoints)) {
       processedCount++;
 
-      // Calculamos la RT panel-cámara
       cv::Mat R, T;
       cv::solvePnP(objectPoints, imagePoints, result.cameraMatrix, result.distCoeffs, R, T);
-      cv::Rodrigues(R, R); // Convertir a vector de rotación si es necesario
+      cv::Rodrigues(R, R);
       Rpc.push_back(R);
       Tpc.push_back(T);
 
-      // Calculamos la RT base-tool
       cv::Mat RR, TT;
       getRTbaseToolFromFile(jsonFileList[index].absoluteFilePath().toStdString(), RR, TT);
       Rbt.push_back(RR);
@@ -295,6 +350,16 @@ void RobotCalibrationWorker::doCalibration(const QString& directoryPath, cv::Siz
   emit calibrationFinished(result);
 }
 
+/**
+ * @brief Loads existing camera calibration data from files.
+ *
+ * This function attempts to read the camera matrix and distortion coefficients
+ * from predefined YAML files. If successful, it populates the provided
+ * RobotCalibrationResult structure with the loaded data.
+ *
+ * @param[out] result The structure to populate with the loaded calibration data.
+ * @return true if the calibration data was successfully loaded; false otherwise.
+ */
 bool RobotCalibrationWorker::loadCalibration(RobotCalibrationResult& result)
 {
   QString dirPath        = "calibration/camera";
@@ -310,11 +375,6 @@ bool RobotCalibrationWorker::loadCalibration(RobotCalibrationResult& result)
     fsCam["m_newCameraMatrix"] >> result.cameraMatrix;
     fsDist["m_distCoeffs"] >> result.distCoeffs;
 
-    // Imprimir en consola (como tenías antes)
-    std::cout << "Matriz de Cámara (Óptima):\\n" << result.cameraMatrix << std::endl;
-    std::cout << "Coeficientes de Distorsión:\\n" << result.distCoeffs << std::endl;
-
-    // Comprobar que se cargaron las TRES matrices
     if (!result.cameraMatrix.empty() && !result.distCoeffs.empty()) {
       qDebug() << "Calibración cargada exitosamente.";
     }
@@ -335,6 +395,10 @@ bool RobotCalibrationWorker::loadCalibration(RobotCalibrationResult& result)
   return true;
 }
 
+// ################################################################################################
+//                                     ROBOTCALIBRATIONDIALOG
+// ################################################################################################
+
 RobotCalibrationDialog::RobotCalibrationDialog(QWidget* parent, RobotConfig::RobotSettings* settings)
   : QDialog(parent), ui(new Ui::RobotCalibrationDialog), m_robotSettings(settings)
 {
@@ -354,16 +418,13 @@ RobotCalibrationDialog::RobotCalibrationDialog(QWidget* parent, RobotConfig::Rob
   connect(m_worker, &RobotCalibrationWorker::calibrationError, this, &RobotCalibrationDialog::on_calibrationError);
   connect(m_worker, &RobotCalibrationWorker::progressUpdate, this, &RobotCalibrationDialog::on_progressUpdate);
 
-  m_workerThread->start(); // Iniciar el hilo
+  m_workerThread->start();
 
-  // Conexión para recibir nuevos pixmaps capturados (Temporal mientras el
-  // diálogo está abierto)
   connect(&handler, &VideoCaptureHandler::newPixmapCaptured, this, [=](const QPixmap& pixmap) {
     m_currentPixmap = pixmap;
     updateVideoLabel();
   });
 
-  // Configurar el layout para la lista de archivos.
   QWidget* contentWidget = ui->scrollAreaWidgetContents;
   if (!contentWidget->layout()) {
     QVBoxLayout* layout = new QVBoxLayout(contentWidget);
@@ -372,9 +433,7 @@ RobotCalibrationDialog::RobotCalibrationDialog(QWidget* parent, RobotConfig::Rob
     layout->setSpacing(2);
   }
 
-  // Cargar calibración existente si está disponible
   loadExistingCalibration();
-  // Inicializar la ruta de la carpeta de calibración
   m_selectedDirectoryPath = QDir::current().filePath(DEFAULT_CALIB_DIR);
   updateFilesList();
 }
@@ -395,6 +454,12 @@ RobotCalibrationDialog::~RobotCalibrationDialog()
   delete ui;
 }
 
+/**
+ * @brief Updates the video label with the current pixmap.
+ *
+ * This function scales the current pixmap to fit the size of the video label
+ * while maintaining the aspect ratio and using smooth transformation for better quality.
+ */
 void RobotCalibrationDialog::updateVideoLabel()
 {
   if (m_currentPixmap.isNull()) {
@@ -403,6 +468,13 @@ void RobotCalibrationDialog::updateVideoLabel()
   ui->videoLabel->setPixmap(m_currentPixmap.scaled(ui->videoLabel->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
 }
 
+/**
+ * @brief Slot triggered when the "Select Directory" button is clicked.
+ *
+ * This function opens a directory selection dialog, allowing the user to choose
+ * a directory for calibration images. If a valid directory is selected, it updates
+ * the internal state and refreshes the list of files displayed in the UI.
+ */
 void RobotCalibrationDialog::on_pushButtonSelectDirectory_clicked()
 {
   QString newDirPath = QFileDialog::getExistingDirectory(this, tr("Seleccionar Carpeta para Calibración"), m_selectedDirectoryPath);
@@ -413,6 +485,13 @@ void RobotCalibrationDialog::on_pushButtonSelectDirectory_clicked()
   }
 }
 
+/**
+ * @brief Captures the current camera frame and saves it along with robot configuration.
+ *
+ * Saves the current image as a TIFF file and creates a corresponding JSON file
+ * containing the current angles of the robot motors. Both files share the same
+ * timestamp to ensure they are processed as a pair during calibration.
+ */
 void RobotCalibrationDialog::on_pushButtonCaptureImage_clicked()
 {
   if (m_selectedDirectoryPath.isEmpty()) {
@@ -437,8 +516,6 @@ void RobotCalibrationDialog::on_pushButtonCaptureImage_clicked()
     QMessageBox::critical(this, tr("Error de Guardado"), tr("No se pudo guardar la imagen en: %1").arg(filePath));
   }
 
-  // Guardar un archivo json con la configuración actual y el nombre de la
-  // imagen
   if (m_robotSettings) {
     QString jsonFileName = QString("capture_%1.json").arg(timestamp);
     QString jsonFilePath = QDir(m_selectedDirectoryPath).filePath(jsonFileName);
@@ -452,18 +529,27 @@ void RobotCalibrationDialog::on_pushButtonCaptureImage_clicked()
   }
 }
 
+/**
+ * @brief Serializes the robot's motor settings to a JSON file.
+ *
+ * Stores current angle, default angle (offset), and fixed angle for all 6 axes.
+ * This data is required later to reconstruct the robot's physical pose via Forward Kinematics.
+ *
+ * @param[in] settings The current robot settings structure.
+ * @param[in] filePath The destination path for the .json file.
+ * @return true if the file was written successfully.
+ */
 bool RobotCalibrationDialog::saveMotorAnglesToJson(const RobotConfig::RobotSettings& settings, const QString& filePath)
 {
   QJsonObject rootObject;
   QJsonArray  motorsArray;
 
-  // Asumiendo que el array motors tiene 6 elementos
   for (int i = 0; i < 6; ++i) {
     QJsonObject motorObject;
     motorObject["motorIndex"]   = i + 1;
-    motorObject["currentAngle"] = settings.motors[i].currentAngle; // Ángulo actual del motor
-    motorObject["defaultAngle"] = settings.motors[i].defaultAngle; // Angulo por defecto (offset)
-    motorObject["fixedAngle"]   = settings.motors[i].fixedAngle;   // ángulo con el offset aplicado
+    motorObject["currentAngle"] = settings.motors[i].currentAngle;
+    motorObject["defaultAngle"] = settings.motors[i].defaultAngle;
+    motorObject["fixedAngle"]   = settings.motors[i].fixedAngle;
 
     motorsArray.append(motorObject);
   }
@@ -484,6 +570,13 @@ bool RobotCalibrationDialog::saveMotorAnglesToJson(const RobotConfig::RobotSetti
   return false;
 }
 
+/**
+ * @brief Updates the visual file list with thumbnails.
+ *
+ * clear the current grid layout and regenerates it by creating thumbnails
+ * for all supported image files in the selected directory.
+ * Used to give the user visual feedback on how many samples have been collected.
+ */
 void RobotCalibrationDialog::updateFilesList()
 {
   QWidget* contentWidget = ui->scrollAreaWidgetContents;
@@ -564,7 +657,14 @@ void RobotCalibrationDialog::updateFilesList()
 }
 
 /**
- * @brief Carga las matrices de calibración.
+ * @brief Loads camera calibration data from a specified file.
+ *
+ * This function reads the camera matrix and distortion coefficients
+ * from a YAML file. It populates the member variables m_cameraMatrix
+ * and m_distCoeffs accordingly.
+ *
+ * @param[in] camMatrixPath The path to the camera matrix YAML file.
+ * @return true if the calibration data was successfully loaded; false otherwise.
  */
 bool RobotCalibrationDialog::loadCalibration(const std::string& camMatrixPath)
 {
@@ -574,10 +674,9 @@ bool RobotCalibrationDialog::loadCalibration(const std::string& camMatrixPath)
   }
 
   fs["m_cameraMatrix"] >> m_cameraMatrix;
-  fs["m_newCameraMatrix"] >> m_newCameraMatrix; // <-- AÑADIDO
+  fs["m_newCameraMatrix"] >> m_newCameraMatrix;
   fs.release();
 
-  // También cargamos los coeficientes si es posible
   QString         distCoeffsPath = QDir(DEFAULT_CALIB_DIR).filePath("dist_coeffs.yml");
   cv::FileStorage fsDist(distCoeffsPath.toStdString(), cv::FileStorage::READ);
   if (fsDist.isOpened()) {
@@ -589,42 +688,51 @@ bool RobotCalibrationDialog::loadCalibration(const std::string& camMatrixPath)
 }
 
 /**
- * @brief Función auxiliar para mostrar los resultados de la calibración.
+ * @brief Helper function to format and display calibration matrices in the text log.
+ *
+ * This function formats the camera matrix, distortion coefficients,
+ * and optimized camera matrix (if provided) into a readable string
+ * and appends it to the text edit widget for user visibility.
+ *
+ * @param[in] cameraMatrix The original intrinsic matrix.
+ * @param[in] distCoeffs The distortion coefficients.
+ * @param[in] newCameraMatrix The optimized/new intrinsic matrix.
+ * @param[in] rms The Root Mean Square error of the calibration (0.0 if not available).
  */
 void RobotCalibrationDialog::displayCalibrationResults(const cv::Mat& cameraMatrix, const cv::Mat& distCoeffs, const cv::Mat& newCameraMatrix,
                                                        double rms)
 {
-  // Mostrar Matriz de Cámara
   QString           camMatrixStr = "Matriz de Cámara (Original):\n";
   std::stringstream ssCam;
   ssCam << cameraMatrix;
   camMatrixStr += QString::fromStdString(ssCam.str());
-  // Mostrar Matriz Óptima
+
   if (!newCameraMatrix.empty()) {
-    ssCam.str(std::string()); // Limpiar el stringstream
+    ssCam.str(std::string());
     ssCam << newCameraMatrix;
     camMatrixStr += "\n\nMatriz de Cámara (Óptima):\n" + QString::fromStdString(ssCam.str());
   }
   ui->textEditInfo->append(camMatrixStr);
 
-  // Mostrar Coeficientes de Distorsión
   QString           distCoeffsStr = "Coeficientes de Distorsión:\n";
   std::stringstream ssDist;
   ssDist << distCoeffs;
   distCoeffsStr += QString::fromStdString(ssDist.str());
   ui->textEditInfo->append(distCoeffsStr);
 
-  // Mostrar RMS
   if (rms > 0.0)
     ui->textEditInfo->append(tr("Calibración Exitosa (RMS error: %1)").arg(rms));
 }
 
 /**
- * @brief Comprueba si existe un archivo de calibración y lo carga al inicio.
+ * @brief Loads existing calibration data if available and displays it.
+ *
+ * This function checks for the presence of a camera matrix file in the
+ * default calibration directory. If found, it loads the calibration data
+ * and displays it in the text edit widget.
  */
 void RobotCalibrationDialog::loadExistingCalibration()
 {
-  // Ruta del archivo de la matriz de cámara a buscar
   QString camMatrixFile = "camera_matrix.yml";
   QString camMatrixPath = QDir(DEFAULT_CALIB_DIR).filePath(camMatrixFile);
 
@@ -632,7 +740,6 @@ void RobotCalibrationDialog::loadExistingCalibration()
     ui->textEditInfo->setText(tr("¡Calibración existente detectada!"));
 
     if (loadCalibration(camMatrixPath.toStdString())) {
-      // Usamos la nueva función auxiliar para mostrar (con la nueva matriz)
       displayCalibrationResults(m_cameraMatrix, m_distCoeffs, m_newCameraMatrix, 0.0);
     }
     else {
@@ -645,7 +752,12 @@ void RobotCalibrationDialog::loadExistingCalibration()
 }
 
 /**
- * @brief Inicia el proceso de calibración en el Worker Thread.
+ * @brief Slot triggered when the "Start Calibration" button is clicked.
+ *
+ * This function performs initial validations on the selected directory
+ * and the number of images available. If valid, it clears the log,
+ * disables the start button to prevent multiple clicks, and invokes
+ * the calibration process in a separate thread.
  */
 void RobotCalibrationDialog::on_startButton_clicked()
 {
@@ -670,17 +782,19 @@ void RobotCalibrationDialog::on_startButton_clicked()
     return;
   }
 
-  // 2. Bloquear la UI y limpiar
   ui->textEditInfo->clear();
-  ui->startButton->setEnabled(false); // Deshabilitar el botón para evitar doble click
-
-  // 3. Iniciar el trabajo en el hilo (NO BLOQUEANTE)
+  ui->startButton->setEnabled(false);
+  ui->textEditInfo->append(tr("Iniciando proceso de calibración..."));
   QMetaObject::invokeMethod(m_worker, "doCalibration", Qt::QueuedConnection, Q_ARG(QString, m_selectedDirectoryPath),
                             Q_ARG(cv::Size, m_calibrationBoardSize), Q_ARG(float, m_squareSize));
 }
 
 /**
- * @brief Slot para recibir mensajes de progreso del worker.
+ * @brief Slot to receive progress updates from the worker.
+ *
+ * Appends the received message to the text edit widget for user visibility.
+ *
+ * @param[in] message The progress message to display.
  */
 void RobotCalibrationDialog::on_progressUpdate(const QString& message)
 {
@@ -688,29 +802,35 @@ void RobotCalibrationDialog::on_progressUpdate(const QString& message)
 }
 
 /**
- * @brief Slot para recibir errores del worker.
+ * @brief Slot to receive error messages from the worker.
+ *
+ * Appends the received error message to the text edit widget and
+ * re-enables the start button for retrying.
+ *
+ * @param[in] message The error message to display.
  */
 void RobotCalibrationDialog::on_calibrationError(const QString& message)
 {
   ui->textEditInfo->append(tr("\n--- ERROR DE CALIBRACIÓN ---"));
   ui->textEditInfo->append(message);
-  ui->startButton->setEnabled(true); // Re-habilitar el botón
+  ui->startButton->setEnabled(true);
 }
 
 /**
- * @brief Slot para recibir los resultados finales del worker.
+ * @brief Slot triggered when the calibration process is finished.
+ *
+ * This function saves the calibration results locally, displays
+ * the results in the text edit widget, and re-enables the start button.
+ *
+ * @param[in] result The result structure containing calibration data.
  */
 void RobotCalibrationDialog::on_calibrationFinished(const RobotCalibrationResult& result)
 {
-  // 1. Guardar localmente (para la carga la próxima vez)
   m_cameraMatrix    = result.cameraMatrix;
   m_distCoeffs      = result.distCoeffs;
   m_newCameraMatrix = result.newCameraMatrix;
 
-  // 2. Mostrar los resultados
   displayCalibrationResults(result.cameraMatrix, result.distCoeffs, result.newCameraMatrix, result.rms);
   ui->textEditInfo->append(tr("\nProceso de calibración finalizado."));
-
-  // 3. Re-habilitar el botón
   ui->startButton->setEnabled(true);
 }

@@ -1,7 +1,6 @@
 #include "VideoCalibrationDialog.h"
 #include "./ui_VideoCalibrationDialog.h"
 
-// Headers de Qt
 #include <QDateTime>
 #include <QDebug>
 #include <QDir>
@@ -12,21 +11,34 @@
 #include <QMessageBox>
 #include <QVBoxLayout>
 
-// Headers de OpenCV y Standard
 #include <filesystem>
 #include <iostream>
-#include <opencv2/calib3d.hpp>          // cv::findChessboardCorners, cv::calibrateCamera
-#include <opencv2/core/mat.hpp>         // cv::Mat
-#include <opencv2/core/persistence.hpp> // cv::FileStorage
-#include <opencv2/core/types.hpp>       // cv::Size, cv::TermCriteria
-#include <opencv2/imgcodecs.hpp>        // cv::imread
-#include <opencv2/imgproc.hpp>          // cv::cvtColor, cv::cornerSubPix, getOptimalNewCameraMatrix
+#include <opencv2/calib3d.hpp>
+#include <opencv2/core/mat.hpp>
+#include <opencv2/core/persistence.hpp>
+#include <opencv2/core/types.hpp>
+#include <opencv2/imgcodecs.hpp>
+#include <opencv2/imgproc.hpp>
 
 namespace fs = std::filesystem;
 
-const QString DEFAULT_CALIB_DIR = "calibration/camera"; // Mantenemos el nombre de carpeta que usa la lógica de
-                                                        // guardado
+const QString DEFAULT_CALIB_DIR = "calibration/camera";
 
+// ################################################################################################
+//                             VIDEOCALIBRATIONWORKER
+// ################################################################################################
+
+/**
+ * @brief Generates the 3D world coordinates for the chessboard corners.
+ *
+ * Creates a vector of 3D points assuming the board is located at Z=0 in the
+ * calibration pattern's coordinate system. The points follow the sequence:
+ * (0,0,0), (s,0,0), (2s,0,0)... where 's' is the square size.
+ *
+ * @param[in] boardSize Number of internal corners (width x height).
+ * @param[in] squareSize Physical size of the square edge.
+ * @return std::vector<cv::Point3f> Vector of 3D coordinates.
+ */
 std::vector<cv::Point3f> VideoCalibrationWorker::createObjectPoints(cv::Size boardSize, float squareSize) const
 {
   std::vector<cv::Point3f> obj;
@@ -38,6 +50,18 @@ std::vector<cv::Point3f> VideoCalibrationWorker::createObjectPoints(cv::Size boa
   return obj;
 }
 
+/**
+ * @brief Detects chessboard corners in the provided image.
+ *
+ * Converts the image to grayscale, detects chessboard corners, and refines
+ * their positions to sub-pixel accuracy.
+ *
+ * @param[in] image Input image in which to detect corners.
+ * @param[in] boardSize Number of internal corners (width x height).
+ * @param[in] squareSize Physical size of the square edge.
+ * @param[out] corners Detected corner points.
+ * @return true if corners were found, false otherwise.
+ */
 bool VideoCalibrationWorker::processImageForCorners(const cv::Mat& image, cv::Size boardSize, float squareSize, std::vector<cv::Point2f>& corners)
 {
 
@@ -54,6 +78,18 @@ bool VideoCalibrationWorker::processImageForCorners(const cv::Mat& image, cv::Si
   return false;
 }
 
+/**
+ * @brief Performs camera calibration using detected image and object points.
+ *
+ * Wraps around OpenCV's `cv::calibrateCamera` function to compute the camera
+ * matrix and distortion coefficients.
+ *
+ * @param[in] boardSize Size of the images used for calibration.
+ * @param[in] imagePoints 2D points detected in the images.
+ * @param[in] objectPoints Corresponding 3D points in the world coordinate system.
+ * @param[out] result Struct to store calibration results.
+ * @return true if calibration was successful, false otherwise.
+ */
 bool VideoCalibrationWorker::runCalibration(cv::Size boardSize, std::vector<std::vector<cv::Point2f>>& imagePoints,
                                             std::vector<std::vector<cv::Point3f>>& objectPoints, VideoCalibrationResult& result)
 {
@@ -63,24 +99,27 @@ bool VideoCalibrationWorker::runCalibration(cv::Size boardSize, std::vector<std:
 
   std::vector<cv::Mat> rvecs, tvecs;
 
-  // 1. Definir Criterios de Terminación más estrictos
   cv::TermCriteria criteria(cv::TermCriteria::EPS + cv::TermCriteria::MAX_ITER, 100, 1e-6);
 
-  // 2. Definir Banderas (Flags) de Calibración
-  // int flags = cv::CALIB_FIX_ASPECT_RATIO | cv::CALIB_RATIONAL_MODEL | cv::CALIB_ZERO_TANGENT_DIST | cv::CALIB_USE_LU;
   int flags = cv::CALIB_USE_LU;
 
-  // 3. Llamada a la función de calibración principal con Criterios y Banderas
   result.rms = cv::calibrateCamera(objectPoints, imagePoints, boardSize, result.cameraMatrix, result.distCoeffs, rvecs, tvecs, flags, criteria);
-
-  // 4. Calcular la Matriz de Cámara Óptima
   result.newCameraMatrix = cv::getOptimalNewCameraMatrix(result.cameraMatrix, result.distCoeffs, boardSize, 1, boardSize, &result.roi);
 
   return true;
 }
 
 /**
- * @brief Guarda la matriz de cámara y los coeficientes de distorsión.
+ * @brief Saves the calibration results to YAML files.
+ *
+ * Stores the camera matrix, distortion coefficients, and new camera matrix
+ * in separate YAML files within the default calibration directory.
+ *
+ * @param[in] cameraMatrixFile Filename for the camera matrix.
+ * @param[in] distCoeffsFile Filename for the distortion coefficients.
+ * @param[in] cameraMatrix Computed camera matrix.
+ * @param[in] distCoeffs Computed distortion coefficients.
+ * @param[in] newCameraMatrix Computed optimized camera matrix.
  */
 void VideoCalibrationWorker::saveCalibration(const std::string& cameraMatrixFile, const std::string& distCoeffsFile, const cv::Mat& cameraMatrix,
                                              const cv::Mat& distCoeffs, const cv::Mat& newCameraMatrix) const
@@ -97,10 +136,9 @@ void VideoCalibrationWorker::saveCalibration(const std::string& cameraMatrixFile
     return;
   }
   fsCam << "m_cameraMatrix" << cameraMatrix;
-  fsCam << "m_newCameraMatrix" << newCameraMatrix; // <-- AÑADIDO
+  fsCam << "m_newCameraMatrix" << newCameraMatrix;
   fsCam.release();
 
-  // Guardar coeficientes de distorsión
   cv::FileStorage fsDist(distCoeffsPath, cv::FileStorage::WRITE);
   if (!fsDist.isOpened()) {
     qWarning() << "Error al abrir archivo para m_distCoeffs:" << distCoeffsPath.c_str();
@@ -111,7 +149,15 @@ void VideoCalibrationWorker::saveCalibration(const std::string& cameraMatrixFile
 }
 
 /**
- * @brief Slot principal del worker: realiza la calibración.
+ * @brief Main calibration routine executed in a separate thread.
+ *
+ * Scans the specified directory for .tiff images, detects chessboard corners,
+ * and performs camera calibration. Emits signals to report progress, errors,
+ * and completion.
+ *
+ * @param[in] directoryPath Path containing the .tiff images.
+ * @param[in] boardSize Logical dimensions of the board (inner corners).
+ * @param[in] squareSize Physical size of squares (used to define the object coordinate scale).
  */
 void VideoCalibrationWorker::doCalibration(const QString& directoryPath, cv::Size boardSize, float squareSize)
 {
@@ -180,6 +226,10 @@ void VideoCalibrationWorker::doCalibration(const QString& directoryPath, cv::Siz
     emit calibrationError(tr("Falló la calibración. Se necesitan al menos 5 conjuntos de puntos válidos."));
 }
 
+// ################################################################################################
+//                             VIDEOCALIBRATIONDIALOG
+// ################################################################################################
+
 VideoCalibrationDialog::VideoCalibrationDialog(QWidget* parent, RobotHandler* robotHandlerInstance)
   : QDialog(parent), ui(new Ui::VideoCalibrationDialog), m_robotHandlerInstance(robotHandlerInstance)
 {
@@ -199,10 +249,8 @@ VideoCalibrationDialog::VideoCalibrationDialog(QWidget* parent, RobotHandler* ro
   connect(m_worker, &VideoCalibrationWorker::calibrationError, this, &VideoCalibrationDialog::on_calibrationError);
   connect(m_worker, &VideoCalibrationWorker::progressUpdate, this, &VideoCalibrationDialog::on_progressUpdate);
 
-  m_workerThread->start(); // Iniciar el hilo
+  m_workerThread->start();
 
-  // Conexión para recibir nuevos pixmaps capturados (Temporal mientras el
-  // diálogo está abierto)
   connect(&handler, &VideoCaptureHandler::newPixmapCaptured, this, [=](const QPixmap& pixmap) {
     m_currentPixmap = pixmap;
     updateVideoLabel();
@@ -240,6 +288,12 @@ VideoCalibrationDialog::~VideoCalibrationDialog()
   delete ui;
 }
 
+/**
+ * @brief Updates the video label with the latest captured pixmap.
+ *
+ * Scales the current pixmap to fit the label while maintaining aspect ratio.
+ * Uses smooth transformation for better quality.
+ */
 void VideoCalibrationDialog::updateVideoLabel()
 {
   if (m_currentPixmap.isNull()) {
@@ -248,6 +302,12 @@ void VideoCalibrationDialog::updateVideoLabel()
   ui->videoLabel->setPixmap(m_currentPixmap.scaled(ui->videoLabel->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
 }
 
+/**
+ * @brief Slot triggered when the "Select Directory" button is clicked.
+ *
+ * Opens a directory selection dialog and updates the selected directory path.
+ * Refreshes the file list to show images from the new directory.
+ */
 void VideoCalibrationDialog::on_pushButtonSelectDirectory_clicked()
 {
   QString newDirPath = QFileDialog::getExistingDirectory(this, tr("Seleccionar Carpeta para Calibración"), m_selectedDirectoryPath);
@@ -258,6 +318,12 @@ void VideoCalibrationDialog::on_pushButtonSelectDirectory_clicked()
   }
 }
 
+/**
+ * @brief Slot triggered when the "Capture Image" button is clicked.
+ *
+ * Saves the current pixmap from the video feed to the selected directory
+ * with a timestamped filename. Updates the file list upon successful save.
+ */
 void VideoCalibrationDialog::on_pushButtonCaptureImage_clicked()
 {
   if (m_selectedDirectoryPath.isEmpty()) {
@@ -283,6 +349,12 @@ void VideoCalibrationDialog::on_pushButtonCaptureImage_clicked()
   }
 }
 
+/**
+ * @brief Updates the list of image files displayed in the scroll area.
+ *
+ * Scans the selected directory for image files and creates thumbnails
+ * for each image. Arranges thumbnails in a grid layout within the scroll area.
+ */
 void VideoCalibrationDialog::updateFilesList()
 {
   QWidget* contentWidget = ui->scrollAreaWidgetContents;
@@ -363,7 +435,13 @@ void VideoCalibrationDialog::updateFilesList()
 }
 
 /**
- * @brief Carga las matrices de calibración.
+ * @brief Loads camera calibration data from a YAML file.
+ *
+ * Reads the camera matrix and distortion coefficients from the specified
+ * YAML file and stores them in member variables.
+ *
+ * @param[in] camMatrixPath Path to the YAML file containing calibration data.
+ * @return true if loading was successful, false otherwise.
  */
 bool VideoCalibrationDialog::loadCalibration(const std::string& camMatrixPath)
 {
@@ -373,10 +451,9 @@ bool VideoCalibrationDialog::loadCalibration(const std::string& camMatrixPath)
   }
 
   fs["m_cameraMatrix"] >> m_cameraMatrix;
-  fs["m_newCameraMatrix"] >> m_newCameraMatrix; // <-- AÑADIDO
+  fs["m_newCameraMatrix"] >> m_newCameraMatrix;
   fs.release();
 
-  // También cargamos los coeficientes si es posible
   QString         distCoeffsPath = QDir(DEFAULT_CALIB_DIR).filePath("dist_coeffs.yml");
   cv::FileStorage fsDist(distCoeffsPath.toStdString(), cv::FileStorage::READ);
   if (fsDist.isOpened()) {
@@ -388,42 +465,49 @@ bool VideoCalibrationDialog::loadCalibration(const std::string& camMatrixPath)
 }
 
 /**
- * @brief Función auxiliar para mostrar los resultados de la calibración.
+ * @brief Displays the calibration results in the text edit.
+ *
+ * Formats and appends the camera matrix, distortion coefficients,
+ * and RMS error to the text edit widget.
+ *
+ * @param[in] cameraMatrix Original camera matrix.
+ * @param[in] distCoeffs Distortion coefficients.
+ * @param[in] newCameraMatrix Optimized camera matrix.
+ * @param[in] rms Root Mean Square error of the calibration.
  */
 void VideoCalibrationDialog::displayCalibrationResults(const cv::Mat& cameraMatrix, const cv::Mat& distCoeffs, const cv::Mat& newCameraMatrix,
                                                        double rms)
 {
-  // Mostrar Matriz de Cámara
   QString           camMatrixStr = "Matriz de Cámara (Original):\n";
   std::stringstream ssCam;
   ssCam << cameraMatrix;
   camMatrixStr += QString::fromStdString(ssCam.str());
-  // Mostrar Matriz Óptima
+
   if (!newCameraMatrix.empty()) {
-    ssCam.str(std::string()); // Limpiar el stringstream
+    ssCam.str(std::string());
     ssCam << newCameraMatrix;
     camMatrixStr += "\n\nMatriz de Cámara (Óptima):\n" + QString::fromStdString(ssCam.str());
   }
   ui->textEditInfo->append(camMatrixStr);
 
-  // Mostrar Coeficientes de Distorsión
   QString           distCoeffsStr = "Coeficientes de Distorsión:\n";
   std::stringstream ssDist;
   ssDist << distCoeffs;
   distCoeffsStr += QString::fromStdString(ssDist.str());
   ui->textEditInfo->append(distCoeffsStr);
 
-  // Mostrar RMS
   if (rms > 0.0)
     ui->textEditInfo->append(tr("Calibración Exitosa (RMS error: %1)").arg(rms));
 }
 
 /**
- * @brief Comprueba si existe un archivo de calibración y lo carga al inicio.
+ * @brief Loads existing calibration data if available.
+ *
+ * Checks for the presence of calibration files in the default directory
+ * and loads them if found. Displays the loaded calibration results.
  */
 void VideoCalibrationDialog::loadExistingCalibration()
 {
-  // Ruta del archivo de la matriz de cámara a buscar
   QString camMatrixFile = "camera_matrix.yml";
   QString camMatrixPath = QDir(DEFAULT_CALIB_DIR).filePath(camMatrixFile);
 
@@ -431,7 +515,6 @@ void VideoCalibrationDialog::loadExistingCalibration()
     ui->textEditInfo->setText(tr("¡Calibración existente detectada!"));
 
     if (loadCalibration(camMatrixPath.toStdString())) {
-      // Usamos la nueva función auxiliar para mostrar (con la nueva matriz)
       displayCalibrationResults(m_cameraMatrix, m_distCoeffs, m_newCameraMatrix, 0.0);
     }
     else {
@@ -444,11 +527,13 @@ void VideoCalibrationDialog::loadExistingCalibration()
 }
 
 /**
- * @brief Inicia el proceso de calibración en el Worker Thread.
+ * @brief Slot triggered when the "Start Calibration" button is clicked.
+ *
+ * Validates the selected directory and initiates the calibration process
+ * by invoking the worker's `doCalibration` method in a separate thread.
  */
 void VideoCalibrationDialog::on_startButton_clicked()
 {
-  // 1. Validaciones
   if (m_selectedDirectoryPath.isEmpty()) {
     QMessageBox::warning(this, tr("Advertencia"),
                          tr("Por favor, selecciona una carpeta con imágenes de "
@@ -469,17 +554,19 @@ void VideoCalibrationDialog::on_startButton_clicked()
     return;
   }
 
-  // 2. Bloquear la UI y limpiar
   ui->textEditInfo->clear();
-  ui->startButton->setEnabled(false); // Deshabilitar el botón para evitar doble click
+  ui->startButton->setEnabled(false);
 
-  // 3. Iniciar el trabajo en el hilo (NO BLOQUEANTE)
   QMetaObject::invokeMethod(m_worker, "doCalibration", Qt::QueuedConnection, Q_ARG(QString, m_selectedDirectoryPath),
                             Q_ARG(cv::Size, m_calibrationBoardSize), Q_ARG(float, m_squareSize));
 }
 
 /**
- * @brief Slot para recibir mensajes de progreso del worker.
+ * @brief  Slot to handle progress updates from the calibration worker.
+ *
+ * Appends progress messages to the text edit widget.
+ *
+ * @param[in] message Progress message to display.
  */
 void VideoCalibrationDialog::on_progressUpdate(const QString& message)
 {
@@ -487,7 +574,12 @@ void VideoCalibrationDialog::on_progressUpdate(const QString& message)
 }
 
 /**
- * @brief Slot para recibir errores del worker.
+ * @brief Slot to handle calibration errors from the worker.
+ *
+ * Appends error messages to the text edit widget and re-enables
+ * the start button.
+ *
+ * @param[in] message Error message to display.
  */
 void VideoCalibrationDialog::on_calibrationError(const QString& message)
 {
@@ -497,7 +589,12 @@ void VideoCalibrationDialog::on_calibrationError(const QString& message)
 }
 
 /**
- * @brief Slot para recibir los resultados finales del worker.
+ * @brief Slot to handle the completion of the calibration process.
+ *
+ * Saves the calibration results locally, displays them in the text edit,
+ * and re-enables the start button.
+ *
+ * @param[in] result Struct containing the calibration results.
  */
 void VideoCalibrationDialog::on_calibrationFinished(const VideoCalibrationResult& result)
 {
@@ -514,71 +611,86 @@ void VideoCalibrationDialog::on_calibrationFinished(const VideoCalibrationResult
   ui->startButton->setEnabled(true);
 }
 
-// =========================================================
-// 1. ESTRUCTURAS Y FUNCIONES AUXILIARES
-// =========================================================
-
 struct Ray
 {
   cv::Point3f origin;
   cv::Point3f direction;
 };
-
 struct Plane
 {
   cv::Point3f normal;
   cv::Point3f point;
 };
 
-// Transforma un punto de coordenadas del Objeto (Tablero) a coordenadas de la Cámara
+/**
+ * @brief Transforms a 3D point using rotation and translation.
+ *
+ * Applies the transformation defined by the rotation matrix and translation vector
+ * to the given 3D point.
+ *
+ * @param[in] point The 3D point to transform.
+ * @param[in] R_mat Rotation matrix (3x3).
+ * @param[in] T_vec Translation vector (3x1).
+ * @return Transformed 3D point.
+ */
 cv::Point3f transformPoint(const cv::Point3f& point, const cv::Mat& R_mat, const cv::Mat& T_vec)
 {
-  // Convertir punto a Matriz 3x1
-  cv::Mat pointMat = (cv::Mat_<double>(3, 1) << point.x, point.y, point.z);
-
-  // Fórmula: P_cam = R * P_obj + T
+  cv::Mat pointMat  = (cv::Mat_<double>(3, 1) << point.x, point.y, point.z);
   cv::Mat resultMat = R_mat * pointMat + T_vec;
 
   return cv::Point3f(resultMat.at<double>(0), resultMat.at<double>(1), resultMat.at<double>(2));
 }
 
-// Genera un rayo desde un píxel de la imagen proyectado al espacio 3D
+/**
+ * @brief Back-projects a 2D pixel into a 3D ray.
+ * * Uses the Camera Intrinsic Matrix (K)  to convert pixel coordinates $(u, v)$
+ * into a normalized direction vector $(x, y, 1)$ in camera space.
+ * * @param pixel The 2D point on the image plane.
+ * @param K The 3x3 Intrinsic Matrix.
+ * @return Ray Origin (0,0,0) and normalized Direction.
+ */
 Ray generateRayFromPixel(const cv::Point2f& pixel, const cv::Mat& K)
 {
   Ray ray;
-  ray.origin = cv::Point3f(0, 0, 0); // El origen es el centro óptico de la cámara
+  ray.origin = cv::Point3f(0, 0, 0);
 
   double fx = K.at<double>(0, 0);
   double fy = K.at<double>(1, 1);
   double cx = K.at<double>(0, 2);
   double cy = K.at<double>(1, 2);
 
-  // Desproyectar el píxel a coordenadas normalizadas
   float x = (pixel.x - cx) / fx;
   float y = (pixel.y - cy) / fy;
   float z = 1.0f;
 
-  // Normalizar el vector de dirección
   float norm    = std::sqrt(x * x + y * y + z * z);
   ray.direction = cv::Point3f(x / norm, y / norm, z / norm);
 
   return ray;
 }
 
-// Define un plano matemático a partir de 3 puntos en el espacio
+/**
+ * @brief   Defines a plane from three 3D points.
+ *
+ * Calculates the normal vector of the plane using the cross product
+ * of two vectors formed by the three points.
+ * It uses the points provided by the chessboard corners in 3D space.
+ *
+ * @param p1 First point
+ * @param p2 Second point
+ * @param p3 Third point
+ * @return Plane defined by the three points. (point and normal)
+ */
 Plane definePlaneFromPoints(const cv::Point3f& p1, const cv::Point3f& p2, const cv::Point3f& p3)
 {
   Plane plane;
   plane.point = p1;
 
-  // Vectores sobre el plano
   cv::Point3f v1 = p2 - p1;
   cv::Point3f v2 = p3 - p1;
 
-  // Producto cruz para hallar la normal
   plane.normal = v1.cross(v2);
 
-  // Normalizar la normal
   float norm = std::sqrt(plane.normal.x * plane.normal.x + plane.normal.y * plane.normal.y + plane.normal.z * plane.normal.z);
   if (norm > 0)
     plane.normal /= norm;
@@ -586,39 +698,50 @@ Plane definePlaneFromPoints(const cv::Point3f& p1, const cv::Point3f& p2, const 
   return plane;
 }
 
-// Calcula la intersección entre un Rayo y un Plano
+/**
+ * @brief   Computes the intersection of a ray with a plane.
+ *
+ * Uses the parametric equation of the ray and the plane equation to find
+ * the intersection point.
+ *
+ * @param ray The ray defined by an origin and direction.
+ * @param plane The plane defined by a point and normal vector.
+ * @return The intersection point in 3D space.
+ */
 cv::Point3f intersectRayWithPlane(const Ray& ray, const Plane& plane)
 {
   cv::Point3f diff  = plane.point - ray.origin;
   float       prod1 = diff.dot(plane.normal);
   float       prod2 = ray.direction.dot(plane.normal);
 
-  // Evitar división por cero (rayo paralelo al plano)
   if (std::abs(prod2) < 1e-6) {
     qDebug() << "Advertencia: El rayo es paralelo al plano.";
     return cv::Point3f(0, 0, 0);
   }
 
   float t = prod1 / prod2;
-  // P = O + t*D
   return ray.origin + ray.direction * t;
 }
 
-// =========================================================
-// 2. TU FUNCIÓN PRINCIPAL
-// =========================================================
-
-// Nueva función para gestionar la carga "pesada" y persistencia
+/**
+ * @brief Ensures all necessary geometric matrices are loaded into memory.
+ *
+ * Implements a **Optimization Strategy**:
+ * 1. **RAM Check:** If `m_isPlaneCalibrated` is true, returns immediately.
+ * 2. **Cache Check:** Looks in `QSettings` ("Calibration/PlaneRvec...") for previously calculated plane pose.
+ * 3. **Calculation (Fallback):** If no cache exists, it loads `camera_plane_image.tiff`,
+ * detects corners, runs `solvePnP` to find the plane, and saves the result to `QSettings`.
+ *
+ * This avoids the heavy image processing step on every user click.
+ */
 bool VideoCalibrationDialog::ensurePlaneCalibrationLoaded()
 {
   if (m_isPlaneCalibrated)
-    return true; // Ya está en RAM
+    return true;
 
   QSettings settings("TuEmpresa", "RobotApp");
   QString   dirPath = "calibration/camera";
 
-  // --- A. CARGAR INTRÍNSECOS (Siempre necesario leer archivos YML) ---
-  // Esto es rápido, no hace falta cachear en QSettings, pero sí en variables miembro
   if (m_intrinsicK.empty()) {
     QString camMatrixPath  = QDir(dirPath).filePath("camera_matrix.yml");
     QString distCoeffsPath = QDir(dirPath).filePath("dist_coeffs.yml");
@@ -640,10 +763,7 @@ bool VideoCalibrationDialog::ensurePlaneCalibrationLoaded()
       return false;
   }
 
-  // --- B. CARGAR EXTRÍNSECOS (PLANO) DESDE QSETTINGS ---
-  // Verificamos si ya calculamos la pose del plano anteriormente
   if (settings.contains("Calibration/PlaneRvec_0") && settings.contains("Calibration/PlaneTvec_0")) {
-    // Cargar desde QSettings (rápido)
     cv::Mat rvec = cv::Mat::zeros(3, 1, CV_64F);
     m_planeT     = cv::Mat::zeros(3, 1, CV_64F);
 
@@ -655,7 +775,6 @@ bool VideoCalibrationDialog::ensurePlaneCalibrationLoaded()
     qDebug() << "Calibración del plano cargada desde QSettings.";
   }
   else {
-    // --- C. CALCULAR EXTRÍNSECOS (Lento: Procesar Imagen TIFF) ---
     qDebug() << "Calculando calibración del plano desde imagen (Proceso pesado)...";
 
     QString camPlaneImagePath = QDir(dirPath).filePath("camera_plane_image.tiff");
@@ -667,18 +786,15 @@ bool VideoCalibrationDialog::ensurePlaneCalibrationLoaded()
     float                    squareSize = 10.0f;
     std::vector<cv::Point2f> imagePoints;
 
-    // Detectar esquinas
     bool found = cv::findChessboardCorners(planeImage, boardSize, imagePoints, cv::CALIB_CB_ADAPTIVE_THRESH | cv::CALIB_CB_NORMALIZE_IMAGE);
     if (!found)
       return false;
 
-    // Subpix
     cv::Mat gray;
     cv::cvtColor(planeImage, gray, cv::COLOR_BGR2GRAY);
     cv::cornerSubPix(gray, imagePoints, cv::Size(11, 11), cv::Size(-1, -1),
                      cv::TermCriteria(cv::TermCriteria::EPS + cv::TermCriteria::MAX_ITER, 30, 0.001));
 
-    // Puntos Objeto
     std::vector<cv::Point3f> objectPoints;
     for (int i = 0; i < boardSize.height; ++i) {
       for (int j = 0; j < boardSize.width; ++j) {
@@ -686,12 +802,10 @@ bool VideoCalibrationDialog::ensurePlaneCalibrationLoaded()
       }
     }
 
-    // SolvePnP
     cv::Mat rvec;
     cv::solvePnP(objectPoints, imagePoints, m_intrinsicK, m_distCoeffsD, rvec, m_planeT);
     cv::Rodrigues(rvec, m_planeR);
 
-    // --- GUARDAR EN QSETTINGS ---
     for (int i = 0; i < 3; i++) {
       settings.setValue(QString("Calibration/PlaneRvec_%1").arg(i), rvec.at<double>(i));
       settings.setValue(QString("Calibration/PlaneTvec_%1").arg(i), m_planeT.at<double>(i));
@@ -699,7 +813,6 @@ bool VideoCalibrationDialog::ensurePlaneCalibrationLoaded()
     qDebug() << "Nueva calibración de plano guardada en QSettings.";
   }
 
-  // --- D. CARGAR MATRIZ ROBOT-CAMARA ---
   if (m_RTcb.empty()) {
     QString         RTcameraBasePath = "calibration/robot/RT_camera_base.yml";
     cv::FileStorage fsRT(RTcameraBasePath.toStdString(), cv::FileStorage::READ);
@@ -717,70 +830,81 @@ bool VideoCalibrationDialog::ensurePlaneCalibrationLoaded()
   return true;
 }
 
-// La función ligera que llama el Main (Refactorizada)
+/**
+ * @brief Core logic for 3D Object Localization.
+ *
+ * This function bridges the 2D Vision domain and the 3D Robot domain .
+ *
+ * **Workflow:**
+ * 1. **Load Geometry:** Ensures Intrinsic matrix (K), Plane Pose (R, T), and Hand-Eye matrix ($RT_{cb}$) are ready.
+ * 2. **Define Plane:** Reconstructs the mathematical plane of the work surface relative to the camera.
+ * 3. **Ray Casting:** Casts rays from the `centroid` and `pointRecta` pixels.
+ * 4. **Intersection:** Finds where these rays hit the work table (Z=0 in object space).
+ * 5. **Transformation:** Converts the intersection points from Camera Frame to Robot Base Frame.
+ * 6. **Orientation:** Calculates the angle of the object vector relative to the X-axis.
+ * 7. **Execution:** Emits the position signal and triggers Inverse Kinematics on the RobotHandler.
+ *
+ * @param centroid Pixel coordinates of the object center.
+ * @param pointRecta Pixel coordinates indicating the object's orientation.
+ */
 void VideoCalibrationDialog::calculateObjectPosition(QPoint centroid, QPoint pointRecta)
 {
-  // 1. Asegurar que tenemos los datos matemáticos cargados
   if (!ensurePlaneCalibrationLoaded()) {
     qDebug() << "Error: No se pudo cargar la calibración del plano.";
     return;
   }
 
-  // A partir de aquí, todo es cálculo matemático puro (muy rápido)
-
-  // --- LÓGICA DE INTERSECCIÓN 3D (Reutilizando m_planeR, m_planeT, m_intrinsicK) ---
   float squareSize = 10.0f;
 
-  // Puntos del plano Z=0 en espacio objeto
   cv::Point3f p1_obj(0, 0, 0);
   cv::Point3f p2_obj(squareSize * 5, 0, 0);
   cv::Point3f p3_obj(0, squareSize * 5, 0);
 
-  // Transformar a cámara usando caché
   cv::Point3f p1_cam = transformPoint(p1_obj, m_planeR, m_planeT);
   cv::Point3f p2_cam = transformPoint(p2_obj, m_planeR, m_planeT);
   cv::Point3f p3_cam = transformPoint(p3_obj, m_planeR, m_planeT);
 
-  // Definir plano
   Plane plane = definePlaneFromPoints(p1_cam, p2_cam, p3_cam);
 
-  // Ray casting con los puntos pasados por argumento
   cv::Point2f centroidCv(centroid.x(), centroid.y());
   cv::Point2f pointRectaCv(pointRecta.x(), pointRecta.y());
 
   Ray rayCentroid = generateRayFromPixel(centroidCv, m_intrinsicK);
   Ray rayPoint    = generateRayFromPixel(pointRectaCv, m_intrinsicK);
 
-  // Intersección
   cv::Point3f result3D_centroid = intersectRayWithPlane(rayCentroid, plane);
   cv::Point3f result3D_point    = intersectRayWithPlane(rayPoint, plane);
 
-  // Cinemática Inversa y Ángulo
   cv::Point3d centroid_inbase = getPiecePositionInBaseCoordinates(result3D_centroid, m_RTcb);
   cv::Point3d point_inbase    = getPiecePositionInBaseCoordinates(result3D_point, m_RTcb);
 
-  // Emitir señal con la posición de la pieza
   emit piecePositionCalculated(centroid_inbase);
 
-  // Calcular cinemática inversa
   if (m_robotHandlerInstance) {
     m_robotHandlerInstance->inverseCinematic(centroid_inbase);
   }
 
-  // Calculo de ángulo
   cv::Point3d direction = point_inbase - centroid_inbase;
   cv::Point3d dir_norm  = direction / cv::norm(direction);
   cv::Point3d x_axis(1.0, 0.0, 0.0);
 
-  double dot       = dir_norm.x * x_axis.x + dir_norm.y * x_axis.y + dir_norm.z * x_axis.z;
-  double angle_rad = acos(dot);
-  double angle_deg = angle_rad * 180.0 / CV_PI;
-
-  // std::cout << "Angle respect X-axis calculated via external trigger: " << angle_deg << " degrees" << std::endl;
+  // double dot       = dir_norm.x * x_axis.x + dir_norm.y * x_axis.y + dir_norm.z * x_axis.z;
+  // double angle_rad = acos(dot);
+  // double angle_deg = angle_rad * 180.0 / CV_PI;
 }
 
-// =========================================================
-
+/**
+ * @brief Applies the Coordinate Transformation Chain: Camera -> Base.
+ *
+ * \f$ P_{base} = RT_{cb} \times P_{cam} \f$
+ *
+ * Also applies specific physical offsets (hardcoded adjustments) to fine-tune
+ * the final gripping position (e.g., Z-height safety limits).
+ *
+ * @param result3D The 3D point in the Camera coordinate system.
+ * @param RTcb The 4x4 Homogeneous Transformation Matrix (Camera to Base).
+ * @return cv::Point3d The final target point for the robot.
+ */
 cv::Point3d VideoCalibrationDialog::getPiecePositionInBaseCoordinates(const cv::Point3d& result3D, const cv::Mat& RTcb)
 {
   cv::Mat pointCam = (cv::Mat_<double>(4, 1) << result3D.x, result3D.y, result3D.z, 1.0);
@@ -791,21 +915,15 @@ cv::Point3d VideoCalibrationDialog::getPiecePositionInBaseCoordinates(const cv::
   piecePosition.y = pointBase.at<double>(1);
   piecePosition.z = pointBase.at<double>(2);
 
-  // offset
-  piecePosition.z -= 65.0; // Ajuste de altura (en mm) según sea necesario
-  piecePosition.x += 40.0; // Ajuste de posición X (en mm) según sea necesario
-  piecePosition.y -= 0.0;  // Ajuste de posición Y (en mm) según sea necesario
+  piecePosition.z -= 65.0; // Adjust Z position (in mm) for gripping height
+  piecePosition.x += 40.0; // Adjust X position (in mm)
+  piecePosition.y -= 0.0;  // Adjust Y position (in mm)
 
-  // Evitar valores de Z negativos
   if (piecePosition.z < -0.0) {
     piecePosition.z = 0.0;
   }
-  // Evitar valores de Z mayores a 6mm
   if (piecePosition.z > 6.0) {
     piecePosition.z = 6.0;
   }
-
-  // qDebug() << "Posición de la pieza en coordenadas de la base del robot:"
-  //          << "(" << piecePosition.x << ", " << piecePosition.y << ", " << piecePosition.z << ")";
   return piecePosition;
 }

@@ -4,6 +4,13 @@
 #include "ui_SerialConnectionSetupDialog.h"
 #include <QSettings>
 
+/**
+ * @brief Constructor.
+ * Initializes the UI and loads the last known configuration from QSettings.
+ *
+ * It attempts to restore the 'serial/port' and 'serial/baudRate' keys
+ * defined in the "InBiot/QualityTest" registry path.
+ */
 SerialConnectionSetupDialog::SerialConnectionSetupDialog(QWidget* parent) : QDialog(parent), ui(new Ui::SerialConnectionSetupDialog)
 {
   ui->setupUi(this);
@@ -22,11 +29,22 @@ SerialConnectionSetupDialog::SerialConnectionSetupDialog(QWidget* parent) : QDia
   ui->comboBoxBaudRate->setCurrentText(QString::number(lastBaudRate));
 }
 
+/**
+ * @brief Destructor.
+ * Cleans up the UI resources.
+ */
 SerialConnectionSetupDialog::~SerialConnectionSetupDialog()
 {
   delete ui;
 }
 
+/**
+ * @brief Populates the port selection list.
+ *
+ * Iterates through `QSerialPortInfo::availablePorts()`.
+ * It implements a smart-selection logic: if no previous port is saved,
+ * it prioritizes ports with "UART" in their description to help the user.
+ */
 void SerialConnectionSetupDialog::refreshPorts()
 {
   ui->comboBoxPort->clear();
@@ -38,18 +56,24 @@ void SerialConnectionSetupDialog::refreshPorts()
     QString                portDescription = port.portName() + " - " + port.description();
     ui->comboBoxPort->addItem(portDescription);
 
-    // Seleccionar el primer puerto que contenga "UART" en la descripción
     if (serialIndex == -1 && port.description().contains("UART", Qt::CaseInsensitive)) {
       serialIndex = i;
     }
   }
 
-  // Si se encontró un puerto con "SERIAL", seleccionarlo
   if (serialIndex != -1) {
     ui->comboBoxPort->setCurrentIndex(serialIndex);
   }
 }
 
+/**
+ * @brief Attempts to establish the connection.
+ *
+ * 1. Parses the port name from the combo box string (splitting at " - ").
+ * 2. Calls the singleton `SerialPortHandler` to configure and connect.
+ * 3. If successful, saves the configuration to `QSettings` for next time.
+ * 4. If failed, emits `errorOccurred`.
+ */
 void SerialConnectionSetupDialog::on_pushButtonConnect_clicked()
 {
   QString portName = ui->comboBoxPort->currentText().split(" - ")[0];

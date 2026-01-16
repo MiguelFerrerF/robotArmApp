@@ -31,6 +31,12 @@ RobotControlDialog::~RobotControlDialog()
   delete ui;
 }
 
+/**
+ * @brief Establishes two-way binding between Sliders and LineEdits.
+ *
+ * Connects the `valueChanged` signal of the QSliders to update the text
+ * fields and the internal data model. Uses a lambda to prevent recursion loops.
+ */
 void RobotControlDialog::connectSlidersToLineEdits()
 {
   QSlider* sliders[] = {ui->horizontalSlider1, ui->horizontalSlider2, ui->horizontalSlider3,
@@ -47,10 +53,14 @@ void RobotControlDialog::connectSlidersToLineEdits()
   }
 }
 
+/**
+ * @brief Validates text input and syncs it to sliders.
+ *
+ * Applies a QIntValidator (0-180) to the text fields. When editing finishes,
+ * it updates the corresponding slider and ensures the value is strictly bounded.
+ */
 void RobotControlDialog::connectLineEditsToSliders()
 {
-
-  // Solo permitir números entre 0 y 180 en los QLineEdit
   QLineEdit* lineEdits[] = {ui->lineEditMotor1, ui->lineEditMotor2, ui->lineEditMotor3, ui->lineEditMotor4, ui->lineEditMotor5, ui->lineEditMotor6};
 
   QIntValidator* validator = new QIntValidator(0, 180, this);
@@ -71,6 +81,17 @@ void RobotControlDialog::connectLineEditsToSliders()
   }
 }
 
+/**
+ * @brief Updates the UI and Data Model when a slider moves.
+ *
+ * This function performs three tasks:
+ * 1. Updates the `desiredAngle` in the `RobotSettings` struct.
+ * 2. Updates the text in the corresponding QLineEdit.
+ * 3. If in "Single" mode (!m_isAll), emits `motorAngleChanged` to move the robot immediately.
+ *
+ * @param[in] motorIndex The 1-based index of the motor.
+ * @param[in] value The new angle value (0-180).
+ */
 void RobotControlDialog::setLineEditToSliderValue(int motorIndex, int value)
 {
   if (!m_robotSettings) {
@@ -78,12 +99,10 @@ void RobotControlDialog::setLineEditToSliderValue(int motorIndex, int value)
     return;
   }
 
-  // Guardamos el valor deseado tal como lo ve el usuario
   if (m_robotSettings) {
     m_robotSettings->motors[motorIndex - 1].desiredAngle = value;
   }
 
-  // Actualizamos el QLineEdit
   switch (motorIndex) {
     case 1:
       ui->lineEditMotor1->setText(QString::number(value));
@@ -114,6 +133,12 @@ void RobotControlDialog::setLineEditToSliderValue(int motorIndex, int value)
   }
 }
 
+/**
+ * @brief Resets the robot to its calibrated "Home" position.
+ *
+ * Loads the `defaultAngle` for all motors into the sliders and emits
+ * `allMotorsReset` to move the physical robot.
+ */
 void RobotControlDialog::on_pushButtonReset_clicked()
 {
   if (!m_robotSettings) {
@@ -124,6 +149,12 @@ void RobotControlDialog::on_pushButtonReset_clicked()
   emit allMotorsReset();
 }
 
+/**
+ * @brief Batch transmission of angles (Setup button).
+ *
+ * This is typically enabled in "All" mode. It reads all 6 slider values
+ * and emits `motorAngleChanged` for every motor sequentially.
+ */
 void RobotControlDialog::on_pushButtonSetup_clicked()
 {
   if (!m_robotSettings) {
@@ -140,6 +171,12 @@ void RobotControlDialog::on_pushButtonSetup_clicked()
   }
 }
 
+/**
+ * @brief Toggles between "Single" (Immediate) and "All" (Batch) control modes.
+ *
+ * - **Single**: Moving a slider moves the robot immediately.
+ * - **All**: Moving sliders only updates the UI; the robot moves only when "Setup" is clicked.
+ */
 void RobotControlDialog::on_pushButtonAllSingle_clicked()
 {
   m_isAll = !m_isAll;
@@ -153,6 +190,12 @@ void RobotControlDialog::on_pushButtonAllSingle_clicked()
   }
 }
 
+/**
+ * @brief Saves the current slider positions as the new "Home" offsets.
+ *
+ * Updates the `defaultAngle` in the settings model and notifies the system via
+ * `motorOffsetChanged`. This effectively recalibrates the robot's zero position.
+ */
 void RobotControlDialog::on_pushButtonSetOffsets_clicked()
 {
   if (!m_robotSettings) {
@@ -170,6 +213,10 @@ void RobotControlDialog::on_pushButtonSetOffsets_clicked()
   }
 }
 
+/**
+ * @brief Loads the default angles from the settings into the UI sliders.
+ * Effectively resets the visual controls to the "Home" position.
+ */
 void RobotControlDialog::setupOffsets()
 {
   if (!m_robotSettings) {
@@ -183,6 +230,12 @@ void RobotControlDialog::setupOffsets()
   ui->horizontalSlider5->setValue(m_robotSettings->motors[4].defaultAngle);
   ui->horizontalSlider6->setValue(m_robotSettings->motors[5].defaultAngle);
 }
+
+/**
+ * @brief Saves the current slider positions as the "Place" target.
+ *
+ * Defines the specific pose the robot should assume when dropping an object.
+ */
 void RobotControlDialog::on_pushButtonSetPlace_clicked()
 {
   if (!m_robotSettings) {

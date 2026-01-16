@@ -9,6 +9,13 @@ namespace Ui
 class RobotControlDialog;
 }
 
+/**
+ * @brief Dialog for manual control of the robot arm.
+ *
+ * This class provides a GUI with sliders and text inputs to control the 6 motors
+ * individually or in batches. It also allows setting calibration offsets and
+ * defining specific positions (like "Place").
+ */
 class RobotControlDialog : public QDialog
 {
   Q_OBJECT
@@ -17,13 +24,40 @@ public:
   explicit RobotControlDialog(QWidget* parent = nullptr, RobotConfig::RobotSettings* settings = nullptr);
   ~RobotControlDialog();
 
+  /**
+   * @brief Loads the default angles from the settings into the UI sliders.
+   * Effectively resets the visual controls to the "Home" position.
+   */
   void setupOffsets();
 
 signals:
   void errorOccurred(const QString& error);
+
+  /**
+   * @brief Emitted when a specific motor needs to move immediately.
+   * Typically used when the UI is in "Single" mode.
+   * @param motorIndex The 1-based index of the motor (1-6).
+   * @param angle The target angle in degrees.
+   */
   void motorAngleChanged(int motorIndex, int angle);
+
+  /**
+   * @brief Emitted to request a reset of all motors to their default positions.
+   */
   void allMotorsReset();
+
+  /**
+   * @brief Emitted when the user redefines the "Home" offset for a motor.
+   * @param motorIndex The 1-based index of the motor (1-6).
+   * @param newOffset The new zero-point angle.
+   */
   void motorOffsetChanged(int motorIndex, int newOffset);
+
+  /**
+   * @brief Emitted when the "Place" position is updated.
+   * @param motorIndex The 1-based index of the motor.
+   * @param position The angle stored for the placing sequence.
+   */
   void placePositionChanged(int motorIndex, int position);
 
 private slots:

@@ -14,6 +14,12 @@ SerialPortHandler::SerialPortHandler(QObject* parent) : QObject(parent)
   connect(&m_serial, &QSerialPort::errorOccurred, this, &SerialPortHandler::handleError);
 }
 
+/**
+ * @brief Configures the physical layer properties.
+ *
+ * Enforces the "8N1" standard (8 Data bits, No Parity, 1 Stop bit) which is
+ * the most common configuration for Arduino/Microcontroller UARTs.
+ */
 void SerialPortHandler::configurePort(const QString& portName, qint32 baudRate)
 {
   if (portName.isEmpty()) {
@@ -32,6 +38,14 @@ void SerialPortHandler::configurePort(const QString& portName, qint32 baudRate)
   m_serial.setFlowControl(QSerialPort::NoFlowControl);
 }
 
+/**
+ * @brief Opens the serial port for communication.
+ *
+ * Validates that the port name and baud rate have been set before attempting
+ * to open the port. Emits errorOccurred signal on failure.
+ *
+ * @return true if the port was successfully opened or was already open; false on error.
+ */
 bool SerialPortHandler::connectSerial()
 {
   if (m_serial.isOpen()) {
@@ -59,6 +73,10 @@ bool SerialPortHandler::connectSerial()
   }
 }
 
+/**
+ * @brief Closes the serial port connection.
+ * @return true if the port was closed; false if it was not open.
+ */
 bool SerialPortHandler::disconnectSerial()
 {
   if (m_serial.isOpen()) {
@@ -69,6 +87,11 @@ bool SerialPortHandler::disconnectSerial()
   return false;
 }
 
+/**
+ * @brief Queues data for transmission.
+ * @note Splits data by newline characters and sends them sequentially.
+ * @param[in] data The bytes to send.
+ */
 void SerialPortHandler::sendData(const QByteArray& data)
 {
   if (m_serial.isOpen()) {
@@ -80,21 +103,36 @@ void SerialPortHandler::sendData(const QByteArray& data)
   }
 }
 
+/**
+ * @brief Checks if the serial port is currently connected.
+ * @return true if the port is open; false otherwise.
+ */
 bool SerialPortHandler::isConnected() const
 {
   return m_serial.isOpen();
 }
 
+/**
+ * @brief Retrieves the configured port name.
+ * @return The system name of the serial port (e.g., "COM3", "/dev/ttyUSB0").
+ */
 QString SerialPortHandler::getPortName() const
 {
   return m_serial.portName();
 }
 
+/**
+ * @brief Retrieves the configured baud rate.
+ * @return The communication speed (e.g., 9600, 115200).
+ */
 int SerialPortHandler::getBaudRate() const
 {
   return m_serial.baudRate();
 }
 
+/**
+ * @brief Internal slot called by the OS interrupt/event loop when bytes arrive.
+ */
 void SerialPortHandler::handleReadyRead()
 {
   while (m_serial.canReadLine()) {
@@ -103,6 +141,10 @@ void SerialPortHandler::handleReadyRead()
   }
 }
 
+/**
+ * @brief Internal slot called when a serial port error occurs.
+ * @param error The specific error that occurred.
+ */
 void SerialPortHandler::handleError(QSerialPort::SerialPortError error)
 {
   if (error != QSerialPort::NoError) {

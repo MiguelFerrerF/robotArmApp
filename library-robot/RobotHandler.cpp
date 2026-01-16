@@ -178,25 +178,58 @@ void RobotHandler::actualizarMatrices(const cv::Mat& q)
 
 void RobotHandler::inverseCinematic(const cv::Point3d& efectorGlobal)
 {
-  // Implementaci�n pendiente
-  int R = sqrt(efectorGlobal.x * efectorGlobal.x + efectorGlobal.y * efectorGlobal.y);
-  int Z = efectorGlobal.z;
+  // 1. Cálculo de coordenadas básicas
+  double R_val = sqrt(efectorGlobal.x * efectorGlobal.x + efectorGlobal.y * efectorGlobal.y);
+  double Z_val = efectorGlobal.z;
 
-  // qDebug("Valores R y Z calculados: R = %d, Z = %d", R, Z);
+  // 2. Definir la altura relativa respecto al hombro (eje 2)
+  // Según tu fórmula original: (Z - a1 + a5)
+  double z_rel = Z_val - a1 + a5;
 
-  double B_rad = acos((R * R + (Z - a1 + a5) * (Z - a1 + a5) - a2 * a2 - a3 * a3) / (2 * a2 * a3));
-  int    B     = B_rad * 180 / M_PI;
+  // 3. CALCULAR LA DISTANCIA REAL (Hipotenusa del triángulo formado por a2 y a3)
+  double distancia_objetivo = sqrt(R_val * R_val + z_rel * z_rel);
 
-  double A_rad = asin((R * (a2 + a3 * cos(B_rad)) - a3 * sin(B_rad) * (Z - a1 + a5)) / (a2 * a2 + a3 * a3 + 2 * a2 * a3 * cos(B_rad)));
-  int    A     = A_rad * 180 / M_PI;
+  // 4. Validar geométricamente (Desigualdad Triangular)
+  double alcance_max = a2 + a3;
+  double alcance_min = fabs(a2 - a3); // Por si a2 y a3 son muy diferentes
+
+  // Margen de seguridad pequeño (epsilon) para errores de punto flotante
+  double epsilon = 0.1;
+
+  if (distancia_objetivo > (alcance_max + epsilon) || distancia_objetivo < (alcance_min - epsilon)) {
+    qDebug() << "[RobotHandler] CRITICAL: Punto fuera del alcance físico.";
+    qDebug() << "  Distancia requerida:" << distancia_objetivo;
+    qDebug() << "  Alcance máximo:" << alcance_max;
+    emit errorOccurred("Target point is out of reach (Triangle Inequality violation)");
+    return;
+  }
+
+  // 5. Clamp del valor para acos (Protección final contra NaN por error de redondeo)
+  // Aunque la distancia sea válida, un 1.00000001 podría romper acos.
+  double cos_angle_B = (distancia_objetivo * distancia_objetivo - a2 * a2 - a3 * a3) / (2 * a2 * a3);
+
+  // Aseguramos que esté entre -1 y 1
+  if (cos_angle_B > 1.0)
+    cos_angle_B = 1.0;
+  if (cos_angle_B < -1.0)
+    cos_angle_B = -1.0;
+
+  double B_rad = acos(cos_angle_B);
+  int    B     = round(B_rad * 180.0 / M_PI); // Usar round para mejor precisión que el truncamiento implícito
+
+  // Cálculo de A (Ángulo del hombro)
+  // Nota: También es buena práctica proteger los denominadores, aunque aquí es constante.
+  double numerador_A   = R_val * (a2 + a3 * cos(B_rad)) - a3 * sin(B_rad) * z_rel;
+  double denominador_A = a2 * a2 + a3 * a3 + 2 * a2 * a3 * cos(B_rad);
+
+  double A_rad = asin(numerador_A / denominador_A);
+  int    A     = round(A_rad * 180.0 / M_PI);
 
   int C = 180 - A - B;
 
   double q1_rad = atan2(efectorGlobal.y, efectorGlobal.x);
-  int    q1     = q1_rad * 180 / M_PI;
+  int    q1     = round(q1_rad * 180.0 / M_PI);
 
-  // qDebug("Ángulos calculados: q1 = %dº, A[q2] = %dº, B[q3] = %dº, C[q5] = %dº", q1, A, B, C);
-  // Emitir señal con los ángulos calculados
   emit anglesCalculated(q1, A, B, C);
 }
 

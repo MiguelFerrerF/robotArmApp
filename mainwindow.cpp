@@ -31,6 +31,11 @@ MainWindow::~MainWindow()
   delete ui;
 }
 
+/**
+ * @brief Establishes the core signal/slot connections for the application infrastructure.
+ * Wires the SerialHandler and RobotHandler to the Main Window to ensure
+ * logs and status updates are propagated to the dashboard.
+ */
 void MainWindow::setupConnections()
 {
   SerialPortHandler& serial = SerialPortHandler::instance();
@@ -44,6 +49,12 @@ void MainWindow::setupConnections()
   connect(m_RobotHandler, &RobotHandler::anglesCalculated, this, &MainWindow::onRobotAnglesCalculated);
 }
 
+/**
+ * @brief Opens the Serial Monitor dialog.
+ * If it doesn't exist, it creates a new instance.
+ *
+ * The dialog is then shown and brought to the front.
+ */
 void MainWindow::on_actionSerial_triggered()
 {
   if (!m_SerialMonitorDialog) {
@@ -55,9 +66,14 @@ void MainWindow::on_actionSerial_triggered()
   m_SerialMonitorDialog->activateWindow();
 }
 
+/**
+ * @brief Saves the current log displayed in the log text edit to a timestamped file.
+ * The log file is saved in a "logs" directory within the current working directory.
+ * If the directory does not exist, it is created.
+ * After saving, the log file location is opened in the system file explorer.
+ */
 void MainWindow::on_actionLog_triggered()
 {
-  // Ensure the logs directory exists
   QString logsDirPath = QDir::currentPath() + "/logs";
   QDir    logsDir(logsDirPath);
   if (!logsDir.exists()) {
@@ -67,7 +83,6 @@ void MainWindow::on_actionLog_triggered()
     }
   }
 
-  // Save log to a file (date-time stamped) in the logs directory
   QString logFileName = logsDirPath + QString("/log_%1.txt").arg(QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss"));
   QFile   logFile(logFileName);
   if (logFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
@@ -82,6 +97,12 @@ void MainWindow::on_actionLog_triggered()
   }
 }
 
+/**
+ * @brief Initiates the serial connection setup process.
+ * If already connected, logs a message and returns.
+ * Otherwise, opens the SerialConnectionSetupDialog for user configuration.
+ * On successful configuration, logs a success message.
+ */
 void MainWindow::on_actionConnectSerial_triggered()
 {
   if (SerialPortHandler::instance().isConnected()) {
@@ -96,6 +117,10 @@ void MainWindow::on_actionConnectSerial_triggered()
     LogHandler::success(ui->textEditLog, "Serial connection configured successfully");
 }
 
+/**
+ * @brief Disconnects the current serial connection if connected.
+ * Logs a warning if no connection is active.
+ */
 void MainWindow::on_actionDisconnectSerial_triggered()
 {
   if (SerialPortHandler::instance().isConnected()) {
@@ -106,6 +131,11 @@ void MainWindow::on_actionDisconnectSerial_triggered()
     LogHandler::warning(ui->textEditLog, "No serial port connected");
 }
 
+/**
+ * @brief Opens the Video Manager dialog for camera connection and management.
+ * If the dialog does not exist, it creates a new instance.
+ * The dialog is then shown and brought to the front.
+ */
 void MainWindow::on_actionConnectVideo_triggered()
 {
   if (!m_VideoManagerDialog) {
@@ -118,12 +148,21 @@ void MainWindow::on_actionConnectVideo_triggered()
   m_VideoManagerDialog->activateWindow();
 }
 
+/**
+ * @brief Disconnects the video feed by requesting the VideoCaptureHandler to stop the camera.
+ * Clears the camera label in the UI.
+ */
 void MainWindow::on_actionDisconnectVideo_triggered()
 {
   VideoCaptureHandler::instance().requestCameraChange(-1, QSize()); // Petición de STOP
   ui->labelCamera->clear();
 }
 
+/**
+ * @brief Opens the Video Calibration dialog for camera calibration tasks.
+ * If the dialog does not exist, it creates a new instance.
+ * The dialog is then shown and brought to the front.
+ */
 void MainWindow::on_actionCalibrationVideo_triggered()
 {
   if (!m_VideoCalibrationDialog) {
@@ -135,31 +174,42 @@ void MainWindow::on_actionCalibrationVideo_triggered()
   m_VideoCalibrationDialog->activateWindow();
 }
 
+/**
+ * @brief Configures the Vision-to-Motion pipeline.
+ *
+ * This function is the "brain" of the automatic mode. It performs dynamic signal wiring:
+ * 1. Disconnects standard video feeds.
+ * 2. Connects `VideoProcessingDialog` outputs (centroid, angle) to the UI.
+ * 3. Connects the detection signal (`piecePointsUpdated`) to the **Calibration Logic**.
+ * 4. The Calibration Logic (`calculateObjectPosition`) computes the 3D coordinate.
+ * 5. The Calibration Dialog emits `piecePositionCalculated`, which updates the `RobotHandler`.
+ * 6. The `RobotHandler` computes Inverse Kinematics and emits `anglesCalculated`.
+ */
 void MainWindow::on_actionProcessingVideo_triggered()
 {
   if (!m_VideoProcessingDialog) {
     m_VideoProcessingDialog = new VideoProcessingDialog(this);
-    // Desconecar señales anteriores
+
+    // Cleanup old connections
     disconnect(&VideoCaptureHandler::instance(), &VideoCaptureHandler::newPixmapCaptured, this, nullptr);
     disconnect(m_VideoProcessingDialog, &VideoProcessingDialog::angleUpdated, this, nullptr);
     disconnect(m_VideoProcessingDialog, &VideoProcessingDialog::processedImageReady, this, nullptr);
     disconnect(m_VideoProcessingDialog, &VideoProcessingDialog::piecePointsUpdated, this, nullptr);
-    // Conectar la señal de nuevo frame capturado al procesamiento de vídeo
+
+    // Wire: Processor -> UI (View)
     connect(m_VideoProcessingDialog, &VideoProcessingDialog::processedImageReady, this, &MainWindow::onVideoCapture);
-    // Connect signals from VideoProcessingDialog
+
+    // Wire: Processor -> Calibration -> Robot
     connect(m_VideoProcessingDialog, &VideoProcessingDialog::angleUpdated, this,
             [this](double angle) { ui->lineEditAngle->setText(QString::number((180 - angle), 'f', 2)); });
     connect(m_VideoProcessingDialog, &VideoProcessingDialog::piecePointsUpdated, this, [this](const QPoint& centroid, const QPoint& pointRecta) {
       ui->lineEditCentroidX->setText(QString::number(centroid.x()));
       ui->lineEditCentroidY->setText(QString::number(centroid.y()));
 
-      // 2. Instanciar Calibración si no existe
+      // Lazy load Calibration Dialog
       if (!m_VideoCalibrationDialog) {
-        // Nota: Ya no pasamos m_VideoProcessingDialog
         m_VideoCalibrationDialog = new VideoCalibrationDialog(this, m_RobotHandler);
-        // Desconectar señales previas para evitar duplicados
         disconnect(m_VideoCalibrationDialog, &VideoCalibrationDialog::piecePositionCalculated, this, nullptr);
-        // Conectar señal para recibir la posición calculada
         connect(m_VideoCalibrationDialog, &VideoCalibrationDialog::piecePositionCalculated, this, [this](const cv::Point3d& positionInBase) {
           ui->lineEditDesiredX->setText(QString::number(positionInBase.x, 'f', 2));
           ui->lineEditDesiredY->setText(QString::number(positionInBase.y, 'f', 2));
@@ -167,38 +217,51 @@ void MainWindow::on_actionProcessingVideo_triggered()
         });
       }
 
-      // 3. Llamar a la función de cálculo optimizada pasándole los
-      // valores Esta función revisará internamente si la calibración ya
-      // está cargada en RAM/Settings
+      // Trigger the 2D->3D Math conversion
       m_VideoCalibrationDialog->calculateObjectPosition(centroid, pointRecta);
     });
   }
   else {
-    // Si ya existe, solo asegurarse de que está visible
     m_VideoProcessingDialog->show();
     m_VideoProcessingDialog->raise();
     m_VideoProcessingDialog->activateWindow();
   }
 }
 
+/**
+ * @brief Connects the video capture signals to the main window slots.
+ * Sets up the necessary connections to handle new video frames and camera info updates.
+ */
 void MainWindow::connectVideoSignals()
 {
   VideoCaptureHandler& handler = VideoCaptureHandler::instance();
 
-  // Conexión principal para mostrar el vídeo en la GUI
+  // Standard "Live View" connection
   connect(&handler, &VideoCaptureHandler::newPixmapCaptured, this, [this](const QPixmap& pixmap) { this->onVideoCapture(pixmap.toImage()); });
   connect(&handler, &VideoCaptureHandler::cameraInfoChanged, this, &MainWindow::onCameraInfoChanged);
-  // Conectamos las señales de error para el log principal
   connect(&handler, &VideoCaptureHandler::cameraOpenFailed, this,
           [this](int, const QString& err) { LogHandler::error(ui->textEditLog, "Camera Error: " + err); });
 }
 
+/**
+ * @brief Disconnects all video-related signals from the main window.
+ * This is typically used when switching to a different video processing mode.
+ */
 void MainWindow::disconnectVideoSignals()
 {
   VideoCaptureHandler& handler = VideoCaptureHandler::instance();
   handler.~VideoCaptureHandler();
 }
 
+/**
+ * @brief Opens the Robot Control dialog for manual robot manipulation.
+ * If the dialog does not exist, it creates a new instance.
+ * The dialog is then shown and brought to the front.
+ *
+ * Additionally, it connects relevant signals from the RobotControlDialog
+ * to the MainWindow slots to handle errors and motor adjustments.
+ * It also requests the current motor offsets from the robot via serial command.
+ */
 void MainWindow::on_actionControlRobot_triggered()
 {
   qDebug("Control robot pulsado");
@@ -209,32 +272,32 @@ void MainWindow::on_actionControlRobot_triggered()
   m_RobotControl->raise();
   m_RobotControl->activateWindow();
 
-  // Disconnect previous connections if any to avoid duplicates
   disconnect(m_RobotControl, &RobotControlDialog::errorOccurred, this, &MainWindow::onRobotControlError);
   disconnect(m_RobotControl, &RobotControlDialog::motorAngleChanged, this, &MainWindow::onRobotMotorAngleChanged);
   disconnect(m_RobotControl, &RobotControlDialog::allMotorsReset, this, &MainWindow::onAllMotorsReset);
   disconnect(m_RobotControl, &RobotControlDialog::motorOffsetChanged, this, &MainWindow::onRobotMotorOffsetChanged);
   disconnect(m_RobotControl, &RobotControlDialog::placePositionChanged, this, &MainWindow::onRobotPlacePositionChanged);
 
-  // Connect signals from RobotControlDialog
   connect(m_RobotControl, &RobotControlDialog::errorOccurred, this, &MainWindow::onRobotControlError);
   connect(m_RobotControl, &RobotControlDialog::motorAngleChanged, this, &MainWindow::onRobotMotorAngleChanged);
   connect(m_RobotControl, &RobotControlDialog::allMotorsReset, this, &MainWindow::onAllMotorsReset);
   connect(m_RobotControl, &RobotControlDialog::motorOffsetChanged, this, &MainWindow::onRobotMotorOffsetChanged);
   connect(m_RobotControl, &RobotControlDialog::placePositionChanged, this, &MainWindow::onRobotPlacePositionChanged);
 
-  // Enviar comando al Arduino para leer los offsets
   if (SerialPortHandler::instance().isConnected()) {
     QString commandOffset = "READ:OFFSETS";
     SerialPortHandler::instance().sendData(commandOffset.toUtf8());
-    // QString commandAngles = "READ:ANGLES_WITH_OFFSET";
-    // SerialPortHandler::instance().sendData(commandAngles.toUtf8());
   }
   else {
     LogHandler::warning(ui->textEditLog, "No se puede enviar comando: puerto serie no conectado");
   }
 }
 
+/**
+ * @brief Opens the Robot Calibration dialog for calibrating robot motors.
+ * If the dialog does not exist, it creates a new instance.
+ * The dialog is then shown and brought to the front.
+ */
 void MainWindow::on_actionCalibrateRobot_triggered()
 {
   if (!m_RobotCalibrationDialog) {
@@ -246,39 +309,83 @@ void MainWindow::on_actionCalibrateRobot_triggered()
   m_RobotCalibrationDialog->activateWindow();
 }
 
+/**
+ * @brief Handles serial errors by logging them to the UI log text edit.
+ *
+ * @param error The error message received from the serial handler.
+ */
 void MainWindow::onSerialError(const QString& error)
 {
   LogHandler::error(ui->textEditLog, "Serial Error: " + error);
 }
 
+/**
+ * @brief Handles changes in the serial connection status.
+ * Logs the connection or disconnection event to the UI log text edit.
+ *
+ * @param connected True if the serial port is connected, false if disconnected.
+ */
 void MainWindow::onSerialStatusChanged(bool connected)
 {
   LogHandler::info(ui->textEditLog, QString("Serial port %1").arg(connected ? "connected" : "disconnected"));
 }
 
+/**
+ * @brief Handles errors that occur during the setup of the serial connection.
+ * Logs the error message to the UI log text edit.
+ *
+ * @param error The error message received during connection setup.
+ */
 void MainWindow::onSetupConnectionError(const QString& error)
 {
   LogHandler::error(ui->textEditLog, error);
 }
 
+/**
+ * @brief Handles warnings emitted by the Serial Monitor dialog.
+ * Logs the warning message to the UI log text edit.
+ *
+ * @param warning The warning message received from the Serial Monitor.
+ */
 void MainWindow::onSerialMonitorWarning(const QString& warning)
 {
   LogHandler::warning(ui->textEditLog, warning);
 }
 
+/**
+ * @brief Handles incoming data received from the serial port.
+ * Logs the received data to the UI log text edit.
+ *
+ * @param data The data received from the serial port.
+ */
 void MainWindow::onDataReceived(const QByteArray& data)
 {
   LogHandler::info(ui->textEditLog, QString("Serial port %1").arg(data));
 }
 
+/**
+ * @brief Handles errors emitted by the Robot Control dialog.
+ * Logs the error message to the UI log text edit.
+ *
+ * @param error The error message received from the Robot Control dialog.
+ */
 void MainWindow::onRobotControlError(const QString& error)
 {
   LogHandler::error(ui->textEditLog, "Robot Control Error: " + error);
 }
 
+/**
+ * @brief Handles manual changes to robot motor angles from the Robot Control dialog.
+ *
+ * Sends the appropriate command to the robot hardware via the serial port.
+ * Logs the command sent or a warning if the serial port is not connected.
+ * The command format is `SETUP:SERVO{motorIndex}:{angle}`.
+ *
+ * @param motorIndex The index of the motor being adjusted (1-based).
+ * @param angle The new angle value for the motor.
+ */
 void MainWindow::onRobotMotorAngleChanged(int motorIndex, int angle)
 {
-  // send command to robot via serial
   if (SerialPortHandler::instance().isConnected()) {
     QString command = QString("SETUP:SERVO%1:%2").arg(motorIndex).arg(angle);
     SerialPortHandler::instance().sendData(command.toUtf8());
@@ -289,9 +396,18 @@ void MainWindow::onRobotMotorAngleChanged(int motorIndex, int angle)
   }
 }
 
+/**
+ * @brief Handles changes to robot motor offsets from the Robot Control dialog.
+ *
+ * Sends the appropriate command to the robot hardware via the serial port.
+ * Logs the command sent or a warning if the serial port is not connected.
+ * The command format is `SETUP:OFFSET{motorIndex}:{newOffset}`.
+ *
+ * @param motorIndex The index of the motor whose offset is being adjusted (1-based).
+ * @param newOffset The new offset value for the motor.
+ */
 void MainWindow::onRobotMotorOffsetChanged(int motorIndex, int newOffset)
 {
-  // send command to robot via serial
   if (SerialPortHandler::instance().isConnected()) {
     QString command = QString("SETUP:OFFSET%1:%2").arg(motorIndex).arg(newOffset);
     SerialPortHandler::instance().sendData(command.toUtf8());
@@ -302,9 +418,18 @@ void MainWindow::onRobotMotorOffsetChanged(int motorIndex, int newOffset)
   }
 }
 
+/**
+ * @brief Handles changes to the robot's place position from the Robot Control dialog.
+ *
+ * Sends the appropriate command to the robot hardware via the serial port.
+ * Logs the command sent or a warning if the serial port is not connected.
+ * The command format is `SETUP:PLACE{motorIndex}:{position}`.
+ *
+ * @param motorIndex The index of the motor whose place position is being adjusted (1-based).
+ * @param position The new place position value for the motor.
+ */
 void MainWindow::onRobotPlacePositionChanged(int motorIndex, int position)
 {
-  // send command to robot via serial
   if (SerialPortHandler::instance().isConnected()) {
     QString command = QString("SETUP:PLACE%1:%2").arg(motorIndex).arg(position);
     SerialPortHandler::instance().sendData(command.toUtf8());
@@ -315,6 +440,13 @@ void MainWindow::onRobotPlacePositionChanged(int motorIndex, int position)
   }
 }
 
+/**
+ * @brief Handles real-time feedback from the robot hardware.
+ *
+ * When the robot sends an `ANGLE_WITH_OFFSET` message, this slot finds the
+ * corresponding QLineEdit in the dashboard (via `findChild`) and updates it.
+ * This ensures the UI stays in sync if the robot moves autonomously.
+ */
 void MainWindow::onRobotMotorAngleUpdatedFromSerial(int motorIndex, int angle)
 {
   qDebug() << "[MainWindow] onRobotMotorAngleUpdatedFromSerial called for" << motorIndex << "angle" << angle;
@@ -329,7 +461,6 @@ void MainWindow::onRobotMotorAngleUpdatedFromSerial(int motorIndex, int angle)
     qDebug() << "[MainWindow] groupBoxMotorAngle exists, childCount:" << ui->groupBoxMotorAngle->children().count();
     le = ui->groupBoxMotorAngle->findChild<QLineEdit*>(objName);
     if (!le) {
-      // listar children para depuraci�n
       qDebug() << "[MainWindow] groupBoxMotorAngle children objectNames:";
       for (QObject* child : ui->groupBoxMotorAngle->children()) {
         qDebug() << " -" << child->objectName() << "(" << child->metaObject()->className() << ")";
@@ -353,18 +484,36 @@ void MainWindow::onRobotMotorAngleUpdatedFromSerial(int motorIndex, int angle)
   }
 }
 
+/**
+ * @brief Handles motor offset updates received from the robot hardware.
+ *
+ * Updates the internal robot settings with the new offset value for the specified motor.
+ * Calls `setupOffsets` on the RobotHandler to apply the new offsets.
+ * Logs the offset update to the UI log text edit.
+ *
+ * @param motorIndex The index of the motor whose offset was updated (1-based).
+ * @param offset The new offset value for the motor.
+ */
 void MainWindow::onRobotMotorOffsetsReadFromMemory(int motorIndex, int offset)
 {
   if (motorIndex < 1 || motorIndex > 6)
     return;
 
   m_robotSettings.motors[motorIndex - 1].defaultAngle = offset;
-
   m_RobotControl->setupOffsets();
-
   LogHandler::info(ui->textEditLog, QString("Updated offset for motor %1 with value %2").arg(motorIndex).arg(offset));
 }
 
+/**
+ * @brief Updates the UI with the current end-effector position.
+ *
+ * This slot is called whenever the RobotHandler emits the `efectorPositionChanged` signal.
+ * It updates the corresponding QLineEdit widgets in the UI to reflect the new X, Y, Z coordinates.
+ *
+ * @param x The X coordinate of the end-effector.
+ * @param y The Y coordinate of the end-effector.
+ * @param z The Z coordinate of the end-effector.
+ */
 void MainWindow::onEfectorPositionChanged(double x, double y, double z)
 {
   ui->lineEditX->setText(QString::number(x, 'f', 2));
@@ -372,9 +521,19 @@ void MainWindow::onEfectorPositionChanged(double x, double y, double z)
   ui->lineEditZ->setText(QString::number(z, 'f', 2));
 }
 
+/**
+ * @brief Updates the UI with the calculated robot joint angles.
+ *
+ * This slot is called whenever the RobotHandler emits the `anglesCalculated` signal.
+ * It updates the corresponding QLineEdit widgets in the UI to reflect the new joint angles.
+ *
+ * @param q1 The angle for joint 1.
+ * @param q2 The angle for joint 2.
+ * @param q3 The angle for joint 3.
+ * @param q5 The angle for joint 5.
+ */
 void MainWindow::onRobotAnglesCalculated(int q1, int q2, int q3, int q5)
 {
-  // Si no esta el objeto de m_VideoProcessingDialog abierto, no actualizar, no hay pieza detectada
   if (!m_VideoProcessingDialog) {
     return;
   }
@@ -385,27 +544,52 @@ void MainWindow::onRobotAnglesCalculated(int q1, int q2, int q3, int q5)
   ui->lineEditQ5->setText(QString::number(q5));
 }
 
+/**
+ * @brief Handles the event when all motors are reset to their default positions.
+ *
+ * Logs an informational message to the UI log text edit indicating that
+ * all motors have been reset.
+ */
 void MainWindow::onAllMotorsReset()
 {
   LogHandler::info(ui->textEditLog, "All motors have been reset to default");
 }
 
+/**
+ * @brief Slot to handle new video frames captured from the camera.
+ *
+ * This function updates the camera display label with the new image.
+ * It scales the image to fit the label while maintaining the aspect ratio.
+ *
+ * @param image The new frame captured from the camera as a QImage.
+ */
 void MainWindow::onVideoCapture(const QImage& image)
 {
   m_lastCapturedFrame = image;
   if (image.isNull())
     return;
 
-  // Scale the image to fit the label while maintaining aspect ratio
   QPixmap pixmap = QPixmap::fromImage(image).scaledToWidth(ui->labelCamera->width(), Qt::SmoothTransformation);
   ui->labelCamera->setPixmap(pixmap);
 }
 
+/**
+ * @brief Slot to handle the event when the camera starts successfully.
+ *
+ * Logs a success message to the UI log text edit indicating that
+ * the camera has started.
+ */
 void MainWindow::onCameraStarted()
 {
   LogHandler::success(ui->textEditLog, "Camera started successfully");
 }
 
+/**
+ * @brief Slot to handle the event when the camera stops.
+ *
+ * Logs a warning message to the UI log text edit indicating that
+ * the camera has stopped. Also clears the camera name and display label.
+ */
 void MainWindow::onCameraStopped()
 {
   LogHandler::warning(ui->textEditLog, "Camera stopped");
@@ -413,11 +597,27 @@ void MainWindow::onCameraStopped()
   ui->labelCamera->clear();
 }
 
+/**
+ * @brief Slot to handle camera errors.
+ *
+ * Logs an error message to the UI log text edit indicating the
+ * specific error that occurred with the camera.
+ *
+ * @param error The error message received from the camera handler.
+ */
 void MainWindow::onCameraError(const QString& error)
 {
   LogHandler::error(ui->textEditLog, "Camera Error: " + error);
 }
 
+/**
+ * @brief Updates the UI with the current camera information.
+ *
+ * This slot is called whenever the VideoCaptureHandler emits the `cameraInfoChanged` signal.
+ * It updates various QLineEdit widgets in the UI to reflect the current camera settings.
+ *
+ * @param info The CameraInfo struct containing the current camera settings.
+ */
 void MainWindow::onCameraInfoChanged(const CameraInfo& info)
 {
   ui->lineEditCameraName->setText(QString::fromStdString(info.name));
@@ -441,112 +641,66 @@ void MainWindow::onCameraInfoChanged(const CameraInfo& info)
     ui->lineEditExposure->setText("Auto");
 }
 
-void MainWindow::on_pushButtonCaptureImage_clicked()
-{
-  if (m_lastCapturedFrame.isNull()) {
-    qDebug() << "No hay imagen disponible para capturar";
-    return;
-  }
-
-  // Carpeta donde guardar las im�genes
-  QString dirPath = QDir::currentPath() + "/images/calibration";
-  QDir    dir(dirPath);
-  if (!dir.exists()) {
-    if (!dir.mkpath(".")) {
-      qDebug() << "No se pudo crear la carpeta 'images/calibration'";
-      return;
-    }
-    else {
-      qDebug() << "Carpeta 'images/calibration' creada con �xito";
-    }
-  }
-
-  // Buscar el siguiente n�mero disponible
-  QStringList files     = dir.entryList(QStringList() << "image*.tif", QDir::Files);
-  int         maxNumber = 0;
-
-  for (const QString& file : files) {
-    QString numStr = file;
-    numStr.remove("image"); // quitar prefijo
-    numStr.chop(4);         // quitar ".tif"
-    bool ok;
-    int  num = numStr.toInt(&ok);
-    if (ok && num > maxNumber) {
-      maxNumber = num;
-    }
-  }
-
-  int     nextNumber = maxNumber + 1;
-  QString fileName   = dirPath + "/image" + QString::number(nextNumber) + ".tif";
-
-  // Guardar la imagen
-  if (m_lastCapturedFrame.save(fileName)) {
-    qDebug() << "Imagen capturada y guardada:" << fileName;
-  }
-  else {
-    qDebug() << "No se pudo guardar la imagen";
-  }
-}
-
+/**
+ * @brief Toggles the video processing mode on or off.
+ *
+ * When activated, it sets up the necessary connections for video processing,
+ * updates the UI button text and style, and initializes the VideoProcessingDialog.
+ * When deactivated, it restores the original video feed connections and resets the button.
+ *
+ * @param checked True if the button is toggled on (processing mode), false otherwise.
+ */
 void MainWindow::on_pushButtonStartProcessing_toggled(bool checked)
 {
-  // Llamar a la función on_actionProcessingVideo_triggered si se activa
   if (checked) {
-    // Cambiar el texto y color del botón
     ui->pushButtonStartProcessing->setText("Stop Processing");
     ui->pushButtonStartProcessing->setStyleSheet("background-color: red; color: white;");
 
     if (!m_VideoProcessingDialog) {
       m_VideoProcessingDialog = new VideoProcessingDialog(this);
     }
-    // Desconecar señales anteriores
     disconnect(&VideoCaptureHandler::instance(), &VideoCaptureHandler::newPixmapCaptured, this, nullptr);
     disconnect(m_VideoProcessingDialog, &VideoProcessingDialog::angleUpdated, this, nullptr);
     disconnect(m_VideoProcessingDialog, &VideoProcessingDialog::processedImageReady, this, nullptr);
     disconnect(m_VideoProcessingDialog, &VideoProcessingDialog::piecePointsUpdated, this, nullptr);
-    // Conectar la señal de nuevo frame capturado al procesamiento de vídeo
+
     connect(m_VideoProcessingDialog, &VideoProcessingDialog::processedImageReady, this, &MainWindow::onVideoCapture);
-    // Connect signals from VideoProcessingDialog
     connect(m_VideoProcessingDialog, &VideoProcessingDialog::angleUpdated, this,
             [this](double angle) { ui->lineEditAngle->setText(QString::number((180 - angle), 'f', 2)); });
     connect(m_VideoProcessingDialog, &VideoProcessingDialog::piecePointsUpdated, this, [this](const QPoint& centroid, const QPoint& pointRecta) {
       ui->lineEditCentroidX->setText(QString::number(centroid.x()));
       ui->lineEditCentroidY->setText(QString::number(centroid.y()));
 
-      // 2. Instanciar Calibración si no existe
       if (!m_VideoCalibrationDialog) {
-        // Nota: Ya no pasamos m_VideoProcessingDialog
         m_VideoCalibrationDialog = new VideoCalibrationDialog(this, m_RobotHandler);
-        // Desconectar señales previas para evitar duplicados
         disconnect(m_VideoCalibrationDialog, &VideoCalibrationDialog::piecePositionCalculated, this, nullptr);
-        // Conectar señal para recibir la posición calculada
         connect(m_VideoCalibrationDialog, &VideoCalibrationDialog::piecePositionCalculated, this, [this](const cv::Point3d& positionInBase) {
           ui->lineEditDesiredX->setText(QString::number(positionInBase.x, 'f', 2));
           ui->lineEditDesiredY->setText(QString::number(positionInBase.y, 'f', 2));
           ui->lineEditDesiredZ->setText(QString::number(positionInBase.z, 'f', 2));
         });
       }
-
-      // 3. Llamar a la función de cálculo optimizada pasándole los
-      // valores Esta función revisará internamente si la calibración ya
-      // está cargada en RAM/Settings
       m_VideoCalibrationDialog->calculateObjectPosition(centroid, pointRecta);
     });
   }
   else {
-    // Cambiar el texto y color del botón
     ui->pushButtonStartProcessing->setText("Start Processing");
     ui->pushButtonStartProcessing->setStyleSheet("");
-    // Desconectar captura de imagen procesada
     disconnect(&VideoCaptureHandler::instance(), &VideoCaptureHandler::newPixmapCaptured, this, nullptr);
-    // Reconectar la señal original para mostrar el vídeo en la GUI
     connectVideoSignals();
   }
 }
 
+/**
+ * @brief Constructs and sends the final Pick-and-Place command.
+ *
+ * 1. Validates the object's orientation angle (must be reachable by the gripper).
+ * 2. Retrieves the calculated Inverse Kinematics angles (Q1, Q2, Q3, Q5).
+ * 3. Adds the calibrated offsets (`defaultAngle`) to translate logical angles to physical servo values.
+ * 4. Formats the `PLACE` protocol string and transmits via Serial.
+ */
 void MainWindow::on_pushButtonPickAndPlace_clicked()
 {
-  // Evaluar el valor del angulo de la pieza, si es menor a 30 grados o mayor a 150 grados, mostrar una ventana de error y no enviar el comando
   bool   ok;
   double angle = ui->lineEditAngle->text().toDouble(&ok);
   if (!ok || angle < 30.0 || angle > 150.0) {
@@ -559,9 +713,9 @@ void MainWindow::on_pushButtonPickAndPlace_clicked()
                         .arg(m_robotSettings.motors[0].defaultAngle + ui->lineEditQ1->text().toInt())
                         .arg(m_robotSettings.motors[1].defaultAngle + ui->lineEditQ2->text().toInt())
                         .arg(m_robotSettings.motors[2].defaultAngle + ui->lineEditQ3->text().toInt())
-                        .arg(m_robotSettings.motors[3].defaultAngle) // Q4 fijo en offset
+                        .arg(m_robotSettings.motors[3].defaultAngle)
                         .arg(m_robotSettings.motors[4].defaultAngle + ui->lineEditQ5->text().toInt())
-                        .arg("0"); // Claw position fijo en 0 (cerrado)
+                        .arg("0");
     SerialPortHandler::instance().sendData(command.toUtf8());
     LogHandler::info(ui->textEditLog, QString("Sent pick and place command: %1").arg(command.trimmed()));
   }

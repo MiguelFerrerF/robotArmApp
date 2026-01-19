@@ -709,7 +709,6 @@ void MainWindow::on_pushButtonPickAndPlace_clicked()
     return;
   }
 
-  // Change the color of the button to indicate action
   ui->pushButtonPickAndPlace->setStyleSheet("background-color: green; color: white;");
   QTimer::singleShot(18000, this, [this]() { ui->pushButtonPickAndPlace->setStyleSheet(""); });
 

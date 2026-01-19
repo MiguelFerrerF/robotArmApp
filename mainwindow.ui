@@ -1140,10 +1140,17 @@
     <addaction name="actionConnectSerial"/>
     <addaction name="actionDisconnectSerial"/>
    </widget>
+   <widget class="QMenu" name="menuDocs">
+    <property name="title">
+     <string>Help</string>
+    </property>
+    <addaction name="actionDocs"/>
+   </widget>
    <addaction name="menuConnect"/>
    <addaction name="menuController"/>
    <addaction name="menuVideo"/>
    <addaction name="menuSerial"/>
+   <addaction name="menuDocs"/>
   </widget>
   <action name="actionConnectSerial">
    <property name="text">
@@ -1208,6 +1215,11 @@
   <action name="actionProcessingVideo">
    <property name="text">
     <string>Processing</string>
+   </property>
+  </action>
+  <action name="actionDocs">
+   <property name="text">
+    <string>Docs</string>
    </property>
   </action>
  </widget>

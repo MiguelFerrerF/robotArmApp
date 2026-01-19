@@ -66,7 +66,7 @@ private slots:
   void on_actionConnectVideo_triggered();
   void on_actionDisconnectVideo_triggered();
   void on_actionCalibrationVideo_triggered();
-  void on_actionMenuDocs_triggered();
+  void on_actionDocs_triggered();
 
   /**
    * @brief Activates the Video Processing pipeline.

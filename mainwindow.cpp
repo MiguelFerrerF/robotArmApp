@@ -251,7 +251,7 @@ void MainWindow::on_actionProcessingVideo_triggered()
  * The documentation is expected to be located in the "docs/index.html" file
  * within the current working directory.
  */
-void MainWindow::on_actionMenuDocs_triggered()
+void MainWindow::on_actionDocs_triggered()
 {
   QString docsPath = QDir::currentPath() + "/docs/index.html";
   QDesktopServices::openUrl(QUrl::fromLocalFile(docsPath));

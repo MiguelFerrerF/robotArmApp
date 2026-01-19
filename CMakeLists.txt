@@ -103,6 +103,10 @@ add_custom_command(TARGET robotArmApp POST_BUILD
     # Copiar la carpeta de calibración
     COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:robotArmApp>/calibration"
     COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_SOURCE_DIR}/calibration" "$<TARGET_FILE_DIR:robotArmApp>/calibration"
+
+    # Copiar la carpeta de docs
+    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:robotArmApp>/docs"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_SOURCE_DIR}/docs" "$<TARGET_FILE_DIR:robotArmApp>/docs"
 )
 
 # --- Propiedades específicas para macOS / Windows ---

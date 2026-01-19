@@ -393,7 +393,17 @@ void VideoProcessingDialog::applySegmentacion(QPixmap& pixmap)
       }
     }
   }
+  else {
+    // No se encontró contorno válido
+    QImage cimg(filtered_edges_display.data, filtered_edges_display.cols, filtered_edges_display.rows, filtered_edges_display.step,
+                QImage::Format_Grayscale8);
+    ui->labelCanny->setPixmap(QPixmap::fromImage(cimg).scaled(ui->labelCanny->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
 
+    ui->labelPoints->setText(centroid_str + "\n" + point_str);
+    m_lastCentroidOriginal   = QPoint();
+    m_lastPointRectaOriginal = QPoint();
+    emit piecePointsUpdated(m_lastCentroidOriginal, m_lastPointRectaOriginal);
+  }
   ui->labelAngle->setText(angle_str);
 
   // --- Convert back (redimensionar output al tamaño original del crop) ---

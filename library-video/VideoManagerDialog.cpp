@@ -5,6 +5,13 @@
 #include <QMessageBox>
 #include <QtMath>
 
+/**
+ * @brief Constructor.
+ *
+ * Initializes the UI, populates the camera list using `QMediaDevices`,
+ * and connects to the singleton `VideoCaptureHandler`.
+ * It also checks if a camera is currently running to restore the UI state.
+ */
 VideoManagerDialog::VideoManagerDialog(QWidget* parent) : QDialog(parent), ui(new Ui::VideoManagerDialog)
 {
   ui->setupUi(this);
@@ -13,20 +20,15 @@ VideoManagerDialog::VideoManagerDialog(QWidget* parent) : QDialog(parent), ui(ne
   this->setWindowFlags(this->windowFlags() | Qt::WindowMinimizeButtonHint | Qt::WindowMaximizeButtonHint);
 
   VideoCaptureHandler& handler = VideoCaptureHandler::instance();
-
-  // Conexión para recibir nuevos pixmaps capturados (Temporal mientras el
-  // diálogo está abierto)
   connect(&handler, &VideoCaptureHandler::newPixmapCaptured, this, [=](const QPixmap& pixmap) {
     m_currentPixmap = pixmap;
     updateVideoLabel();
   });
 
-  // Conexiones de soporte (Necesarias para configurar la UI)
   connect(&handler, &VideoCaptureHandler::propertiesSupported, this, &VideoManagerDialog::on_propertiesSupported);
   connect(&handler, &VideoCaptureHandler::rangesSupported, this, &VideoManagerDialog::on_rangesSupported);
   connect(&handler, &VideoCaptureHandler::cameraOpenFailed, this, &VideoManagerDialog::on_cameraOpenFailed);
 
-  // Rellenar ComboBox de cámaras
   QStringList cameraNames;
   for (const QCameraDevice& camera : QMediaDevices::videoInputs()) {
     cameraNames << camera.description();
@@ -38,21 +40,26 @@ VideoManagerDialog::VideoManagerDialog(QWidget* parent) : QDialog(parent), ui(ne
     ui->videoLabel->setText("No se han detectado cámaras.");
   }
 
-  // Si ya hay una cámara corriendo, cargamos su estado en la UI.
   updateStartButtonState();
-
   setAllControlsEnabled(false);
 }
 
+/**
+ * @brief Destructor.
+ *
+ * Disconnects from the `VideoCaptureHandler` signals and cleans up the UI.
+ */
 VideoManagerDialog::~VideoManagerDialog()
 {
-  // Desconectar la señal de newPixmapCaptured para que el QLabel del diálogo no
-  // se actualice al cerrarse, dejando que MainWindow tome el control.
   disconnect(&VideoCaptureHandler::instance(), SIGNAL(newPixmapCaptured(QPixmap)), this, nullptr);
   delete ui;
 }
 
-// --- NUEVO: Actualiza el botón de Start/Stop al abrir el diálogo ---
+/**
+ * @brief Updates the video display label with the latest captured pixmap.
+ *
+ * Scales the pixmap to fit the label while maintaining aspect ratio.
+ */
 void VideoManagerDialog::updateStartButtonState()
 {
   bool isRunning = VideoCaptureHandler::instance().isCameraRunning();
@@ -66,6 +73,13 @@ void VideoManagerDialog::updateStartButtonState()
   }
 }
 
+/**
+ * @brief Handles the Start/Stop action.
+ *
+ * - **Start:** Reads the selected camera index and resolution, then requests the
+ * `VideoCaptureHandler` to open the device.
+ * - **Stop:** Requests the handler to close the camera (-1) and resets the UI preview.
+ */
 void VideoManagerDialog::on_startButton_clicked()
 {
   VideoCaptureHandler& handler = VideoCaptureHandler::instance();
@@ -83,7 +97,6 @@ void VideoManagerDialog::on_startButton_clicked()
     ui->comboBoxResolution->setEnabled(false);
   }
   else {
-    // Estado: OFF (Detener)
     handler.requestCameraChange(-1, QSize());
 
     ui->startButton->setText("Start");
@@ -96,6 +109,10 @@ void VideoManagerDialog::on_startButton_clicked()
   }
 }
 
+/**
+ * @brief Resets all image parameters to their default values (50%).
+ * Also triggers the corresponding slots to apply these defaults to the camera.
+ */
 void VideoManagerDialog::on_resetButton_clicked()
 {
   ui->checkBoxFocoAuto->setChecked(true);
@@ -113,44 +130,48 @@ void VideoManagerDialog::on_resetButton_clicked()
   on_horizontalSliderNitidez_sliderMoved(50);
 }
 
+/**
+ * @brief Handles camera open failures.
+ *
+ * Displays an error message and resets the Start/Stop button and camera selection.
+ *
+ * @param cameraId The ID of the camera that failed to open.
+ * @param errorMsg The error message detailing the failure.
+ */
 void VideoManagerDialog::on_cameraOpenFailed(int cameraId, const QString& errorMsg)
 {
   Q_UNUSED(cameraId);
   QMessageBox::critical(this, "Error de Cámara", tr("No se pudo iniciar la cámara seleccionada. Detalle: %1").arg(errorMsg));
 
-  // Resetear el botón de inicio/parada y habilitar la selección de cámara
   ui->startButton->setChecked(false);
   ui->startButton->setText("Start OpenCV");
   ui->comboBoxCameras->setEnabled(true);
   ui->comboBoxResolution->setEnabled(true);
 }
 
+/**
+ * @brief Adapts the UI sliders to the connected camera's capabilities.
+ *
+ * This slot is triggered when the backend reports the specific ranges of the hardware.
+ * It iterates through all properties (Brightness, Focus, etc.), calculates the
+ * correct slider position relative to the current hardware value, and enables/disables
+ * sliders based on hardware support.
+ *
+ * @param ranges The min/max/current values reported by OpenCV.
+ */
 void VideoManagerDialog::on_rangesSupported(const CameraPropertyRanges& ranges)
 {
   m_ranges = ranges;
 
-  // Configurar los Sliders (escala de 0 a 100 para la GUI)
-  // ... (Lógica de configuración de rangos y valores sin cambios) ...
-
-  // Brillo
+  // Map hardware values to UI [0-100]
   ui->horizontalSliderBrillo->setValue(qBound(0, mapOpenCVToSlider(ranges.brightness.current, ranges.brightness), 100));
-
-  // Contraste
   ui->horizontalSliderContraste->setValue(qBound(0, mapOpenCVToSlider(ranges.contrast.current, ranges.contrast), 100));
-
-  // Saturación
   ui->horizontalSliderSaturacion->setValue(qBound(0, mapOpenCVToSlider(ranges.saturation.current, ranges.saturation), 100));
-
-  // Nitidez
   ui->horizontalSliderNitidez->setValue(qBound(0, mapOpenCVToSlider(ranges.sharpness.current, ranges.sharpness), 100));
-
-  // Exposición
   ui->horizontalSliderExposicion->setValue(qBound(0, mapOpenCVToSlider(ranges.exposure.current, ranges.exposure), 100));
-
-  // Foco
   ui->horizontalSliderFoco->setValue(qBound(0, mapOpenCVToSlider(ranges.focus.current, ranges.focus), 100));
 
-  // Habilitar o deshabilitar controles según el soporte
+  // Enable controls only if supported by hardware
   ui->checkBoxFocoAuto->setEnabled(m_support.autoFocus);
   ui->horizontalSliderBrillo->setEnabled(m_support.brightness);
   ui->horizontalSliderContraste->setEnabled(m_support.contrast);
@@ -161,61 +182,140 @@ void VideoManagerDialog::on_rangesSupported(const CameraPropertyRanges& ranges)
   ui->horizontalSliderFoco->setEnabled(m_support.focus && !ui->checkBoxFocoAuto->isChecked());
   ui->horizontalSliderExposicion->setEnabled(m_support.exposure && !ui->checkBoxExposicionAuto->isChecked());
 }
-// nuevo slot)
+
+/**
+ * @brief Updates the supported properties based on backend feedback.
+ *
+ * This slot is triggered when the backend reports which properties
+ * (Focus, Exposure, etc.) are supported by the connected camera.
+ *
+ * @param support The support flags for each property.
+ */
 void VideoManagerDialog::on_propertiesSupported(CameraPropertiesSupport support)
 {
   m_support = support;
 }
 
-// Slots de Foco
+/**
+ * @brief Handles the Auto Focus checkbox toggle.
+ *
+ * Sends the new auto-focus state to the `VideoCaptureHandler`
+ * and enables/disables the Focus slider accordingly.
+ *
+ * @param checked True if Auto Focus is enabled, false otherwise.
+ */
 void VideoManagerDialog::on_checkBoxFocoAuto_toggled(bool checked)
 {
   VideoCaptureHandler::instance().setAutoFocus(checked);
   ui->horizontalSliderFoco->setEnabled(m_support.focus && !checked);
 }
 
+/**
+ * @brief Handles the Auto Exposure checkbox toggle.
+ *
+ * Sends the new auto-exposure state to the `VideoCaptureHandler`
+ * and enables/disables the Exposure slider accordingly.
+ *
+ * @param checked True if Auto Exposure is enabled, false otherwise.
+ */
 void VideoManagerDialog::on_checkBoxExposicionAuto_toggled(bool checked)
 {
   VideoCaptureHandler::instance().setAutoExposure(checked);
   ui->horizontalSliderExposicion->setEnabled(m_support.exposure && !checked);
 }
 
+/**
+ * @brief Handles the Focus slider movement.
+ *
+ * Maps the UI slider value [0-100] to the hardware range
+ * and sends the new focus value to the `VideoCaptureHandler`.
+ *
+ * @param value The new slider value (0-100).
+ */
 void VideoManagerDialog::on_horizontalSliderFoco_sliderMoved(int value)
 {
   int openCVValue = mapSliderToOpenCV(value, m_ranges.focus);
   VideoCaptureHandler::instance().setFocus(openCVValue);
 }
 
+/**
+ * @brief Handles the Brightness slider movement.
+ *
+ * Maps the UI slider value [0-100] to the hardware range
+ * and sends the new brightness value to the `VideoCaptureHandler`.
+ *
+ * @param value The new slider value (0-100).
+ */
 void VideoManagerDialog::on_horizontalSliderBrillo_sliderMoved(int value)
 {
   int openCVValue = mapSliderToOpenCV(value, m_ranges.brightness);
   VideoCaptureHandler::instance().setBrightness(openCVValue);
 }
 
+/**
+ * @brief Handles the Contrast slider movement.
+ *
+ * Maps the UI slider value [0-100] to the hardware range
+ * and sends the new contrast value to the `VideoCaptureHandler`.
+ *
+ * @param value The new slider value (0-100).
+ */
 void VideoManagerDialog::on_horizontalSliderContraste_sliderMoved(int value)
 {
   int openCVValue = mapSliderToOpenCV(value, m_ranges.contrast);
   VideoCaptureHandler::instance().setContrast(openCVValue);
 }
 
+/**
+ * @brief Handles the Saturation slider movement.
+ *
+ * Maps the UI slider value [0-100] to the hardware range
+ * and sends the new saturation value to the `VideoCaptureHandler`.
+ *
+ * @param value The new slider value (0-100).
+ */
 void VideoManagerDialog::on_horizontalSliderSaturacion_sliderMoved(int value)
 {
   int openCVValue = mapSliderToOpenCV(value, m_ranges.saturation);
   VideoCaptureHandler::instance().setSaturation(openCVValue);
 }
 
+/**
+ * @brief Handles the Sharpness slider movement.
+ *
+ * Maps the UI slider value [0-100] to the hardware range
+ * and sends the new sharpness value to the `VideoCaptureHandler`.
+ *
+ * @param value The new slider value (0-100).
+ */
 void VideoManagerDialog::on_horizontalSliderNitidez_sliderMoved(int value)
 {
   int openCVValue = mapSliderToOpenCV(value, m_ranges.sharpness);
   VideoCaptureHandler::instance().setSharpness(openCVValue);
 }
 
+/**
+ * @brief Handles the Exposure slider movement.
+ *
+ * Maps the UI slider value [0-100] to the hardware range
+ * and sends the new exposure value to the `VideoCaptureHandler`.
+ *
+ * @param value The new slider value (0-100).
+ */
 void VideoManagerDialog::on_horizontalSliderExposicion_sliderMoved(int value)
 {
   int openCVValue = mapSliderToOpenCV(value, m_ranges.exposure);
   VideoCaptureHandler::instance().setExposure(openCVValue);
 }
 
+/**
+ * @brief Enables or disables all parameter controls.
+ *
+ * Useful when starting/stopping the camera to prevent user interaction
+ * during state transitions.
+ *
+ * @param enabled True to enable controls, false to disable.
+ */
 void VideoManagerDialog::setAllControlsEnabled(bool enabled)
 {
   ui->checkBoxFocoAuto->setEnabled(enabled);
@@ -233,6 +333,11 @@ void VideoManagerDialog::setAllControlsEnabled(bool enabled)
   }
 }
 
+/**
+ * @brief Updates the video display label with the latest captured pixmap.
+ *
+ * Scales the pixmap to fit the label while maintaining aspect ratio.
+ */
 void VideoManagerDialog::updateVideoLabel()
 {
   if (m_currentPixmap.isNull()) {
@@ -241,6 +346,14 @@ void VideoManagerDialog::updateVideoLabel()
   ui->videoLabel->setPixmap(m_currentPixmap.scaled(ui->videoLabel->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
 }
 
+/**
+ * @brief Parses a resolution string (e.g., "1920x1080") into a QSize object.
+ *
+ * If the string is "Default" or invalid, returns QSize(0, 0).
+ *
+ * @param text The resolution string from the UI.
+ * @return The parsed QSize object.
+ */
 QSize VideoManagerDialog::parseResolution(const QString& text)
 {
   if (text == "Default") {
@@ -258,34 +371,46 @@ QSize VideoManagerDialog::parseResolution(const QString& text)
   return QSize(0, 0);
 }
 
+/**
+ * @brief Converts a normalized slider value to the camera's native range.
+ *
+ * Used when sending user input to the backend.
+ *
+ * @param sliderValue The UI value [0, 100].
+ * @param range The hardware constraints [min, max].
+ * @return The calculated value in hardware units.
+ */
 int VideoManagerDialog::mapSliderToOpenCV(int sliderValue, const PropertyRange& range)
 {
-  // Escala de [0, 100] (slider) a [range.min, range.max] (OpenCV)
+
   double outputRange = range.max - range.min;
   double scaleFactor = outputRange / 100.0;
 
-  // Mapeo lineal: (ValorSlider * FactorEscala) + Mínimo
   double mappedValue = (sliderValue * scaleFactor) + range.min;
 
-  // Asegurar que el valor se mantiene dentro del rango de OpenCV
   return qBound(static_cast<int>(range.min), static_cast<int>(mappedValue), static_cast<int>(range.max));
 }
 
+/**
+ * @brief Converts a native camera value to a normalized slider position.
+ *
+ * Used when updating the UI to reflect the camera's current state.
+ *
+ * @param openCVValue The hardware value.
+ * @param range The hardware constraints.
+ * @return The normalized value [0, 100].
+ */
 int VideoManagerDialog::mapOpenCVToSlider(double openCVValue, const PropertyRange& range)
 {
-  // Escala de [range.min, range.max] (OpenCV) a [0, 100] (slider)
   double inputValue = openCVValue - range.min;
   double inputRange = range.max - range.min;
 
   if (qFuzzyIsNull(inputRange)) {
-    return 50; // Evitar división por cero, devolver centro por defecto
+    return 50; 
   }
 
   double normalizedValue = inputValue / inputRange;
-
-  // Mapeo al rango de 0 a 100
   int sliderValue = static_cast<int>(normalizedValue * 100.0);
 
-  // Asegurar que el valor se mantiene dentro del rango del slider
   return qBound(0, sliderValue, 100);
 }

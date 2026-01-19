@@ -216,7 +216,7 @@ void RobotHandler::inverseCinematic(const cv::Point3d& efectorGlobal)
     qDebug() << "[RobotHandler] CRITICAL: Punto fuera del alcance físico.";
     qDebug() << "  Distancia requerida:" << distancia_objetivo;
     qDebug() << "  Alcance máximo:" << alcance_max;
-    emit errorOccurred("Target point is out of reach (Triangle Inequality violation)");
+    // emit errorOccurred("Target point is out of reach (Triangle Inequality violation)");
     return;
   }
 

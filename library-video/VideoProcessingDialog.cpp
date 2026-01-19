@@ -351,7 +351,7 @@ void VideoProcessingDialog::applySegmentacion(QPixmap& pixmap)
           angle += 180;
 
         angle_str = QString::number(angle, 'f', 2) + "°";
-        emit angleUpdated(angle);
+        emit angleUpdated(angle + 90);
 
         double rad = angle * CV_PI / 180;
 

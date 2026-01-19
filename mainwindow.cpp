@@ -9,6 +9,7 @@
 #include <QMessageBox>
 #include <QProcess>
 #include <QSettings>
+#include <QTimer>
 #include <QVideoFrameFormat>
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWindow), m_RobotHandler(new RobotHandler(this, &m_robotSettings))
@@ -703,10 +704,14 @@ void MainWindow::on_pushButtonPickAndPlace_clicked()
 {
   bool   ok;
   double angle = ui->lineEditAngle->text().toDouble(&ok);
-  if (!ok || angle < 30.0 || angle > 150.0) {
-    QMessageBox::warning(this, "Invalid Angle", "The angle must be between 30 and 150 degrees.");
+  if (!ok || angle < -60.0 || angle > 60.0) {
+    QMessageBox::warning(this, "Invalid Angle", "The angle must be between -60 and 60 degrees.");
     return;
   }
+
+  // Change the color of the button to indicate action
+  ui->pushButtonPickAndPlace->setStyleSheet("background-color: green; color: white;");
+  QTimer::singleShot(18000, this, [this]() { ui->pushButtonPickAndPlace->setStyleSheet(""); });
 
   if (SerialPortHandler::instance().isConnected()) {
     QString command = QString("PLACE:%1:%2:%3:%4:%5:%6")

@@ -1,3 +1,18 @@
+/**
+ * @file SerialMonitorDialog.h
+ * @author Miguel Ferrer
+ * @brief  A real-time debugging console for Serial Port communication.
+ *
+ * This dialog acts as a terminal window. It subscribes to the SerialPortHandler
+ * signals to display incoming and outgoing data streams. It also provides
+ * a manual input field to send raw ASCII commands to the connected device.
+ *
+ * @version 0.1
+ * @date 2026-01-19
+ *
+ * @copyright Copyright (c) 2026
+ *
+ */
 #ifndef SERIALMONITORDIALOG_H
 #define SERIALMONITORDIALOG_H
 

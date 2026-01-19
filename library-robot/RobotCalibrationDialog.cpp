@@ -1,3 +1,19 @@
+/**
+ * @file RobotCalibrationDialog.cpp
+ * @author Miguel Ferrer
+ * @brief  Dialog for Robot Calibration and Kinematics Manager.
+ *
+ * This file implements the RobotCalibrationDialog class, which provides
+ * a user interface for robot calibration using chessboard patterns.
+ * It also contains the RobotCalibrationWorker class that performs
+ * the calibration computations in a separate thread.
+ *
+ * @version 0.1
+ * @date 2026-01-19
+ *
+ * @copyright Copyright (c) 2026
+ *
+ */
 #include "RobotCalibrationDialog.h"
 #include "./ui_RobotCalibrationDialog.h"
 

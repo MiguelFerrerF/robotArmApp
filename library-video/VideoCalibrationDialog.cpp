@@ -1,3 +1,19 @@
+/**
+ * @file VideoCalibrationDialog.cpp
+ * @author Miguel Ferrer
+ * @brief   Dialog for Camera Calibration and 3D Localization Manager.
+ *
+ * This file implements the VideoCalibrationDialog class, which provides
+ * a user interface for camera calibration using chessboard patterns.
+ * It also contains the VideoCalibrationWorker class that performs
+ * the calibration computations in a separate thread.
+ *
+ * @version 0.1
+ * @date 2026-01-19
+ *
+ * @copyright Copyright (c) 2026
+ *
+ */
 #include "VideoCalibrationDialog.h"
 #include "./ui_VideoCalibrationDialog.h"
 

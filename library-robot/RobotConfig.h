@@ -1,3 +1,19 @@
+/**
+ * @file RobotConfig.h
+ * @author your name (you@domain.com)
+ * @brief  Configuration structures for the Robot Arm application.
+ *
+ * This header defines the data structures used to represent
+ * the configuration and state of the 6-axis robotic arm.
+ * These structures include motor limits, default positions,
+ * and runtime state variables.
+ *
+ * @version 0.1
+ * @date 2026-01-19
+ *
+ * @copyright Copyright (c) 2026
+ *
+ */
 #ifndef ROBOTCONFIG_H
 #define ROBOTCONFIG_H
 

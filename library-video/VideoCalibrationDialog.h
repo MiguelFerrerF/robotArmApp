@@ -1,3 +1,13 @@
+/**
+ * @file VideoCalibrationDialog.h
+ * @author Miguel Ferrer
+ * @brief  Dialog for Camera Calibration and 3D Localization Manager.
+ * @version 0.1
+ * @date 2026-01-19
+ *
+ * @copyright Copyright (c) 2026
+ *
+ */
 #ifndef VIDEOCALIBRATIONDIALOG_H
 #define VIDEOCALIBRATIONDIALOG_H
 

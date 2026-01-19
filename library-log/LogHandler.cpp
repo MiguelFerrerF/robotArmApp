@@ -1,6 +1,6 @@
 /**
  * @file logger.cpp
- * @author  Inbiot Monitoring Team
+ * @author  Miguel Ferrer
  * @brief    Implementation file for the LogHandler class
  * @details  This file implements the LogHandler class, which provides static methods for logging messages
  * to a QTextEdit widget with various log levels and formatting options.

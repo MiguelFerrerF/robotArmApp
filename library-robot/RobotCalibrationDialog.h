@@ -1,3 +1,18 @@
+/**
+ * @file RobotCalibrationDialog.h
+ * @author Miguel Ferrer
+ * @brief   Dialog for performing Hand-Eye calibration of a robotic arm using chessboard images.
+ *
+ * This class provides a user interface for capturing images,
+ * selecting directories, and visualizing the progress and results of the Hand-Eye calibration.
+ * It also contains the RobotCalibrationWorker class that performs the calibration computations in a separate thread.
+ *
+ * @version 0.1
+ * @date 2026-01-19
+ *
+ * @copyright Copyright (c) 2026
+ *
+ */
 #ifndef ROBOTCALIBRATIONDIALOG_H
 #define ROBOTCALIBRATIONDIALOG_H
 

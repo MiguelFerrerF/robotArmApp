@@ -1,4 +1,22 @@
-// setupconnection.cpp
+/**
+ * @file SerialConnectionSetupDialog.cpp
+ * @author Miguel Ferrer
+ * @brief  Dialog window for configuring the serial port connection.
+ *
+ * This file contains the implementation of the SerialConnectionSetupDialog class,
+ * which provides a graphical interface for the user to:
+ * 1. Scan and list available serial ports on the system.
+ * 2. Select a specific port and Baud Rate.
+ * 3. Initiate the connection via the SerialPortHandler.
+ * It manages setting persistence, ensuring that the last used port and
+ * baud rate are remembered between application sessions.
+ *
+ * @version 0.1
+ * @date 2026-01-19
+ *
+ * @copyright Copyright (c) 2026
+ *
+ */
 #include "SerialConnectionSetupDialog.h"
 #include "SerialPortHandler.h"
 #include "ui_SerialConnectionSetupDialog.h"

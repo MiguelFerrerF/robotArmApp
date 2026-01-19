@@ -1,3 +1,19 @@
+/**
+ * @file RobotControlDialog.cpp
+ * @author Miguel Ferrer
+ * @brief  Implementation of the Robot Control Dialog.
+ * 
+ * This file contains the implementation of the RobotControlDialog class,
+ * which provides a user interface for controlling a robotic arm with six motors.
+ * The dialog allows users to set motor angles, define offsets,
+ * and switch between "All" and "Single" control modes.
+ * 
+ * @version 0.1
+ * @date 2026-01-19
+ * 
+ * @copyright Copyright (c) 2026
+ * 
+ */
 #include "RobotControlDialog.h"
 #include "ui_RobotControlDialog.h"
 #include <QCoreApplication>

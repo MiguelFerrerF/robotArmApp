@@ -1,3 +1,18 @@
+/**
+ * @file RobotHandler.cpp
+ * @author Miguel Ferrer
+ * @brief   Handler for Robot Kinematics and Serial Communication.
+ *
+ * This file implements the RobotHandler class which manages
+ * the kinematic calculations (Forward and Inverse Kinematics)
+ * and processes serial data received from the microcontroller.
+ *
+ * @version 0.1
+ * @date 2026-01-19
+ *
+ * @copyright Copyright (c) 2026
+ *
+ */
 #include "RobotHandler.h"
 #include "../library-serial/SerialPortHandler.h"
 #include <QDebug>

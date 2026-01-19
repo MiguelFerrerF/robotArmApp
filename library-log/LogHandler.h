@@ -1,6 +1,6 @@
 /**
  * @file logger.h
- * @author Inbiot Monitoring Team
+ * @author Miguel Ferrer
  * @brief Header file for the LogHandler class
  * @details This class provides static methods for logging messages with different log levels
  * and formatting options. It supports logging to a QTextEdit widget with customizable colors,
@@ -20,7 +20,8 @@
 #include <QString>
 #include <QTextEdit>
 
-class LogHandler {
+class LogHandler
+{
 public:
   /**
    * @enum LogLevel

@@ -1,3 +1,23 @@
+/**
+ * @file VideoManagerDialog.cpp
+ * @author Miguel Ferrer
+ * @brief   Dialog for managing video input devices and camera settings.
+ *
+ * This file implements the VideoManagerDialog class, which provides a user interface
+ * for selecting and configuring video capture devices using Qt's multimedia framework.
+ *
+ * The dialog allows users to:
+ * - Select from available cameras.
+ * - Choose resolution settings.
+ * - Start and stop video capture.
+ * - Adjust camera properties such as focus, exposure, brightness, contrast, saturation, and sharpness.
+ *
+ * @version 0.1
+ * @date 2026-01-19
+ *
+ * @copyright Copyright (c) 2026
+ *
+ */
 #include "VideoManagerDialog.h"
 #include "./ui_VideoManagerDialog.h"
 #include <QCameraDevice>
@@ -406,11 +426,11 @@ int VideoManagerDialog::mapOpenCVToSlider(double openCVValue, const PropertyRang
   double inputRange = range.max - range.min;
 
   if (qFuzzyIsNull(inputRange)) {
-    return 50; 
+    return 50;
   }
 
   double normalizedValue = inputValue / inputRange;
-  int sliderValue = static_cast<int>(normalizedValue * 100.0);
+  int    sliderValue     = static_cast<int>(normalizedValue * 100.0);
 
   return qBound(0, sliderValue, 100);
 }

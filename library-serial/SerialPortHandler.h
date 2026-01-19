@@ -1,3 +1,20 @@
+/**
+ * @file SerialPortHandler.h
+ * @author Miguel Ferrer
+ * @brief  Singleton wrapper around QSerialPort to manage hardware communication.
+ *
+ * This class provides a centralized point of access for the serial port resource.
+ * It ensures that multiple components (e.g., RobotHandler, SerialMonitor) use
+ * the same connection instance.
+ * @note This handler enforces a **Line-Based Protocol**. It reads data using `readLine()`
+ * and expects messages to be terminated by a newline character.
+ *
+ * @version 0.1
+ * @date 2026-01-19
+ *
+ * @copyright Copyright (c) 2026
+ *
+ */
 #ifndef SERIALPORTHANDLER_H
 #define SERIALPORTHANDLER_H
 

@@ -1,3 +1,19 @@
+/**
+ * @file VideoCaptureHandler.h
+ * @author Miguel Ferrer
+ * @brief   Singleton class that manages video capture in a dedicated thread.
+ *
+ * This file declares the VideoCaptureHandler class, which handles
+ * video acquisition using OpenCV's VideoCapture in a separate thread.
+ * It provides thread-safe methods to control camera properties
+ * and emits signals for new frames and camera info updates.
+ *
+ * @version 0.1
+ * @date 2026-01-19
+ *
+ * @copyright Copyright (c) 2026
+ *
+ */
 #ifndef VIDEOCAPTUREHANDLER_H
 #define VIDEOCAPTUREHANDLER_H
 

@@ -1,3 +1,21 @@
+/**
+ * @file RobotHandler.h
+ * @author Miguel Ferrer
+ * @brief Handles robot kinematics and serial communication parsing.
+ *
+ * This class acts as the bridge between the raw serial data and the high-level
+ * application logic. It is responsible for:
+ * 1. Maintaining the kinematic model (Forward Kinematics) using Denavit-Hartenberg matrices.
+ * 2. Calculating required joint angles for target coordinates (Inverse Kinematics).
+ * 3. Parsing incoming serial protocols (e.g., "ANGLE:SERVO1:90").
+ * 4. Managing coordinate transformations between the Base and the End-Effector.
+ *
+ * @version 0.1
+ * @date 2026-01-19
+ *
+ * @copyright Copyright (c) 2026
+ *
+ */
 #ifndef ROBOTHANDLER_H
 #define ROBOTHANDLER_H
 #include "RobotConfig.h"

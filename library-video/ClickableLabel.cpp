@@ -1,3 +1,17 @@
+/**
+ * @file ClickableLabel.cpp
+ * @author Miguel Ferrer
+ * @brief  A QLabel subclass that emits a signal when clicked.
+ *
+ * This file implements the ClickableLabel class, which extends QLabel
+ * to provide mouse click interaction by emitting a signal when clicked.
+ *
+ * @version 0.1
+ * @date 2026-01-19
+ *
+ * @copyright Copyright (c) 2026
+ *
+ */
 #include "ClickableLabel.h"
 
 ClickableLabel::ClickableLabel(QWidget* parent) : QLabel(parent)

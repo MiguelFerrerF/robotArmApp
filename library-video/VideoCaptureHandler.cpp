@@ -1,3 +1,19 @@
+/**
+ * @file VideoCaptureHandler.cpp
+ * @author Miguel Ferrer
+ * @brief  Singleton class that manages video capture in a dedicated thread.
+ *
+ * This file implements the VideoCaptureHandler class, which handles
+ * video acquisition using OpenCV's VideoCapture in a separate thread.
+ * It provides thread-safe methods to control camera properties
+ * and emits signals with captured frames.
+ *
+ * @version 0.1
+ * @date 2026-01-19
+ *
+ * @copyright Copyright (c) 2026
+ *
+ */
 #include "VideoCaptureHandler.h"
 #include <QDebug>
 #include <QDir>

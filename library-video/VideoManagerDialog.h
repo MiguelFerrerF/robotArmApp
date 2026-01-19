@@ -1,3 +1,22 @@
+/**
+ * @file VideoManagerDialog.h
+ * @author Miguel Ferrer
+ * @brief  Configuration dialog for camera selection and image tuning.
+ *
+ * This class provides a graphical interface to:
+ * 1. Enumerate and select available video input devices.
+ * 2. Configure capture resolution.
+ * 3. Tune hardware properties (Brightness, Contrast, Focus, Exposure, etc.).
+ * @note This class implements a **Normalization Layer**. Since different cameras use
+ * different internal scales (e.g., Exposure might be 0-10000 on one cam and -10 to +10 on another),
+ * this dialog maps all properties to a 0-100 slider range for consistent user experience.
+ *
+ * @version 0.1
+ * @date 2026-01-19
+ *
+ * @copyright Copyright (c) 2026
+ *
+ */
 #ifndef VIDEOMANAGERDIALOG_H
 #define VIDEOMANAGERDIALOG_H
 
@@ -102,7 +121,7 @@ private:
    * Formula: \f$ V_{hw} = V_{slider} \times \frac{Max - Min}{100} + Min \f$
    */
   int mapSliderToOpenCV(int sliderValue, const PropertyRange& range);
-  
+
   /**
    * @brief Maps a Hardware value [min, max] to a UI Slider value [0, 100].
    */

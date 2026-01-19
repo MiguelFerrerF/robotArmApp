@@ -1,8 +1,25 @@
+/**
+ * @file mainwindow.cpp
+ * @author Miguel Ferrer
+ * @brief Implementation of the Main Window for the Robot Arm Controller Application.
+ *
+ * This file contains the core logic for the main dashboard, including
+ * menu actions, signal-slot connections, and UI updates.
+ * It integrates the Serial Port Handler and Robot Handler to provide
+ * a seamless user experience for controlling the robotic arm.
+ *
+ * @version 0.1
+ * @date 2026-01-19
+ *
+ * @copyright Copyright (c) 2026
+ *
+ */
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
 #include "library-serial/SerialConnectionSetupDialog.h"
 #include <QDateTime>
 #include <QDebug>
+#include <QDesktopServices>
 #include <QDir>
 #include <QFile>
 #include <QLineEdit>
@@ -227,6 +244,17 @@ void MainWindow::on_actionProcessingVideo_triggered()
     m_VideoProcessingDialog->raise();
     m_VideoProcessingDialog->activateWindow();
   }
+}
+
+/**
+ * @brief Opens the application documentation in the default web browser.
+ * The documentation is expected to be located in the "docs/index.html" file
+ * within the current working directory.
+ */
+void MainWindow::on_actionMenuDocs_triggered()
+{
+  QString docsPath = QDir::currentPath() + "/docs/index.html";
+  QDesktopServices::openUrl(QUrl::fromLocalFile(docsPath));
 }
 
 /**

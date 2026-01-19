@@ -1,3 +1,21 @@
+/**
+ * @file SerialConnectionSetupDialog.h
+ * @author Miguel Ferrer
+ * @brief  Dialog window for configuring the serial port connection.
+ *
+ * This class provides a graphical interface for the user to:
+ * 1. Scan and list available serial ports on the system.
+ * 2. Select a specific port and Baud Rate.
+ * 3. Initiate the connection via the SerialPortHandler.
+ * It manages setting persistence, ensuring that the last used port and
+ * baud rate are remembered between application sessions.
+ *
+ * @version 0.1
+ * @date 2026-01-19
+ *
+ * @copyright Copyright (c) 2026
+ *
+ */
 #ifndef SERIALCONNECTIONSETUPDIALOG_H
 #define SERIALCONNECTIONSETUPDIALOG_H
 
@@ -40,7 +58,7 @@ private slots:
    * Validates input, attempts connection, and saves settings on success.
    */
   void on_pushButtonConnect_clicked();
-  
+
   /**
    * @brief Scans the system for serial ports and populates the combo box.
    * Auto-selects a port if it matches specific criteria (e.g., contains "UART").

@@ -1,8 +1,23 @@
+/**
+ * @file main.cpp
+ * @author Miguel Ferrer
+ * @brief  Entry point for the Robot Arm Controller Application.
+ *
+ *  Initializes the QApplication, sets application metadata,
+ * and launches the MainWindow.
+ *
+ * @version 0.1
+ * @date 2026-01-19
+ *
+ * @copyright Copyright (c) 2026
+ *
+ */
 #include "mainwindow.h"
 
 #include <QApplication>
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[])
+{
   QApplication a(argc, argv);
 
   a.setWindowIcon(QIcon(":/images/icon.ico"));

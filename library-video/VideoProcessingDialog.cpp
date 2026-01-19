@@ -1,3 +1,21 @@
+/**
+ * @file VideoProcessingDialog.cpp
+ * @author Miguel Ferrer
+ * @brief  Dialog for Video Processing and Object Segmentation.
+ *
+ * This file implements the VideoProcessingDialog class, which provides a user interface
+ * for processing video frames captured from a camera. It allows users to define a region
+ * of interest (ROI) by selecting corner points, applies perspective correction,
+ * segments the object using Canny edge detection, and calculates key features such as
+ * the centroid and orientation angle of the detected object. The dialog emits signals
+ * to communicate updates to other parts of the application.
+ *
+ * @version 0.1
+ * @date 2026-01-19
+ *
+ * @copyright Copyright (c) 2026
+ *
+ */
 #include "VideoProcessingDialog.h"
 #include "./ui_VideoProcessingDialog.h"
 #include "ClickableLabel.h"

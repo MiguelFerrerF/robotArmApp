@@ -1,3 +1,18 @@
+/**
+ * @file RobotControlDialog.h
+ * @author Miguel Ferrer
+ * @brief   Dialog for manual control of the robot arm.
+ * 
+ * This class provides a GUI with sliders and text inputs to control the 6 motors
+ * individually or in batches. It also allows setting calibration offsets and
+ * defining specific positions (like "Place").
+ * 
+ * @version 0.1
+ * @date 2026-01-19
+ * 
+ * @copyright Copyright (c) 2026
+ * 
+ */
 #ifndef ROBOTCONTROLDIALOG_H
 #define ROBOTCONTROLDIALOG_H
 

@@ -1,3 +1,28 @@
+/**
+ * @file VideoProcessingDialog.h
+ * @author Miguel Ferrer
+ * @brief  GUI Dialog and Processing Engine for Object Detection.
+ *
+ * This class implements a complete Computer Vision pipeline  to detect objects
+ * and determine their position and orientation. It provides a user interface
+ * for defining a Region of Interest (ROI) for perspective correction,
+ * segmentation using edge detection and contour analysis, and feature extraction
+ * to compute the centroid and orientation of detected objects.
+ *
+ * **Key Features:**
+ * 1. **Perspective Correction:** Allows the user to define a Region of Interest (ROI) using 4 points (TL, TR, BR, BL)
+ * to warp the image into a flat "top-down" view.
+ * 2. **Segmentation:** Uses Edge Detection (Canny) and Contour analysis to find objects.
+ * 3. **Feature Extraction:** Calculates the Centroid (X, Y) and Orientation Angle (Theta) of the detected piece.
+ * 4. **Coordinate Mapping:** Automatically transforms coordinates from the "Cropped" space back to the "Original"
+ * camera frame for robot calibration.
+ *
+ * @version 0.1
+ * @date 2026-01-19
+ *
+ * @copyright Copyright (c) 2026
+ *
+ */
 #ifndef VIDEOPROCESSINGDIALOG_H
 #define VIDEOPROCESSINGDIALOG_H
 

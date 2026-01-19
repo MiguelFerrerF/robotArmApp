@@ -1,3 +1,13 @@
+/**
+ * @file ClickableLabel.h
+ * @author Miguel Ferrer
+ * @brief  A QLabel subclass that emits a signal when clicked.
+ * @version 0.1
+ * @date 2026-01-19
+ *
+ * @copyright Copyright (c) 2026
+ *
+ */
 #ifndef CLICKABLELABEL_H
 #define CLICKABLELABEL_H
 

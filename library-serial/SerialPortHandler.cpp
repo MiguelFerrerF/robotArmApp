@@ -1,4 +1,19 @@
-// serialmanager.cpp
+/**
+ * @file SerialPortHandler.cpp
+ * @author Miguel Ferrer
+ * @brief  Singleton class that manages serial port communication.
+ *
+ * This file implements the SerialPortHandler class, which wraps around
+ * QSerialPort to provide a singleton interface for serial communication.
+ * It enforces a line-based protocol and emits signals for data reception
+ * and transmission events.
+ *
+ * @version 0.1
+ * @date 2026-01-19
+ *
+ * @copyright Copyright (c) 2026
+ *
+ */
 #include "SerialPortHandler.h"
 #include <QDebug>
 

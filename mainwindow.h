@@ -1,3 +1,20 @@
+/**
+ * @file mainwindow.h
+ * @author Miguel Ferrer
+ * @brief   The central hub of the Robot Arm Controller application.
+ *
+ * The MainWindow class is responsible for:
+ * 1. **Lifecycle Management**: Instantiating and managing all child dialogs (Video, Calibration, Control).
+ * 2. **Subsystem Integration**: connecting the **Computer Vision** pipeline outputs (Coordinates) to the **Robot Kinematics** inputs (Joint Angles).
+ * 3. **User Interface**: Displaying the main dashboard, video feed, and status logs.
+ * 4. **Command Dispatch**: Sending final high-level commands (e.g., "Pick and Place") to the microcontroller via the Serial Handler.
+ *
+ * @version 0.1
+ * @date 2026-01-19
+ *
+ * @copyright Copyright (c) 2026
+ *
+ */
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
@@ -49,6 +66,7 @@ private slots:
   void on_actionConnectVideo_triggered();
   void on_actionDisconnectVideo_triggered();
   void on_actionCalibrationVideo_triggered();
+  void on_actionMenuDocs_triggered();
 
   /**
    * @brief Activates the Video Processing pipeline.

@@ -431,7 +431,8 @@ void VideoProcessingDialog::applySegmentacion(QPixmap& pixmap)
         QPoint centroidOriginal   = transformCropPointToOriginal(centroidCrop);
         QPoint pointRectaOriginal = transformCropPointToOriginal(pointRectaCrop);
 
-        // Update persistent storage        m_lastCentroidOriginal   = centroidOriginal;
+        // Update persistent storage
+        m_lastCentroidOriginal   = centroidOriginal;
         m_lastPointRectaOriginal = pointRectaOriginal;
 
         point_str = QString("Punto Recta img recortada: (%1, %2)").arg(int(pointRectaCrop.x)).arg(int(pointRectaCrop.y));
